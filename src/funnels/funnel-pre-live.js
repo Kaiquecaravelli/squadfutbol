@@ -22,6 +22,7 @@ import { saveMatchScan } from '../utils/obsidian.js';
 
 const MIN_PROBABILITY = parseInt(process.env.PRE_LIVE_MIN_PROBABILITY || '80');
 const MIN_CONFIDENCE  = parseInt(process.env.PRE_LIVE_MIN_CONFIDENCE  || '75');
+const MIN_ODDS        = parseFloat(process.env.PRE_LIVE_MIN_ODDS      || '1.50');
 const MATCH_DELAY_MS  = 6_000;
 
 const AGENTS = [
@@ -110,12 +111,20 @@ async function _analyzeMatch(match, idx, notifiedKeys) {
       if (r.probabilidade < MIN_PROBABILITY) return false;
       if ((r.confianca ?? 0) < MIN_CONFIDENCE) return false;
       if (r.recommendation === 'AGUARDAR' || r.recommendation === 'NÃO') return false;
+      // Gate de odds mínima — análise só passa se odd ≥ 1.50
+      const odds = r.odds_minima_recomendada ?? r.odds_minima ?? 0;
+      if (odds > 0 && odds < MIN_ODDS) {
+        console.log(chalk.gray(`    🚫 [Odds Gate] ${r.mercado || r.market} bloqueado — odd ${odds} < ${MIN_ODDS}`));
+        return false;
+      }
       return true;
     })
     .map((r) => ({
       ...r,
       probabilidade: r.probabilidade ?? r.confidence_score,
       confianca:     r.confianca     ?? r.confidence,
+      // Normaliza nome do campo para uso consistente no Telegram
+      odds_minima:   r.odds_minima_recomendada ?? r.odds_minima ?? null,
     }));
 
   if (!enriched.length) return null;
