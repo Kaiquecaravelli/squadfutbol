@@ -28,16 +28,17 @@ import { buildLegsFromAnalyses,
 import { notifySuperOddsParlay,
          notifyPreLiveOpportunity }  from '../src/utils/telegram.js';
 import { loadDB }                    from '../src/pie/pie-storage.js';
-import { getSuperbetEventMap,
-         findUrlInLiveMap }          from '../src/scrapers/superbet.js';
+import { ensureFresh,
+         lookupMatchUrl }            from '../src/scrapers/superbet-cache.js';
 
 // ── Configuração ──────────────────────────────────────────────────────────────
-const ARGS     = process.argv.slice(2);
-const DRY_RUN  = ARGS.includes('--dry-run');
-const HOURS    = parseInt(ARGS.find(a => a.startsWith('--hours='))?.split('=')[1] || '24');
-const TIER_MAX = parseInt(ARGS.find(a => a.startsWith('--tier='))?.split('=')[1]  || '2');
-const LIMIT    = parseInt(ARGS.find(a => a.startsWith('--limit='))?.split('=')[1] || '20');  // máx partidas Gemini
-const BANKROLL = parseFloat(process.env.USER_BANKROLL || '1000');
+const ARGS      = process.argv.slice(2);
+const DRY_RUN   = ARGS.includes('--dry-run');
+const HOURS     = parseInt(ARGS.find(a => a.startsWith('--hours='))?.split('=')[1]     || '24');
+const MIN_HOURS = parseInt(ARGS.find(a => a.startsWith('--min-hours='))?.split('=')[1] || '6');   // mínimo 6h antes do kickoff
+const TIER_MAX  = parseInt(ARGS.find(a => a.startsWith('--tier='))?.split('=')[1]      || '2');
+const LIMIT     = parseInt(ARGS.find(a => a.startsWith('--limit='))?.split('=')[1]     || '20');  // máx partidas Gemini
+const BANKROLL  = parseFloat(process.env.USER_BANKROLL || '1000');
 
 // Ligas prioritárias (mesmo conjunto do sofascore-collector)
 const PRIORITY_LEAGUES = {
@@ -73,11 +74,12 @@ function log(emoji, msg, color = 'white') {
 }
 
 // ── Coleta partidas futuras do SofaScore ──────────────────────────────────────
-async function fetchUpcomingMatches(hoursAhead = 24) {
-  log('📡', 'Buscando partidas agendadas no SofaScore...', 'cyan');
+async function fetchUpcomingMatches(hoursAhead = 24, minHoursAhead = 6) {
+  log('📡', `Buscando partidas: ${minHoursAhead}h a ${hoursAhead}h a partir de agora...`, 'cyan');
 
   const now        = Date.now();
-  const cutoffTime = now + hoursAhead * 3_600_000;
+  const minTime    = now + minHoursAhead * 3_600_000;   // mínimo: 6h à frente
+  const cutoffTime = now + hoursAhead    * 3_600_000;   // máximo: 24h à frente
   const results    = [];
 
   // Busca hoje e amanhã para cobrir a janela de 24h
@@ -101,9 +103,9 @@ async function fetchUpcomingMatches(hoursAhead = 24) {
         const leagueInfo = PRIORITY_LEAGUES[leagueId];
         if (!leagueInfo || leagueInfo.tier > TIER_MAX) continue;
 
-        // Kickoff dentro da janela de busca
+        // Kickoff dentro da janela 6h–24h
         const kickoff = (e.startTimestamp || 0) * 1000;
-        if (kickoff < now || kickoff > cutoffTime) continue;
+        if (kickoff < minTime || kickoff > cutoffTime) continue;
 
         results.push({
           sofascore_id: e.id,
@@ -162,8 +164,8 @@ async function run() {
   } catch { db = null; }
 
   // ── ETAPA 1: Coleta partidas agendadas ────────────────────────────────────
-  log('\n🔍', `ETAPA 1 — Coletando partidas das próximas ${HOURS}h...`, 'bold');
-  const matches = await fetchUpcomingMatches(HOURS);
+  log('\n🔍', `ETAPA 1 — Coletando partidas (janela: ${MIN_HOURS}h–${HOURS}h)...`, 'bold');
+  const matches = await fetchUpcomingMatches(HOURS, MIN_HOURS);
 
   if (!matches.length) {
     log('⚠️', 'Nenhuma partida encontrada nas ligas prioritárias na janela selecionada.', 'yellow');
@@ -360,9 +362,14 @@ async function run() {
   console.log('═'.repeat(70) + '\n');
 }
 
-// ── Execução ──────────────────────────────────────────────────────────────────
-run().catch((err) => {
-  console.error(chalk.red('\n❌ Erro fatal no pipeline:'), err.message);
-  console.error(err.stack);
-  process.exit(1);
-});
+// ── Exporta para uso pelo scheduler ───────────────────────────────────────────
+export { run as runPreLiveSuperOdds };
+
+// ── Execução direta (CLI) ──────────────────────────────────────────────────────
+if (process.argv[1]?.endsWith('prelive-superodds-now.js')) {
+  run().catch((err) => {
+    console.error(chalk.red('\n❌ Erro fatal no pipeline:'), err.message);
+    console.error(err.stack);
+    process.exit(1);
+  });
+}

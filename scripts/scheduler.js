@@ -74,8 +74,10 @@ console.log(chalk.bold.cyan('  ⏰ Scheduler de Análise Esportiva — Ativo'));
 console.log(chalk.bold.cyan('═'.repeat(60)));
 console.log('  Rotinas programadas:');
 console.log('  🌅 05:45 diário  → Mensagem de bom dia + resumo do dia anterior');
-console.log('  📡 06:00 diário  → Pipeline completo (sinais PRÉ-LIVE do dia)');
-console.log('  📡 13:00 diário  → Pipeline extra (jogos da tarde)');
+console.log('  📡 06:00 diário  → Pipeline histórico (calibração PIE)');
+console.log('  📡 13:00 diário  → Pipeline histórico extra (tarde)');
+console.log('  🔵 07,10,14,17h  → PRÉ-LIVE: oportunidades 6-24h antes do kickoff');
+console.log('  🟢 */1h          → LIVE: verificação Superbet + análise 2° Tempo');
 console.log('  🔍 */30 min      → Verificação de resultados GREEN/RED');
 console.log('  📊 21:00 domingo → Relatório semanal');
 console.log('  💡 Ctrl+C para parar\n');
@@ -103,6 +105,71 @@ cron.schedule('0 6 * * *', async () => {
 // Captura partidas da manhã que já encerraram
 cron.schedule('0 13 * * *', async () => {
   await safePipeline('Pipeline Extra 13h', { datesBack: 1 });
+}, { timezone: 'America/Sao_Paulo' });
+
+// ── PRÉ-LIVE — busca oportunidades 6-24h antes do kickoff ─────────────────────
+// Executado às 07:00, 10:00, 14:00, 17:00 para cobrir todas as grades do dia
+let _preLiveRunning = false;
+
+async function safePreLive(label) {
+  if (_preLiveRunning) {
+    console.log(chalk.yellow(`[${ts()}] ⏭  ${label} — pipeline já em execução, ignorando`));
+    return;
+  }
+  _preLiveRunning = true;
+  console.log(chalk.bold.blue(`\n[${ts()}] 🔵 ${label}`));
+  try {
+    const { runPreLiveSuperOdds } = await import('./prelive-superodds-now.js');
+    await runPreLiveSuperOdds();
+  } catch (e) {
+    console.error(chalk.red(`[${ts()}] ❌ ${label} — erro: ${e.message}`));
+  } finally {
+    _preLiveRunning = false;
+    console.log(chalk.blue(`[${ts()}] ✅ ${label} — concluído\n`));
+  }
+}
+
+cron.schedule('0 7,10,14,17 * * *', async () => {
+  const h = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  await safePreLive(`Pipeline PRÉ-LIVE ${h} (janela 6-24h)`);
+}, { timezone: 'America/Sao_Paulo' });
+
+// ── LIVE — verifica Superbet a cada 1h e analisa jogos em andamento ────────────
+// Refresca o cache LIVE (playwright), depois executa o funil 2° Tempo
+const _liveNotifiedKeys = new Map();
+
+cron.schedule('0 * * * *', async () => {
+  const h = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  console.log(chalk.bold.green(`\n[${ts()}] 🟢 LIVE Scan ${h} — verificando Superbet...`));
+  try {
+    const { refreshCache }    = await import('../src/scrapers/superbet-cache.js');
+    const { runLive2TFunnel } = await import('../src/funnels/funnel-live-2t.js');
+    const { notifyLive2TOpportunity } = await import('../src/utils/telegram.js');
+
+    // Atualiza cache AO VIVO do Superbet (raspa a página em tempo real)
+    await refreshCache('live');
+
+    const opps = await runLive2TFunnel(_liveNotifiedKeys);
+    if (!opps.length) {
+      console.log(chalk.gray(`[${ts()}] ℹ️  LIVE: nenhuma oportunidade no 2° Tempo`));
+      return;
+    }
+
+    // Agrupa por jogo e envia uma notificação por partida
+    const byMatch = new Map();
+    for (const opp of opps) {
+      const key = (opp._liveData?.match || 'unknown').toLowerCase().trim();
+      if (!byMatch.has(key)) byMatch.set(key, { liveData: opp._liveData, markets: [] });
+      const { _liveData, ...market } = opp;
+      byMatch.get(key).markets.push(market);
+    }
+    for (const { liveData, markets } of byMatch.values()) {
+      await notifyLive2TOpportunity(liveData, markets).catch(() => {});
+    }
+    console.log(chalk.bold.green(`[${ts()}] ✅ LIVE: ${opps.length} oportunidade(s) enviadas`));
+  } catch (e) {
+    console.error(chalk.red(`[${ts()}] ❌ LIVE Scan falhou: ${e.message}`));
+  }
 }, { timezone: 'America/Sao_Paulo' });
 
 // Relatório diário privado ao admin — todos os dias às 21:30
@@ -204,3 +271,5 @@ setInterval(async () => {
 // Mantém processo vivo
 console.log(chalk.gray(`[${ts()}] 💓 Scheduler iniciado — aguardando horários agendados...`));
 console.log(chalk.bold.green(`[${ts()}] 🛡️  Group Guardian ativo — polling a cada 10s`));
+console.log(chalk.blue(`[${ts()}] 🔵 PRÉ-LIVE ativo — varredura às 07h, 10h, 14h, 17h (janela 6-24h)`));
+console.log(chalk.green(`[${ts()}] 🟢 LIVE ativo — Superbet verificado a cada 1h`));
