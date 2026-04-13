@@ -14,7 +14,7 @@
  *   └── Resultados/YYYY-MM/      ← Comparativo predição vs realidade
  */
 
-import { writeFileSync, readFileSync, mkdirSync, existsSync } from 'fs';
+import { writeFileSync, readFileSync, readdirSync, mkdirSync, existsSync } from 'fs';
 import { join } from 'path';
 
 // ── Helpers base ──────────────────────────────────────────────────────────────
@@ -1237,6 +1237,176 @@ function buildProgressBar(current, target) {
   const pct  = Math.min(100, Math.round((current / target) * 100));
   const fill = Math.round(pct / 10);
   return `\`${'█'.repeat(fill)}${'░'.repeat(10 - fill)}\``;
+}
+
+// ── Nota por Partida — histórico rastreável ───────────────────────────────────
+
+/**
+ * Cria uma nota individual para cada análise enviada ao Telegram.
+ * Caminho: Análises/YYYY-MM/YYYY-MM-DD Home vs Away.md
+ *
+ * Quando o resultado fecha (GREEN/RED), chame updateAnaliseNoteResult()
+ * para atualizar o frontmatter e acrescentar o bloco de resultado.
+ *
+ * @param {object} matchData       — dados da partida (match, competition, date, superbetUrl)
+ * @param {Array}  approvedResults — mercados aprovados pelo gate
+ * @param {number} msgId           — ID da mensagem no Telegram
+ * @param {string} [signalId]      — ID de rastreamento de engajamento
+ */
+export function saveAnaliseNote(matchData, approvedResults, msgId, signalId = '') {
+  if (!isObsidianConfigured()) return null;
+
+  const t      = _now();
+  const match  = matchData.match   || 'Partida';
+  const comp   = matchData.competition || '';
+  const hora   = matchData.match_time || (matchData.date ? _fmtTime(matchData.date) : '—');
+  const dateStr = matchData.date
+    ? new Date(matchData.date).toISOString().slice(0, 10)
+    : t.date;
+  const month  = dateStr.slice(0, 7);
+
+  const fileName = `${dateStr} ${_safe(match)}.md`;
+  const dir      = _dir('Análises', month);
+  const filePath = join(dir, fileName);
+
+  // Linhas de mercado para o corpo da nota
+  const marketRows = approvedResults.map(r => {
+    const mercado = r.mercado      ?? r.market         ?? '';
+    const rec     = r.recomendacao ?? r.recommendation ?? '';
+    const prob    = r.probabilidade ?? r.probability   ?? 0;
+    const conf    = r.confianca    ?? r.confidence     ?? 0;
+    const risco   = _riskBadge(prob, conf);
+    const tops    = r.top_placares?.slice(0, 2)
+      .map(p => `${p.placar}(${p.probabilidade}%)`)
+      .join(' · ') || '';
+    return `| **${mercado}** | ${rec} | ${prob}% | ${conf}% | ${risco} |${tops ? ` *${tops}*` : ''}`;
+  }).join('\n');
+
+  // Mercados para frontmatter (lista yaml)
+  const marketList = approvedResults.map(r =>
+    (r.mercado ?? r.market ?? '').replace(/"/g, "'")
+  );
+
+  const fm = _fm({
+    tipo:        'analise-prelive',
+    status:      'pendente',
+    partida:     match,
+    competicao:  comp,
+    data:        dateStr,
+    hora,
+    mercados:    marketList,
+    msg_id:      msgId || '',
+    signal_id:   signalId,
+    placar_real: '',
+    resultado:   '',
+    acertou:     '',
+    tags:        ['analise', 'prelive', comp ? _safe(comp).toLowerCase().replace(/\s+/g, '-') : ''].filter(Boolean),
+  });
+
+  const content = `${fm}
+
+# ⚽ ${match}
+
+> [!info] ${comp ? `**${comp}**  ·  ` : ''}⏰ ${hora}  ·  📅 ${dateStr}
+> Status: **Pendente** — aguardando resultado
+
+---
+
+## 📊 Mercados Analisados
+
+| Mercado | Recomendação | Prob | Conf | Risco |
+|---------|-------------|------|------|-------|
+${marketRows}
+
+---
+
+## 🔗 Links
+
+- [🎰 Apostar no Superbet](${matchData.superbetUrl || 'https://superbet.bet.br/apostas/futebol/hoje'})
+- Mensagem Telegram: \`ID ${msgId || '—'}\`
+
+---
+
+## 📋 Resultado
+
+> *Aguardando fim da partida — será atualizado automaticamente.*
+
+---
+
+> *[[📊 Dashboard]] · [[📈 ROI e Performance]] · [[📱 Engajamento dos Membros]]*
+`;
+
+  return _write(filePath, content);
+}
+
+/**
+ * Atualiza a nota de análise com o resultado real (GREEN/RED).
+ * Localiza a nota pelo nome da partida + data e reescreve o frontmatter + bloco de resultado.
+ *
+ * @param {object} opts
+ * @param {string}  opts.match      — "Home vs Away" (igual ao usado em saveAnaliseNote)
+ * @param {string}  opts.dateStr    — "YYYY-MM-DD" (data do jogo)
+ * @param {string}  opts.placarReal — "2-1"
+ * @param {boolean} opts.acertou    — true = GREEN, false = RED
+ * @param {string}  opts.market     — mercado principal
+ * @param {string}  [opts.competition]
+ */
+export function updateAnaliseNoteResult({ match, dateStr, placarReal, acertou, market, competition = '' }) {
+  if (!isObsidianConfigured()) return null;
+
+  const resolvedDate = dateStr || new Date().toISOString().slice(0, 10);
+  const month    = resolvedDate.slice(0, 7);
+  const fileName = `${resolvedDate} ${_safe(match)}.md`;
+  const filePath = join(_base(), 'Análises', month, fileName);
+
+  let existing = '';
+  try {
+    existing = readFileSync(filePath, 'utf-8');
+  } catch {
+    // Nota não encontrada — tenta buscar pelo nome parcial no mesmo mês (fallback)
+    try {
+      const dir    = join(_base(), 'Análises', month);
+      const needle = _safe(match).slice(0, 20);
+      const files  = existsSync(dir) ? readdirSync(dir) : [];
+      const found  = files.find(f => f.includes(needle));
+      if (found) existing = readFileSync(join(dir, found), 'utf-8');
+    } catch { return null; }
+  }
+
+  if (!existing) return null;
+
+  const icon   = acertou ? '✅' : '❌';
+  const label  = acertou ? 'GREEN' : 'RED';
+  const status = acertou ? 'green' : 'red';
+
+  // Atualiza frontmatter — substitui campos de resultado
+  let updated = existing
+    .replace(/^status:.*$/m,      `status:      ${status}`)
+    .replace(/^placar_real:.*$/m, `placar_real: ${placarReal}`)
+    .replace(/^resultado:.*$/m,   `resultado:   ${label}`)
+    .replace(/^acertou:.*$/m,     `acertou:     ${acertou}`);
+
+  // Substitui o bloco de resultado
+  const t = _now();
+  const resultBlock = `## 📋 Resultado
+
+> [!${acertou ? 'success' : 'failure'}] ${icon} ${label} — ${market}
+> **Placar final: ${placarReal}**
+> Fechado em: ${t.display}
+`;
+
+  updated = updated.replace(
+    /## 📋 Resultado[\s\S]*$/,
+    resultBlock + '\n---\n\n> *[[📊 Dashboard]] · [[📈 ROI e Performance]] · [[📱 Engajamento dos Membros]]*\n'
+  );
+
+  // Atualiza callout de status no cabeçalho
+  updated = updated.replace(
+    /> \[!info\].*\n> Status: \*\*Pendente\*\*.*\n/,
+    `> [!${acertou ? 'success' : 'failure'}] ${competition ? `**${competition}**  ·  ` : ''}Resultado: **${icon} ${label}**  ·  Placar: **${placarReal}**\n`
+  );
+
+  return _write(filePath, updated);
 }
 
 // ── Engajamento dos Membros ────────────────────────────────────────────────────

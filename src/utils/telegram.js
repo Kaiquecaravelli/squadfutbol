@@ -4,6 +4,7 @@ import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { randomUUID } from 'crypto';
 import { trackSignalSent } from './engagement-tracker.js';
+import { isObsidianConfigured, saveAnaliseNote } from './obsidian.js';
 
 const BASE = 'https://api.telegram.org';
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -800,7 +801,7 @@ export async function notifyMarketAnalysis(matchData, approvedResults) {
     reply_markup:  replyMarkup,
   });
 
-  // Registra sinal para rastreamento de engajamento
+  // Registra sinal para rastreamento de engajamento + nota Obsidian
   if (msgId) {
     const primaryMarket = approvedResults[0]?.mercado ?? approvedResults[0]?.market ?? '';
     trackSignalSent({
@@ -811,6 +812,10 @@ export async function notifyMarketAnalysis(matchData, approvedResults) {
       msgId,
       linkUrl:     _superbetUrl,
     });
+    // Cria nota individual no Obsidian para esta análise
+    if (isObsidianConfigured()) {
+      try { saveAnaliseNote(matchData, approvedResults, msgId, signalId); } catch { /* não bloqueia */ }
+    }
   }
 
   return msgId;

@@ -22,6 +22,7 @@ import {
   getAllPendingAnalyses,
 } from '../src/utils/telegram.js';
 import { saveResult, getPendingPredictions } from '../src/pie/pie-storage.js';
+import { isObsidianConfigured, updateAnaliseNoteResult } from '../src/utils/obsidian.js';
 
 const DRY_RUN        = process.argv.includes('--dry-run');
 const SOFASCORE_BASE = 'https://api.sofascore.com/api/v1';
@@ -275,6 +276,7 @@ export async function runResultChecker() {
         placarReal,
         probabilidade: entry.probabilidade,
         competition:  entry.competition,
+        originalText: entry.messageText || null,  // texto original para edição
       });
 
       // 4. Salvar no PIE para calibração — obrigatório antes de resolver a entrada
@@ -309,6 +311,21 @@ export async function runResultChecker() {
 
       // 5. Marcar como resolvida (independente do PIE — evita reprocessar o resultado)
       resolvePendingAnalysis(entry.id, { acertou, placarReal, resultMsgId, pieSaved });
+
+      // 6. Atualiza nota Obsidian com resultado real (GREEN/RED)
+      if (!DRY_RUN && isObsidianConfigured()) {
+        try {
+          const gameDate = (entry.gameTime || entry.sentAt || '').slice(0, 10);
+          updateAnaliseNoteResult({
+            match:       entry.match,
+            dateStr:     gameDate,
+            placarReal,
+            acertou,
+            market:      entry.market,
+            competition: entry.competition || '',
+          });
+        } catch { /* não bloqueia */ }
+      }
 
       if (acertou) greens++; else reds++;
 
