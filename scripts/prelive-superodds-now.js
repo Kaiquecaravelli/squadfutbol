@@ -52,9 +52,9 @@ const PRIORITY_LEAGUES = {
   7:    { name: 'Champions League',    tier: 1 },
   679:  { name: 'Copa do Brasil',      tier: 1 },
   // Tier 2
-  390:  { name: 'Eredivisie',          tier: 2 },
-  155:  { name: 'Primeira Liga',       tier: 2 },
-  37:   { name: 'Jupiler Pro League',  tier: 2 },
+  390:  { name: 'Eredivisie',                tier: 2 },
+  155:  { name: 'Liga Profesional Argentina', tier: 2 },   // SofaScore ID 155 = Argentina
+  37:   { name: 'Jupiler Pro League',         tier: 2 },
   130:  { name: 'Super Lig',           tier: 2 },
   238:  { name: 'MLS',                 tier: 2 },
   571:  { name: 'Europa League',       tier: 2 },
