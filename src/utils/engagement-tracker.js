@@ -42,6 +42,9 @@ function _load() {
   catch { return { signals: {}, members: {} }; }
 }
 
+/** Exporta o DB para consulta externa (ex: /minha-stats no Guardian) */
+export function _loadEngagementDB() { return _load(); }
+
 function _save(data) {
   try { writeFileSync(DB, JSON.stringify(data, null, 2)); } catch {}
 }

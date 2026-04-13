@@ -27,7 +27,7 @@ import axios from 'axios';
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { trackLinkClick, trackReaction, getOverallStats } from './engagement-tracker.js';
+import { trackLinkClick, trackReaction, getOverallStats, _loadEngagementDB } from './engagement-tracker.js';
 
 const __dir = dirname(fileURLToPath(import.meta.url));
 const ROOT  = join(__dir, '../..');
@@ -348,6 +348,57 @@ export async function handlePrivateSetup(update) {
       `Para gerar o link de convite com aprovação obrigatória, use <b>/link</b> no grupo.`
     );
     console.log(`[Guardian] 👑 Admin configurado: ${fname} (${userId})`);
+    return true;
+  }
+
+  // /minha-stats — estatísticas pessoais de engajamento (qualquer membro pode usar em DM)
+  if (text.startsWith('/minha-stats') || text.startsWith('/minhas-stats')) {
+    try {
+      const engDb  = _loadEngagementDB();
+      const uid    = String(userId);
+      const member = engDb.members?.[uid];
+
+      // Conta sinais em que clicou e reagiu
+      const signals    = Object.values(engDb.signals || {});
+      const clicados   = signals.filter(s => s.clicks?.some(c => String(c.userId) === uid));
+      const reagidos   = signals.filter(s => s.reactions?.some(r => String(r.userId) === uid));
+      const totalSinais = signals.length;
+
+      if (!member && !clicados.length) {
+        await sendMsg(chatId,
+          `📊 <b>Suas Estatísticas — Squad Futbol</b>\n\n` +
+          `Ainda não detectamos nenhuma interação sua com nossos sinais.\n\n` +
+          `💡 <b>Como interagir:</b>\n` +
+          `  • Toque no botão <b>"Apostar agora → Superbet"</b> nos sinais enviados\n` +
+          `  • Reaja com qualquer emoji às mensagens de análise\n\n` +
+          `<i>Quanto mais você interage, melhor conseguimos calibrar o timing dos sinais para o seu perfil.</i>`
+        );
+        return true;
+      }
+
+      const taxa = totalSinais > 0
+        ? `${Math.round((clicados.length / totalSinais) * 100)}%`
+        : '—';
+
+      // Últimos 3 sinais clicados
+      const ultimos = clicados.slice(-3).reverse().map(s => {
+        const d = new Date(s.sentAt).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+        const status = s.clicks.find(c => String(c.userId) === uid) ? '' : '';
+        return `  • ${(s.match || '?').substring(0, 28)} <i>(${d})</i>`;
+      }).join('\n');
+
+      await sendMsg(chatId,
+        `📊 <b>Suas Estatísticas — Squad Futbol</b>\n\n` +
+        `👤 <b>${fname} ${uname}</b>\n\n` +
+        `🔗 <b>Links clicados:</b> ${clicados.length} de ${totalSinais} sinais\n` +
+        `💬 <b>Reações:</b> ${reagidos.length}\n` +
+        `📈 <b>Sua taxa de engajamento:</b> ${taxa}\n\n` +
+        (ultimos ? `🕐 <b>Últimos sinais que você acessou:</b>\n${ultimos}\n\n` : '') +
+        `<i>Dados coletados automaticamente · Squad Futbol</i>`
+      );
+    } catch (e) {
+      await sendMsg(chatId, `⚠️ Não foi possível carregar suas estatísticas. Tente novamente em instantes.`);
+    }
     return true;
   }
 
