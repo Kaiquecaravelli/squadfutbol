@@ -1,0 +1,12 @@
+node_modules/
+data/pie.json
+data/pie.bak-*.json
+data/notified-keys.json
+data/telegram-sent.json
+data/pending-analyses.json
+data/result-messages.json
+data/gemini-key-state.json
+data/daily-matches/
+data/historical-cache/
+logs/
+.env
