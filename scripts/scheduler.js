@@ -105,6 +105,29 @@ cron.schedule('0 13 * * *', async () => {
   await safePipeline('Pipeline Extra 13h', { datesBack: 1 });
 }, { timezone: 'America/Sao_Paulo' });
 
+// Relatório diário privado ao admin — todos os dias às 21:30
+cron.schedule('30 21 * * *', async () => {
+  console.log(chalk.bold.yellow(`\n[${ts()}] 📋 Relatório diário → admin DM`));
+  try {
+    const { loadDB, getStats, loadPieSnapshots } = await import('../src/pie/pie-storage.js');
+    const { notifyAdminDailySummary }            = await import('../src/utils/telegram.js');
+    const { getOverallStats }                    = await import('../src/utils/engagement-tracker.js');
+    const db       = loadDB();
+    const pieStats = getStats();
+    const snaps    = loadPieSnapshots(2);
+    const engStats = getOverallStats({ daysBack: 1 });
+    await notifyAdminDailySummary({
+      pieStats,
+      calibration: db.calibration || {},
+      engStats,
+      snapshots:   snaps,
+    });
+    console.log(chalk.green(`[${ts()}] ✅ Relatório diário enviado ao admin`));
+  } catch (e) {
+    console.error(chalk.red(`[${ts()}] ❌ Relatório diário falhou: ${e.message}`));
+  }
+}, { timezone: 'America/Sao_Paulo' });
+
 // Relatório semanal — domingos às 21:00
 cron.schedule('0 21 * * 0', async () => {
   console.log(chalk.bold.yellow(`\n[${ts()}] 📊 Relatório Semanal`));

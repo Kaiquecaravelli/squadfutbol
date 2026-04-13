@@ -2105,3 +2105,101 @@ function pct(val) {
   if (val == null) return 'N/A';
   return `${(val * 100).toFixed(1)}%`;
 }
+
+// ─────────────────────────────────────────────────────────────
+// RELATÓRIO DIÁRIO PRIVADO — DM ao admin às 21:30
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * Envia resumo privado do dia ao admin via DM.
+ * Inclui: sinais enviados, GREEN/RED do dia, engajamento e alerta de mercado.
+ *
+ * @param {object} opts
+ * @param {object}  opts.pieStats      — resultado de getStats() do pie-storage
+ * @param {object}  opts.calibration   — db.calibration do pie
+ * @param {object}  opts.engStats      — resultado de getOverallStats({ daysBack: 1 })
+ * @param {Array}   [opts.snapshots]   — últimos 2 snapshots para calcular delta
+ */
+export async function notifyAdminDailySummary({ pieStats, calibration = {}, engStats, snapshots = [] }) {
+  const adminId = process.env.TELEGRAM_ADMIN_USER_ID;
+  const token   = process.env.TELEGRAM_BOT_TOKEN;
+  if (!adminId || !token) return;
+
+  const hoje = new Date().toLocaleDateString('pt-BR', {
+    weekday: 'long', day: '2-digit', month: '2-digit',
+  });
+
+  // Delta da taxa global (hoje vs ontem)
+  let deltaTaxa = '';
+  if (snapshots.length >= 2) {
+    const d = (snapshots[0].globalRate - snapshots[1].globalRate).toFixed(1);
+    deltaTaxa = d > 0 ? ` (📈 +${d}pp vs ontem)` : d < 0 ? ` (📉 ${d}pp vs ontem)` : '';
+  }
+
+  // Top 3 mercados com melhor accuracy hoje
+  const topMkt = Object.entries(calibration)
+    .filter(([, v]) => v.total >= 20)
+    .map(([m, v]) => ({ m, acc: Math.round(v.hits / v.total * 100), total: v.total }))
+    .sort((a, b) => b.acc - a.acc)
+    .slice(0, 3)
+    .map(x => `  • <b>${x.m}</b>: ${x.acc}% (${x.total} amostras)`)
+    .join('\n');
+
+  // Mercado que mais piorou (se houver delta de snapshots)
+  let alertaMkt = '';
+  if (snapshots.length >= 2) {
+    const prev = snapshots[1].markets || {};
+    const curr = snapshots[0].markets || {};
+    let piorDelta = 0;
+    let piorMkt   = '';
+    for (const [m, d] of Object.entries(curr)) {
+      const delta = d.acc - (prev[m]?.acc ?? d.acc);
+      if (delta < piorDelta) { piorDelta = delta; piorMkt = m; }
+    }
+    if (piorMkt) alertaMkt = `\n⚠️ <b>Queda:</b> <b>${piorMkt}</b> −${Math.abs(piorDelta).toFixed(1)}pp em relação ao dia anterior`;
+  }
+
+  // Sinais do dia — lê pending-analyses do dia de hoje
+  const todayStr = new Date().toISOString().slice(0, 10);
+  let sinaisHoje = 0, greensHoje = 0, redsHoje = 0;
+  try {
+    const all          = _loadPendingDb();
+    const hojeEntries  = all.filter(e => (e.sentAt || '').startsWith(todayStr));
+    sinaisHoje = hojeEntries.length;
+    greensHoje = hojeEntries.filter(e => e.acertou === true).length;
+    redsHoje   = hojeEntries.filter(e => e.acertou === false).length;
+  } catch {}
+
+  const taxaHoje = (greensHoje + redsHoje) > 0
+    ? `${Math.round(greensHoje / (greensHoje + redsHoje) * 100)}%`
+    : '—';
+
+  const text = [
+    `📋 <b>RESUMO DO DIA — ${hoje.toUpperCase()}</b>`,
+    `<b>━━━━━━━━━━━━━━━━</b>`,
+    ``,
+    `📡 <b>Sinais enviados:</b> ${sinaisHoje}`,
+    `✅ <b>GREEN:</b> ${greensHoje}  |  ❌ <b>RED:</b> ${redsHoje}  |  📈 <b>Taxa:</b> ${taxaHoje}`,
+    ``,
+    `<b>━━━━━━━━━━━━━━━━</b>`,
+    `🧠 <b>PIE — Taxa Global:</b> ${pieStats?.taxaAcerto ?? '—'}%${deltaTaxa}`,
+    topMkt ? `\n🏆 <b>Top Mercados:</b>\n${topMkt}` : '',
+    alertaMkt,
+    ``,
+    `<b>━━━━━━━━━━━━━━━━</b>`,
+    `📱 <b>Engajamento (hoje):</b>`,
+    `  🔗 Cliques: ${engStats?.totalClicks ?? 0}  |  💬 Reações: ${engStats?.totalReactions ?? 0}`,
+    `  📈 Taxa de clique: ${engStats?.clickRate ?? '0.0'}%`,
+    ``,
+    `<i>Relatório automático · Betting Analysis Squad</i>`,
+  ].filter(l => l !== undefined).join('\n');
+
+  try {
+    await axios.post(`${BASE}/bot${token}/sendMessage`, {
+      chat_id:    adminId,
+      text,
+      parse_mode: 'HTML',
+      disable_web_page_preview: true,
+    });
+  } catch { /* silencioso */ }
+}
