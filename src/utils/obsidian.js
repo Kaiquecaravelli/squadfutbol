@@ -1253,7 +1253,7 @@ function buildProgressBar(current, target) {
 export function updateEngajamento(stats) {
   if (!isObsidianConfigured()) return null;
   const filePath = join(_dir(), '📱 Engajamento dos Membros.md');
-  const t = _ts();
+  const t = _now();
 
   const topMembersTable = stats.topMembers.length
     ? stats.topMembers.map((m, i) => {

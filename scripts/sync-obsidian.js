@@ -49,7 +49,7 @@ const pct = tot > 0 ? ((db.stats.acertos / tot) * 100).toFixed(1) : '0.0';
 console.log(`\n  Padrões positivos ativos : ${activePatterns.length}`);
 console.log(`  Lições ativas            : ${activeLessons.length}`);
 console.log(`  Taxa global PIE          : ${pct}% (${tot} outcomes)`);
-console.log(`  Partidas na base         : ${hist.matches.length}`);
+console.log(`  Partidas na base         : ${hist.matches?.length ?? '—'}`);
 
 console.log('\n  Mercados calibrados:');
 for (const [mkt, cal] of Object.entries(db.calibration).sort((a,b) => b[1].total - a[1].total)) {
