@@ -3,6 +3,7 @@ import { readFileSync, writeFileSync, mkdirSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { randomUUID } from 'crypto';
+import { trackSignalSent } from './engagement-tracker.js';
 
 const BASE = 'https://api.telegram.org';
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -244,6 +245,21 @@ export async function deleteMessage(msgId) {
   } catch { /* ignora — pode ter expirado */ }
 }
 
+/** Edita uma mensagem existente no grupo (mantém histórico visível) */
+export async function editMessage(msgId, newText) {
+  if (!isConfigured() || !msgId) return false;
+  try {
+    await axios.post(`${BASE}/bot${process.env.TELEGRAM_BOT_TOKEN}/editMessageText`, {
+      chat_id:                  getChatId(),
+      message_id:               msgId,
+      text:                     newText,
+      parse_mode:               'HTML',
+      disable_web_page_preview: true,
+    });
+    return true;
+  } catch { return false; }
+}
+
 /**
  * Envia o resultado GREEN/RED como reply à análise original e depois a apaga.
  * @param {object} opts
@@ -289,31 +305,49 @@ function _fraseMotiacional(acertou) {
 
 export async function notifyResultFeedback(opts) {
   if (!isConfigured()) return null;
-  const { msgId, acertou, match, market, prediction, placarReal, probabilidade, competition } = opts;
+  const { msgId, acertou, match, market, prediction, placarReal, probabilidade, competition, originalText } = opts;
 
   const icon  = acertou ? '✅' : '❌';
   const label = acertou ? 'GREEN' : 'RED';
   const comp  = competition ? `\n<b>🏆  ${competition.toUpperCase()}</b>` : '';
 
-  const lines = [
-    `<b>${icon}  ${label}  —  ${market}  →  ${prediction}</b>`,
-    comp,
-    `<b>⚽️  ${match}</b>`,
-    `<b>📊  Placar final:  ${placarReal}</b>`,
+  const resultBlock = [
     ``,
+    `<b>━━━━━━━━━━━━━━━━</b>`,
+    `<b>${icon}  RESULTADO FINAL  —  ${label}</b>`,
+    comp,
+    `<b>📊  Placar:  ${placarReal}</b>`,
     `📈  Probabilidade prevista:  ${probabilidade}%`,
     `<i>${_fraseMotiacional(acertou)}</i>`,
-    ``,
-    `🤖  <i>Betting Analysis Squad</i>`,
-  ].filter(l => l !== undefined);
+  ].filter(l => l !== undefined).join('\n');
 
-  const resultMsgId = await sendReply(msgId, lines.join('\n'));
+  // Tenta EDITAR a mensagem original (mantém histórico)
+  let editOk = false;
+  if (msgId && originalText) {
+    const edited = `${originalText}\n${resultBlock}`;
+    editOk = await editMessage(msgId, edited);
+  }
 
-  // Apaga a mensagem original após enviar o resultado
-  if (resultMsgId) {
-    await deleteMessage(msgId);
-    // Protege a mensagem de resultado por 24h — não será removida pelo cleanup
-    _trackResultMessage(resultMsgId);
+  // Se edição falhou (mensagem muito antiga, apagada, etc.) — envia reply
+  let resultMsgId = null;
+  if (!editOk) {
+    const fallbackLines = [
+      `<b>${icon}  ${label}  —  ${market}  →  ${prediction}</b>`,
+      comp,
+      `<b>⚽️  ${match}</b>`,
+      `<b>📊  Placar final:  ${placarReal}</b>`,
+      ``,
+      `📈  Probabilidade prevista:  ${probabilidade}%`,
+      `<i>${_fraseMotiacional(acertou)}</i>`,
+      ``,
+      `🤖  <i>Betting Analysis Squad</i>`,
+    ].filter(l => l !== undefined);
+    resultMsgId = await sendReply(msgId, fallbackLines.join('\n'));
+    if (resultMsgId) _trackResultMessage(resultMsgId);
+  } else {
+    // Edição OK — rastreia msgId original como resultado (não apaga mais)
+    resultMsgId = msgId;
+    _trackResultMessage(msgId);
   }
 
   return resultMsgId;
@@ -687,6 +721,12 @@ export async function notifyMiniGrade(approvedMatches) {
 export async function notifyMarketAnalysis(matchData, approvedResults) {
   if (!isConfigured()) return;
 
+  // Regra obrigatória: análise só enviada com link direto Superbet confirmado
+  if (!matchData.superbetUrl) {
+    console.log(`[Telegram] PRÉ-LIVE bloqueado — sem URL Superbet para: ${matchData.match || '?'}`);
+    return null;
+  }
+
   const hora = matchData.date ? formatTime(matchData.date) : (matchData.match_time || '—');
   const data = matchData.date ? formatDate(matchData.date) : '';
   const comp = matchData.competition || '';
@@ -697,10 +737,11 @@ export async function notifyMarketAnalysis(matchData, approvedResults) {
     : `<b>${matchData.match}</b>`;
 
   const lines = [
-    `🎯 <b>OPORTUNIDADE DETECTADA</b>`,
-    comp ? `🏆 <b>${comp}</b>  ⏰ ${hora}${data ? '  📅 ' + data : ''}` : `⏰ ${hora}${data ? '  📅 ' + data : ''}`,
-    `⚽ ${matchLabel}`,
+    `🟢  <b>PRÉ-LIVE</b>`,
     SEP_HEAVY,
+    `⚽  ${matchLabel}`,
+    comp ? `🏆  <b>${comp}</b>  ·  ⏰  ${hora}${data ? '  ·  📅  ' + data : ''}` : `⏰  ${hora}${data ? '  ·  📅  ' + data : ''}`,
+    BR,
   ];
 
   for (const r of approvedResults) {
@@ -724,7 +765,28 @@ export async function notifyMarketAnalysis(matchData, approvedResults) {
     }
   }
 
-  lines.push(`\n<i>📊 Prob  🔒 Conf  🟢 Baixo  🟡 Médio  🔴 Alto</i>`);
+  lines.push(BR);
+  lines.push(`<i>📊 Prob  🔒 Conf  🟢 Baixo  🟡 Médio  🔴 Alto</i>`);
+  lines.push(SEP_LIGHT);
+  lines.push(`🤖  <i>Betting Analysis Squad</i>`);
+
+  // Gera ID único para rastreamento de engajamento
+  const signalId = randomUUID();
+
+  // URL resolvida para o botão de link rastreado
+  const _superbetUrl = (() => {
+    if (matchData.superbetUrl) return matchData.superbetUrl;
+    const key = (comp || '').toLowerCase();
+    return Object.entries(SUPERBET_COMPETITION_LINKS)
+      .find(([k]) => key.includes(k))?.[1] ?? SUPERBET_FALLBACK;
+  })();
+
+  // Botão inline rastreável — substitui o link de texto simples
+  const replyMarkup = {
+    inline_keyboard: [[
+      { text: '🔗 Apostar agora → Superbet', callback_data: `link_${signalId}` },
+    ]],
+  };
 
   // Chave estável por jogo — bloqueia duplicata da mesma partida por 24h (evita reenvio pelo daily-pipeline)
   const _mNorm = (matchData.match || '').replace(/\s+/g, '_').replace(/[^a-z0-9_]/gi, '').substring(0, 40);
@@ -735,7 +797,22 @@ export async function notifyMarketAnalysis(matchData, approvedResults) {
     protected:     true,
     dedupKey:      monitorDedupKey,
     dedupWindowMs: 24 * 60 * 60 * 1000,  // 24h
+    reply_markup:  replyMarkup,
   });
+
+  // Registra sinal para rastreamento de engajamento
+  if (msgId) {
+    const primaryMarket = approvedResults[0]?.mercado ?? approvedResults[0]?.market ?? '';
+    trackSignalSent({
+      signalId,
+      match:       matchData.match || '',
+      market:      primaryMarket,
+      competition: comp,
+      msgId,
+      linkUrl:     _superbetUrl,
+    });
+  }
+
   return msgId;
 }
 
@@ -1069,6 +1146,12 @@ export async function notifyPreLiveAnalysis(analysis, opts = {}) {
   if (!isConfigured()) return;
 
   const { stakeInfo, risco, pieAccuracy, horasAte, directUrl } = opts;
+
+  // Regra obrigatória: análise só enviada com link direto Superbet confirmado
+  if (!directUrl) {
+    console.log(`[Telegram] PRÉ-LIVE bloqueado — sem URL Superbet para: ${analysis.matchData?.match || analysis.match_name || '?'}`);
+    return null;
+  }
   const matchData = analysis.matchData || {};
   const topBet    = analysis.top_bet   || {};
   const score     = analysis.confidence_score ?? 0;
@@ -1151,6 +1234,7 @@ export async function notifyPreLiveAnalysis(analysis, opts = {}) {
       confianca:    score,
       odds:         topBet.odds || null,
       gameTime:     matchData.date || null,
+      messageText:  lines.join('\n'),  // guarda texto original para edição posterior
     });
   }
 
@@ -1163,6 +1247,12 @@ export async function notifyPreLiveAnalysis(analysis, opts = {}) {
 // ═════════════════════════════════════════════════════════════════
 export async function notifyLiveSecondHalf(liveData, opportunities, opts = {}) {
   if (!isConfigured() || !opportunities?.length) return;
+
+  // Regra obrigatória: análise LIVE só enviada com link direto Superbet confirmado
+  if (!opts.directUrl) {
+    console.log(`[Telegram] LIVE bloqueado — sem URL Superbet para: ${liveData.match || '?'}`);
+    return null;
+  }
 
   const ls     = liveData.live_stats || {};
   const min    = liveData.minuto ?? '?';
@@ -1618,17 +1708,11 @@ export async function notifyPreLiveOpportunity(matchData, markets) {
     ? new Date(matchData.date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
     : '—';
 
-  // Link da partida no SofaScore (quando disponível)
-  const sofaId   = matchData.sofascore_id || matchData.match_id_sofa || null;
-  const matchLink = sofaId && /^\d+$/.test(String(sofaId))
-    ? `\n🔗  <a href="https://www.sofascore.com/football/-/${sofaId}">Ver partida no SofaScore</a>`
-    : '';
-
   const lines = [
-    `🟢  <b>PRÉ-LIVE  —  ${matchData.match}</b>`,
+    `🟢  <b>PRÉ-LIVE</b>`,
     SEP_HEAVY,
-    `🏆  ${matchData.competition || '—'}`,
-    `📅  Kickoff: <b>${hora}</b>${matchLink}`,
+    `⚽  <b>${matchData.match}</b>`,
+    `🏆  ${matchData.competition || '—'}  ·  ⏰  ${hora}`,
     BR,
     SEP_LIGHT,
     `<b>🎯  OPORTUNIDADES PRÉ-JOGO</b>`,
@@ -1647,9 +1731,23 @@ export async function notifyPreLiveOpportunity(matchData, markets) {
       // BTTS: sempre mostrar SIM/NÃO explicitamente
       const dir = (rec === 'SIM' || rec === 'APOSTAR') ? 'SIM ✔' : rec === 'NÃO' ? 'NÃO ✘' : rec;
       marketLabel = `Ambas Marcam: <b>${dir}</b>`;
+    } else if (/^YC\s*([\d.]+)$/i.test(rawMarket)) {
+      // Cartões Amarelos: "YC 2.5" → "🟨 Cartões Amarelos  Over 2.5"
+      const linha = rawMarket.match(/[\d.]+/)?.[0] || '';
+      const dir   = (rec === 'UNDER' || rec === 'NÃO') ? 'Under' : 'Over';
+      marketLabel = `🟨 Cartões Amarelos:  <b>${dir} ${linha}</b>`;
+    } else if (/^(over|under)\s*[\d.]+\s*(corners?|escanteios?)/i.test(rawMarket) ||
+               /corners?\s*(over|under)/i.test(rawMarket) ||
+               /^over corners\s*[\d.]+$/i.test(rawMarket)) {
+      // Escanteios
+      const linha = rawMarket.match(/[\d.]+/)?.[0] || '';
+      const dir   = /under/i.test(rawMarket) ? 'Under' : 'Over';
+      marketLabel = `⛳ Escanteios:  <b>${dir} ${linha}</b>`;
     } else if (/^(over|under)\s*[\d.]+/i.test(rawMarket)) {
-      // Over/Under já inclui direção — reforça em negrito
-      marketLabel = `<b>${rawMarket}</b>  Gols`;
+      // Over/Under de gols — inclui direção explícita
+      const linha = rawMarket.match(/[\d.]+/)?.[0] || '';
+      const dir   = /^under/i.test(rawMarket) ? 'Under' : 'Over';
+      marketLabel = `🥅 Gols:  <b>${dir} ${linha}</b>`;
     } else {
       marketLabel = `<b>${rawMarket}</b>`;
     }
@@ -1666,8 +1764,9 @@ export async function notifyPreLiveOpportunity(matchData, markets) {
   }
 
   lines.push(_buildLegenda(markets));
-  lines.push(SEP_HEAVY);
-  lines.push(`🟢  <i>Análise pré-jogo  ·  ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}  ·  Betting Analysis Squad</i>`);
+  lines.push(SEP_LIGHT);
+  lines.push(_houseLink('Superbet', matchData.competition || ''));
+  lines.push(`🤖  <i>Betting Analysis Squad</i>`);
 
   // Chave estável: match + mercados + recomendações (ignora horário dinâmico do rodapé)
   const dedupKeyPre = `prelive|${matchData.match}|${markets.map((m) => `${m.market || m.mercado}:${m.recomendacao}`).join(',')}`;
@@ -1687,10 +1786,11 @@ export async function notifyLive2TOpportunity(liveData, markets) {
   const min2T     = typeof liveData.minuto === 'number' ? Math.max(0, liveData.minuto - 45) : '?';
 
   const lines = [
-    `🟡  <b>LIVE 2T  —  ${liveData.match}</b>`,
+    `🔴  <b>AO VIVO  ·  2° TEMPO</b>`,
     SEP_HEAVY,
-    `🏆  ${liveData.competition || '—'}`,
-    `⏱  ${minLabel}' (${min2T}' no 2T)${restStr}   |   Placar: <b>${placar}</b>`,
+    `⚽  <b>${liveData.match}</b>`,
+    liveData.competition ? `🏆  ${liveData.competition}  ·  ⏱  ${minLabel}'` : `⏱  ${minLabel}'`,
+    `🔵  Placar atual:  <b>${placar}</b>${restStr}`,
   ];
 
   if (liveData.xg_home != null && liveData.xg_away != null) {
@@ -1720,13 +1820,11 @@ export async function notifyLive2TOpportunity(liveData, markets) {
   }
 
   lines.push(_buildLegenda(markets));
-  lines.push(SEP_HEAVY);
-  lines.push(`🟡  <i>2° Tempo ao vivo  ·  ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}  ·  Betting Analysis Squad</i>`);
+  lines.push(SEP_LIGHT);
+  lines.push(_houseLink('Superbet', liveData.competition || ''));
+  lines.push(`🤖  <i>Betting Analysis Squad</i>`);
 
-  // Chave estável: match + mercados + recomendações (ignora minuto/horário dinâmico)
-  // Inclui placar na chave: se o score mudar, deleta a mensagem antiga e envia a nova
-  // Dedup ao nível do JOGO (match + placar) — bloqueia qualquer funnel para o mesmo jogo
-  // Se o placar mudar: nova chave → deleta mensagem antiga + envia atualização
+  // Chave estável: match + placar — se o placar mudar, deleta antiga e envia nova
   const dedupKey2T = `live_jogo|${liveData.match}|${placar}`;
   await send(lines.join('\n'), { dedupKey: dedupKey2T, dedupWindowMs: DEDUP_WINDOW_LIVE_MS });
 }
@@ -1747,10 +1845,11 @@ export async function notifyLiveOpportunity(liveData, markets) {
     : `${minLabel}'${restStr}`;
 
   const lines = [
-    `🔴  <b>LIVE  —  ${liveData.match}</b>`,
+    `🔴  <b>AO VIVO  ·  2° TEMPO</b>`,
     SEP_HEAVY,
-    `🏆  ${liveData.competition || '—'}`,
-    `⏱  ${periodoLabel}   |   Placar: <b>${placar}</b>`,
+    `⚽  <b>${liveData.match}</b>`,
+    liveData.competition ? `🏆  ${liveData.competition}  ·  ⏱  ${periodoLabel}` : `⏱  ${periodoLabel}`,
+    `🔵  Placar atual:  <b>${placar}</b>`,
   ];
 
   // xG
@@ -1782,8 +1881,9 @@ export async function notifyLiveOpportunity(liveData, markets) {
   }
 
   lines.push(_buildLegenda(markets));
-  lines.push(SEP_HEAVY);
-  lines.push(`⚡  <i>Análise ao vivo  ·  ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}  ·  Betting Analysis Squad</i>`);
+  lines.push(SEP_LIGHT);
+  lines.push(_houseLink('Superbet', liveData.competition || ''));
+  lines.push(`🤖  <i>Betting Analysis Squad</i>`);
 
   // Chave no nível do jogo: qualquer funil que notifique esse match+placar será bloqueado como duplicata
   const dedupKeyLive = `live_jogo|${liveData.match}|${placar}`;
@@ -1834,11 +1934,11 @@ export async function getGroupId() {
 }
 
 // ─────────────────────────────────────────────────────────────
-// 🔑 GEMINI KEY MANAGER — Alerta de rotação/esgotamento
+// 🔑 GEMINI KEY MANAGER — Processo interno (sem envio ao Telegram)
 // ─────────────────────────────────────────────────────────────
 export async function notifyGeminiKeyAlert(msg) {
-  if (!isConfigured()) return;
-  await send(`🔑 <b>Gemini Key Manager</b>\n${msg}`);
+  // Processo interno — apenas log local, nunca enviado ao usuário
+  console.log(`[GeminiKeyAlert] ${msg}`);
 }
 
 // ─────────────────────────────────────────────────────────────

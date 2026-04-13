@@ -1002,3 +1002,362 @@ export function updateObsidianResult(filePath, result) {
     console.log(`📓 Obsidian: resultado atualizado → ${result}`);
   } catch { /* silencioso */ }
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 9. PROTOCOLO SNIPER — precisão por banda de confiança
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Atualiza (ou cria) a nota "🎯 Protocolo Sniper.md" no vault com os
+ * thresholds calculados pelo sniper-protocol.js.
+ *
+ * @param {object} sniperData   { thresholds, totalShots, totalHits, totalAbstained, overallAcc, abstainRate, marketsOnTarget, totalMatches }
+ */
+export function updateSniperProtocol(sniperData = {}) {
+  if (!isObsidianConfigured()) return null;
+  const t = _now();
+  const filePath = join(_base(), '🎯 Protocolo Sniper.md');
+
+  const { thresholds = {}, totalShots = 0, totalHits = 0, totalAbstained = 0,
+          overallAcc = 0, abstainRate = 0, marketsOnTarget = 0, totalMatches = 0 } = sniperData;
+
+  const BAND_EMOJI = { COLD: '🔵', WARM: '🟡', HOT: '🟢', ELITE: '🔴' };
+  const BAND_DESC  = { COLD: '1-2 sinais', WARM: '3-4 sinais', HOT: '5-6 sinais', ELITE: '7+ sinais' };
+
+  const marketRows = Object.entries(thresholds).map(([market, data]) => {
+    const bandEmoji = BAND_EMOJI[data.band] || '⚪';
+    const accStr    = data.achievedAcc != null ? `${data.achievedAcc}%` : '---';
+    const gapStr    = data.gap != null
+      ? (data.gap <= 0 ? `✅ +${Math.abs(data.gap)}pp` : `⚠️ -${data.gap}pp`)
+      : '---';
+    return `| **${market}** | ${bandEmoji} ${data.band} | ≥${data.minSignals} sinais | ${accStr} | ${data.target}% | ${gapStr} |`;
+  }).join('\n');
+
+  const content = `---
+tipo: sniper-protocol
+atualizado: ${t.iso}
+mercados_na_meta: ${marketsOnTarget}
+total_partidas: ${totalMatches}
+precisao_global: ${overallAcc}
+abstencao_rate: ${abstainRate}
+tags:
+  - sniper
+  - treinamento
+  - pie
+  - precisao
+---
+
+# 🎯 Protocolo Sniper — "One Shot, One Kill"
+
+> [!danger] Filosofia Militar
+> Agentes só disparam quando o alvo está **100% confirmado**.
+> Um GREEN preciso vale mais do que cinco sinais duvidosos.
+> **Abstençao é disciplina, não fraqueza.**
+
+> [!info] Última execução: ${t.display}
+> **${totalMatches}** partidas analisadas · **${marketsOnTarget}/${Object.keys(thresholds).length}** mercados na meta
+
+---
+
+## 🔫 Thresholds por Mercado
+
+| Mercado | Banda | Mínimo | Precisão Sniper | Meta | Status |
+|---------|-------|--------|-----------------|------|--------|
+${marketRows || '| — | — | — | — | — | *Sem dados* |'}
+
+### Bandas de Confiança
+| Banda | Sinais | Significado |
+|-------|--------|-------------|
+| 🔵 COLD | 1-2 | Alvo não confirmado — BLOQUEADO |
+| 🟡 WARM | 3-4 | Em avaliação — depende do mercado |
+| 🟢 HOT | 5-6 | Alvo confirmado — AUTORIZADO |
+| 🔴 ELITE | 7+ | Alvo eliminado — disparo certeiro |
+
+---
+
+## 📊 Debriefing da Sessão
+
+| Métrica | Valor |
+|---------|-------|
+| Total de partidas analisadas | **${totalMatches}** |
+| Disparos autorizados | **${totalShots}** |
+| ✅ Acertos (GREEN) | **${totalHits}** |
+| ❌ Erros (RED) | **${totalShots - totalHits}** |
+| 🎯 Precisão (disparos autorizados) | **${overallAcc}%** |
+| ⏸️ Abstençoes (sinais insuficientes) | **${totalAbstained}** |
+| 🛡️ Taxa de disciplina | **${abstainRate}%** dos jogos rejeitados |
+
+---
+
+## 📈 Evolução da Precisão
+
+\`\`\`dataview
+TABLE WITHOUT ID
+  dateformat(date(atualizado), "dd/MM HH:mm") AS "Sessão",
+  precisao_global + "%" AS "Precisão Global",
+  mercados_na_meta AS "Mercados Meta",
+  abstencao_rate + "%" AS "Disciplina"
+FROM "Apostas Futebol"
+WHERE tipo = "sniper-protocol"
+SORT atualizado DESC
+LIMIT 10
+\`\`\`
+
+---
+
+## 🧠 Interpretação
+
+> [!tip] Como usar estes dados
+> - Mercados com banda **COLD/WARM** no threshold precisam de mais dados ou sinais mais fortes
+> - Mercados **ELITE** já atingiram precisão máxima — manter exigência alta
+> - A taxa de disciplina (${abstainRate}%) indica quantos jogos foram **sabiamente rejeitados**
+> - Priorize mercados com gap ≤ 5pp para atingir a meta mais rápido
+
+---
+
+> *[[📊 Dashboard]] · [[🧠 Treinamento Noturno]] · [[🧠 Padrões Aprendidos]]*
+`;
+
+  return _write(filePath, content);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 10. TREINAMENTO NOTURNO — log de progresso do overnight trainer
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Atualiza (ou cria) "🌙 Treinamento Noturno.md" com o progresso
+ * de acurácia e os resultados do ciclo mais recente.
+ *
+ * @param {object} trainingData  { accuracy, sniperThr, resumo, duracao }
+ */
+export function updateTreinamentoNoturno(trainingData = {}) {
+  if (!isObsidianConfigured()) return null;
+  const t = _now();
+  const filePath = join(_base(), '🌙 Treinamento Noturno.md');
+
+  const { accuracy = {}, sniperThr = {}, resumo = {}, duracao = 0 } = trainingData;
+
+  const MARKET_TARGETS = {
+    'Over 1.5': 98, 'BTTS': 95, 'Over 2.5': 92,
+    'Over Corners 6.5': 90, 'Over Corners 7.5': 85,
+    'YC 2.5': 85, 'YC 3.5': 75, 'Over 3.5': 70,
+  };
+
+  // Tabela de progresso por mercado
+  const marketRows = Object.entries(MARKET_TARGETS).map(([market, target]) => {
+    const data    = accuracy[market];
+    const sn      = sniperThr[market];
+    if (!data) return `| **${market}** | — | ${target}% | — | ⏳ Sem dados |`;
+
+    const acc     = data.acc;
+    const gap     = data.gap;
+    const bar     = buildProgressBar(acc, target);
+    const status  = gap <= 0  ? '✅ META'
+                  : gap <= 5  ? '🟡 Próximo'
+                  : gap <= 15 ? '🟠 Progredindo'
+                  :             '🔴 Distante';
+    const snStr   = sn ? ` _(sniper: ${sn.band})_` : '';
+    return `| **${market}** | ${bar} ${acc}% | ${target}% | ${gap > 0 ? '+' : ''}${gap}pp | ${status}${snStr} |`;
+  }).join('\n');
+
+  // Histórico de sessões via Dataview
+  const content = `---
+tipo: treinamento-noturno
+atualizado: ${t.iso}
+duracao_min: ${duracao}
+mercados_prontos: ${resumo.prontos || 0}
+mercados_progressao: ${resumo.emProgressão || 0}
+mercados_distantes: ${resumo.longe || 0}
+tags:
+  - treinamento
+  - pie
+  - overnight
+---
+
+# 🌙 Treinamento Noturno — Log de Progresso
+
+> [!info] Ciclo concluído em ${t.display}
+> Duração: **${duracao} minutos** · Mercados na meta: **${resumo.prontos || 0}/${Object.keys(MARKET_TARGETS).length}**
+
+---
+
+## 📊 Status por Mercado
+
+| Mercado | Progresso | Meta | Gap | Status |
+|---------|-----------|------|-----|--------|
+${marketRows}
+
+---
+
+## 🎯 Protocolo Sniper — Resumo
+
+${Object.keys(sniperThr).length ? Object.entries(sniperThr).map(([m, d]) => {
+  const icon = d.gap != null && d.gap <= 0 ? '✅' : '⚠️';
+  return `- ${icon} **${m}** → banda **${d.band}** (≥${d.minSignals} sinais) → precisão: ${d.achievedAcc ?? '--'}%`;
+}).join('\n') : '> *Execute o Protocolo Sniper para gerar esta seção.*'}
+
+---
+
+## 📈 Histórico de Sessões
+
+\`\`\`dataview
+TABLE WITHOUT ID
+  dateformat(date(atualizado), "dd/MM HH:mm") AS "Sessão",
+  mercados_prontos + "/" + (mercados_prontos + mercados_progressao + mercados_distantes) AS "Na Meta",
+  duracao_min + " min" AS "Duração"
+FROM "Apostas Futebol"
+WHERE tipo = "treinamento-noturno"
+SORT atualizado DESC
+LIMIT 14
+\`\`\`
+
+---
+
+## 🗓️ Rotina
+
+| Horário | Fase |
+|---------|------|
+| 02:00 | 📥 Expansão histórica (+7 dias SofaScore) |
+| 03:00 | 🧠 Deep Training 9 fases (padrões + calibração Poisson) |
+| 04:00 | 🔄 Training Cycle semanal |
+| 04:30 | 🎯 Protocolo Sniper — precisão por banda |
+| 05:00 | 📋 Debriefing + sync Obsidian |
+
+---
+
+> *[[📊 Dashboard]] · [[🎯 Protocolo Sniper]] · [[🧠 Padrões Aprendidos]]*
+`;
+
+  return _write(filePath, content);
+}
+
+/** Barra de progresso ASCII para tabelas Obsidian */
+function buildProgressBar(current, target) {
+  const pct  = Math.min(100, Math.round((current / target) * 100));
+  const fill = Math.round(pct / 10);
+  return `\`${'█'.repeat(fill)}${'░'.repeat(10 - fill)}\``;
+}
+
+// ── Engajamento dos Membros ────────────────────────────────────────────────────
+
+/**
+ * Cria/atualiza a nota `📱 Engajamento dos Membros.md` com:
+ *   — Visão geral de cliques, reações e taxa de engajamento
+ *   — Top membros mais ativos
+ *   — Sinais com maior conversão
+ *   — Query Dataview para histórico automático
+ *
+ * @param {object} stats — resultado de getOverallStats() do engagement-tracker
+ */
+export function updateEngajamento(stats) {
+  if (!isObsidianConfigured()) return null;
+  const filePath = join(_dir(), '📱 Engajamento dos Membros.md');
+  const t = _ts();
+
+  const topMembersTable = stats.topMembers.length
+    ? stats.topMembers.map((m, i) => {
+        const tag = m.username || m.firstName || `ID ${m.userId}`;
+        const total = m.clicks + m.reactions;
+        const bar   = buildProgressBar(total, Math.max(1, stats.topMembers[0].clicks + stats.topMembers[0].reactions));
+        return `| ${i + 1} | **${tag}** | ${m.clicks} | ${m.reactions} | ${bar} |`;
+      }).join('\n')
+    : '| — | *Nenhum dado ainda* | — | — | — |';
+
+  const topSignalsTable = stats.topSignals.length
+    ? stats.topSignals.map(s => {
+        const date = new Date(s.sentAt).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+        const hour = new Date(s.sentAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        return `| **${(s.match || '?').substring(0, 30)}** | ${s.market || '—'} | ${s.clicks} | ${s.reactions} | ${date} ${hour} |`;
+      }).join('\n')
+    : '| — | — | — | — | — |';
+
+  const rateBar = buildProgressBar(parseFloat(stats.clickRate), 100);
+
+  const content = `---
+tipo: engajamento
+atualizado: ${t.iso}
+periodo_dias: ${stats.period.replace('d', '')}
+total_sinais: ${stats.totalSignals}
+total_cliques: ${stats.totalClicks}
+total_reacoes: ${stats.totalReactions}
+taxa_clique: ${stats.clickRate}
+tags:
+  - engajamento
+  - membros
+  - telegram
+---
+
+# 📱 Engajamento dos Membros
+
+> [!info] Atualizado em ${t.display} · Período: **últimos ${stats.period}**
+> Rastreamento automático via bot — cliques no botão + reações a mensagens.
+
+---
+
+## 📊 Visão Geral
+
+| Métrica | Valor |
+|---------|-------|
+| 📡 Sinais enviados | **${stats.totalSignals}** |
+| 🔗 Cliques no link | **${stats.totalClicks}** |
+| 💬 Reações | **${stats.totalReactions}** |
+| 📈 Taxa de clique | **${stats.clickRate}%** |
+
+**Taxa de conversão:** ${rateBar} ${stats.clickRate}%
+
+> [!tip] Interpretação
+> Taxa ≥ 30% = excelente engajamento · 15–30% = bom · < 15% = melhorar timing/qualidade dos sinais
+
+---
+
+## 🏆 Top Membros — Mais Engajados
+
+| # | Membro | 🔗 Cliques | 💬 Reações | Atividade |
+|---|--------|-----------|-----------|-----------|
+${topMembersTable}
+
+---
+
+## 🔥 Sinais com Maior Conversão
+
+| Partida | Mercado | 🔗 Cliques | 💬 Reações | Enviado |
+|---------|---------|-----------|-----------|---------|
+${topSignalsTable}
+
+---
+
+## 📈 Histórico de Engajamento
+
+\`\`\`dataview
+TABLE WITHOUT ID
+  dateformat(date(atualizado), "dd/MM/yy") AS "Data",
+  total_sinais AS "Sinais",
+  total_cliques AS "Cliques",
+  total_reacoes AS "Reações",
+  taxa_clique + "%" AS "Taxa"
+FROM "Apostas Futebol"
+WHERE tipo = "engajamento"
+SORT atualizado DESC
+LIMIT 30
+\`\`\`
+
+---
+
+## 💡 Glossário
+
+| Termo | Definição |
+|-------|-----------|
+| **Clique** | Membro tocou no botão "Apostar agora → Superbet" |
+| **Reação** | Membro reagiu com emoji à mensagem do sinal |
+| **Taxa de clique** | Cliques ÷ Sinais × 100 |
+
+> ⚠️ *Limitação do Telegram: não há read receipts em grupos. "Visualizado" não é mensurável — apenas ações ativas (clique + reação) são registradas.*
+
+---
+
+> *[[📊 Dashboard]] · [[🛡️ Guardian]] · [[📈 ROI e Performance]]*
+`;
+
+  return _write(filePath, content);
+}

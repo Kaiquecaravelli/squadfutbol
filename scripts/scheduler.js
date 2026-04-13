@@ -9,8 +9,9 @@
  *  ┌─────────────────────────────────────────────────────────────────────┐
  *  │  Horário     │ Rotina                  │ Descrição                  │
  *  ├─────────────────────────────────────────────────────────────────────┤
- *  │  08:00 diário│ daily-pipeline          │ Coleta +24h, backfill, PIE │
- *  │  13:00 diário│ daily-pipeline (extra)  │ Partidas matinais fechadas  │
+ *  │  05:45 diário│ morning-message         │ Bom dia + resumo + agenda  │
+ *  │  06:00 diário│ daily-pipeline          │ Coleta +24h, backfill, PIE │
+ *  │  13:00 diário│ daily-pipeline (extra)  │ Partidas da tarde          │
  *  │  21:00 dom.  │ weekly-report           │ Resumo semanal no Telegram │
  *  └─────────────────────────────────────────────────────────────────────┘
  *
@@ -59,20 +60,43 @@ if (process.argv.includes('--once')) {
 // ── Agendamento ────────────────────────────────────────────────────────────────
 import('dotenv/config').catch(() => {});
 
+// ── Group Guardian — ativa proteção de conteúdo no startup ────────────────────
+try {
+  const { initGroupGuardian, cacheBotId } = await import('../src/utils/group-guardian.js');
+  await cacheBotId();
+  await initGroupGuardian();
+} catch (e) {
+  console.warn(chalk.yellow(`[Guardian] Aviso ao iniciar: ${e.message}`));
+}
+
 console.log(chalk.bold.cyan('\n' + '═'.repeat(60)));
 console.log(chalk.bold.cyan('  ⏰ Scheduler de Análise Esportiva — Ativo'));
 console.log(chalk.bold.cyan('═'.repeat(60)));
 console.log('  Rotinas programadas:');
-console.log('  📡 08:00 diário  → Pipeline completo (dados de ontem)');
-console.log('  📡 13:00 diário  → Pipeline extra (jogos da manhã)');
+console.log('  🌅 05:45 diário  → Mensagem de bom dia + resumo do dia anterior');
+console.log('  📡 06:00 diário  → Pipeline completo (sinais PRÉ-LIVE do dia)');
+console.log('  📡 13:00 diário  → Pipeline extra (jogos da tarde)');
 console.log('  🔍 */30 min      → Verificação de resultados GREEN/RED');
-console.log('  📊 21:00 domingo → Relatório semanal PIE');
+console.log('  📊 21:00 domingo → Relatório semanal');
 console.log('  💡 Ctrl+C para parar\n');
 
-// Pipeline principal — todos os dias às 08:00
-// Coleta partidas de ontem (>24h garantido)
-cron.schedule('0 8 * * *', async () => {
-  await safePipeline('Pipeline Diário 08h', { datesBack: 2 });
+// Mensagem de bom dia — todos os dias às 05:45
+// Enviada antes dos sinais para preparar os jogadores
+cron.schedule('45 5 * * *', async () => {
+  console.log(chalk.bold.yellow(`\n[${ts()}] 🌅 Enviando mensagem de bom dia...`));
+  try {
+    const { sendMorningMessage } = await import('./morning-message.js');
+    await sendMorningMessage();
+    console.log(chalk.green(`[${ts()}] ✅ Mensagem de bom dia enviada`));
+  } catch (e) {
+    console.error(chalk.red(`[${ts()}] ❌ Morning message falhou: ${e.message}`));
+  }
+}, { timezone: 'America/Sao_Paulo' });
+
+// Pipeline principal — todos os dias às 06:00
+// Coleta partidas com 24h+ de antecedência para melhores odds
+cron.schedule('0 6 * * *', async () => {
+  await safePipeline('Pipeline Diário 06h', { datesBack: 2 });
 }, { timezone: 'America/Sao_Paulo' });
 
 // Pipeline extra — todos os dias às 13:00
@@ -108,8 +132,52 @@ cron.schedule('*/30 * * * *', async () => {
 
 // Keepalive — confirma que o scheduler está ativo a cada hora
 cron.schedule('0 * * * *', () => {
-  console.log(chalk.gray(`[${ts()}] 💓 Scheduler ativo — próximo pipeline: 08:00`));
+  console.log(chalk.gray(`[${ts()}] 💓 Scheduler ativo — próximo pipeline: 06:00`));
 }, { timezone: 'America/Sao_Paulo' });
+
+// ── Polling do Guardian — verifica updates a cada 10s ────────────────────────
+// Processa: comandos de admin, pedidos de entrada, aprovações, anti-flood, DM setup
+let _guardianOffset = 0;
+const ALLOWED_UPDATES = ['message', 'chat_join_request', 'callback_query', 'message_reaction'];
+
+setInterval(async () => {
+  try {
+    const { handleGuardianCommand, handleNewMember, handleAntiFlood,
+            handleJoinRequest, handleCallbackQuery,
+            handleMessageReaction } = await import('../src/utils/group-guardian.js');
+
+    const url = `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/getUpdates` +
+      `?offset=${_guardianOffset}&limit=20&timeout=0` +
+      `&allowed_updates=${JSON.stringify(ALLOWED_UPDATES)}`;
+
+    const updates = await fetch(url).then(r => r.json()).catch(() => ({ result: [] }));
+
+    for (const upd of (updates?.result || [])) {
+      _guardianOffset = upd.update_id + 1;
+      // Pedido de entrada no grupo (link com aprovação obrigatória)
+      if (upd.chat_join_request) {
+        await handleJoinRequest(upd).catch(() => {});
+        continue;
+      }
+      // Resposta do admin + rastreamento de clique no link do sinal
+      if (upd.callback_query) {
+        await handleCallbackQuery(upd).catch(() => {});
+        continue;
+      }
+      // Reações a mensagens — rastreia engajamento por sinal
+      if (upd.message_reaction) {
+        await handleMessageReaction(upd).catch(() => {});
+        continue;
+      }
+      // Comandos de admin e setup via DM
+      await handleGuardianCommand(upd).catch(() => {});
+      // Novos membros e anti-flood
+      await handleNewMember(upd).catch(() => {});
+      await handleAntiFlood(upd).catch(() => {});
+    }
+  } catch { /* silent */ }
+}, 10_000);
 
 // Mantém processo vivo
 console.log(chalk.gray(`[${ts()}] 💓 Scheduler iniciado — aguardando horários agendados...`));
+console.log(chalk.bold.green(`[${ts()}] 🛡️  Group Guardian ativo — polling a cada 10s`));

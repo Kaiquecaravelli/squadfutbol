@@ -8,7 +8,7 @@
  *   node scripts/sync-obsidian.js  # idem
  */
 
-import { readFileSync } from 'fs';
+import { readFileSync, existsSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { loadDB, getStats } from '../src/pie/pie-storage.js';
@@ -17,7 +17,11 @@ import {
   updatePadroesAprendidos,
   updateRoiPerformance,
   rebuildDashboard,
+  updateSniperProtocol,
+  updateTreinamentoNoturno,
+  updateEngajamento,
 } from '../src/utils/obsidian.js';
+import { getOverallStats } from '../src/utils/engagement-tracker.js';
 
 const __dir = dirname(fileURLToPath(import.meta.url));
 const ROOT  = join(__dir, '..');
@@ -69,6 +73,59 @@ console.log(`  ${r2 ? '✅' : '❌'} 📈 ROI e Performance.md`);
 // 3. Dashboard
 const r3 = rebuildDashboard();
 console.log(`  ${r3 ? '✅' : '❌'} 📊 Dashboard.md`);
+
+// 4. Protocolo Sniper (se dados disponíveis no PIE)
+const PIE_PATH = join(ROOT, 'data/pie.json');
+if (existsSync(PIE_PATH)) {
+  try {
+    const pie     = JSON.parse(readFileSync(PIE_PATH, 'utf-8'));
+    const sniperD = pie.sniper_thresholds;
+    if (sniperD) {
+      const r4 = updateSniperProtocol({
+        thresholds:      sniperD.thresholds || {},
+        totalMatches:    hist.matches?.length || 0,
+        totalShots:      0,   // não disponível fora da sessão — usa dados salvos
+        totalHits:       0,
+        totalAbstained:  0,
+        overallAcc:      0,
+        abstainRate:     0,
+        marketsOnTarget: Object.values(sniperD.thresholds || {}).filter(t => t.gap != null && t.gap <= 0).length,
+      });
+      console.log(`  ${r4 ? '✅' : '❌'} 🎯 Protocolo Sniper.md`);
+    } else {
+      console.log(`  ⏭️  🎯 Protocolo Sniper.md — sem dados (rode npm run sniper)`);
+    }
+
+    // 5. Treinamento Noturno (último log disponível)
+    const PROG = join(ROOT, 'logs/training-progress.jsonl');
+    if (existsSync(PROG)) {
+      const lines = readFileSync(PROG, 'utf-8').trim().split('\n').filter(Boolean);
+      // Último snapshot de relatório
+      const lastReport = lines.map(l => { try { return JSON.parse(l); } catch { return null; } })
+        .filter(Boolean).filter(l => l.fase === 'relatorio').pop();
+      if (lastReport) {
+        const r5 = updateTreinamentoNoturno({
+          accuracy:  lastReport.accuracy  || {},
+          sniperThr: lastReport.sniperThr || (sniperD?.thresholds || {}),
+          resumo:    lastReport.resumo    || {},
+          duracao:   0,
+        });
+        console.log(`  ${r5 ? '✅' : '❌'} 🌙 Treinamento Noturno.md`);
+      }
+    }
+  } catch (e) {
+    console.warn(`  ⚠️  Sniper/Training sync: ${e.message}`);
+  }
+}
+
+// 6. Engajamento dos Membros
+try {
+  const engStats = getOverallStats({ daysBack: 30 });
+  const r6 = updateEngajamento(engStats);
+  console.log(`  ${r6 ? '✅' : '❌'} 📱 Engajamento dos Membros.md  (${engStats.totalSignals} sinais · ${engStats.totalClicks} cliques · ${engStats.clickRate}% taxa)`);
+} catch (e) {
+  console.log(`  ⏭️  📱 Engajamento dos Membros.md — ${e.message}`);
+}
 
 console.log('\n' + '═'.repeat(56));
 console.log(`✅ Obsidian atualizado — ${new Date().toLocaleString('pt-BR')}`);
