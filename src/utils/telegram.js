@@ -304,6 +304,23 @@ function _fraseMotiacional(acertou) {
   return pool[Math.floor(Math.random() * pool.length)];
 }
 
+/**
+ * Adiciona uma reação emoji a uma mensagem do grupo.
+ * GREEN → 🎯  |  RED → 📖
+ * Silencioso se a API não suportar (grupos sem permissão de reação de bot).
+ */
+async function reactToMessage(msgId, emoji) {
+  if (!isConfigured() || !msgId) return;
+  try {
+    await axios.post(`${BASE}/bot${process.env.TELEGRAM_BOT_TOKEN}/setMessageReaction`, {
+      chat_id:   getChatId(),
+      message_id: msgId,
+      reaction:  [{ type: 'emoji', emoji }],
+      is_big:    false,
+    });
+  } catch { /* silencioso — reação é opcional */ }
+}
+
 export async function notifyResultFeedback(opts) {
   if (!isConfigured()) return null;
   const { msgId, acertou, match, market, prediction, placarReal, probabilidade, competition, originalText } = opts;
@@ -350,6 +367,11 @@ export async function notifyResultFeedback(opts) {
     resultMsgId = msgId;
     _trackResultMessage(msgId);
   }
+
+  // Reação automática do bot: 🎯 = GREEN, 📖 = RED
+  // Chama de forma assíncrona sem bloquear o retorno
+  const targetId = resultMsgId || msgId;
+  if (targetId) reactToMessage(targetId, acertou ? '🎯' : '📖').catch(() => {});
 
   return resultMsgId;
 }
