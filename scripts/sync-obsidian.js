@@ -11,7 +11,7 @@
 import { readFileSync, existsSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { loadDB, getStats } from '../src/pie/pie-storage.js';
+import { loadDB, getStats, loadPieSnapshots } from '../src/pie/pie-storage.js';
 import {
   isObsidianConfigured,
   updatePadroesAprendidos,
@@ -20,6 +20,7 @@ import {
   updateSniperProtocol,
   updateTreinamentoNoturno,
   updateEngajamento,
+  updatePieEvolution,
 } from '../src/utils/obsidian.js';
 import { getOverallStats } from '../src/utils/engagement-tracker.js';
 
@@ -118,7 +119,20 @@ if (existsSync(PIE_PATH)) {
   }
 }
 
-// 6. Engajamento dos Membros
+// 6. Evolução PIE (snapshots históricos)
+try {
+  const snaps = loadPieSnapshots(90);
+  if (snaps.length) {
+    const r6b = updatePieEvolution(snaps);
+    console.log(`  ${r6b ? '✅' : '❌'} 📈 Evolução PIE.md  (${snaps.length} snapshots · taxa atual: ${snaps[0]?.globalRate ?? '—'}%)`);
+  } else {
+    console.log(`  ⏭️  📈 Evolução PIE.md — sem snapshots ainda (execute npm run daily para gerar)`);
+  }
+} catch (e) {
+  console.log(`  ⏭️  📈 Evolução PIE.md — ${e.message}`);
+}
+
+// 7. Engajamento dos Membros
 try {
   const engStats = getOverallStats({ daysBack: 30 });
   const r6 = updateEngajamento(engStats);

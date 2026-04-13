@@ -38,12 +38,21 @@ import {
   getPendingPredictions,
   saveResult,
   getStats,
+  savePieSnapshot,
 }                             from '../src/pie/pie-storage.js';
 import {
   notifyPIEStats,
   notifyPreLiveAnalysis,
 }                             from '../src/utils/telegram.js';
 import axios                  from 'axios';
+import {
+  startRun,
+  checkpoint,
+  completeRun,
+  readState,
+}                             from '../src/resilience/state-manager.js';
+import { watchdog, withRetry } from '../src/resilience/network-watchdog.js';
+import { logRecoveryStatus, isRecoverable } from '../src/resilience/recovery.js';
 
 const __dir   = dirname(fileURLToPath(import.meta.url));
 const ROOT    = join(__dir, '..');
@@ -202,11 +211,11 @@ async function etapa2_backfill(dryRun) {
     let result = null;
 
     if (pred.sofascore_id) {
-      result = await fetchResult(pred.sofascore_id);
+      result = await withRetry(() => fetchResult(pred.sofascore_id), { label: `SofaScore result ${pred.sofascore_id}` }).catch(() => null);
     }
 
     if (!result) {
-      result = await trySearchByName(pred.match_name, pred.match_date);
+      result = await withRetry(() => trySearchByName(pred.match_name, pred.match_date), { label: `SofaScore search ${pred.match_name}` }).catch(() => null);
     }
 
     if (!result || result.status !== 'finished' || !result.score) {
@@ -369,6 +378,71 @@ function _isAlreadyNotified(key) {
   return ts && (Date.now() - ts) < DEDUP_WINDOW_PIPELINE_MS;
 }
 
+// ── ETAPA 4.5: URL Gate — descarta oportunidades sem URL direta no Superbet ───
+async function etapa4b_urlGate(qualified) {
+  log('🔗', 'ETAPA 4.5 — URL Gate Superbet', 'bold');
+
+  if (!qualified.length) return [];
+
+  const { ensureFresh, lookupMatchUrl } = await import('../src/scrapers/superbet-cache.js');
+
+  log('  🌐', 'Atualizando cache de URLs Superbet (PRÉ-LIVE)...', 'cyan');
+  await ensureFresh('prelive');
+
+  const gated = [];
+
+  for (const item of qualified) {
+    const matchName = item.pred.match_name || '';
+    // Extrai home e away do "Home vs Away"
+    const parts = matchName.split(/\s+vs\s+/i);
+    const home  = parts[0]?.trim() || '';
+    const away  = parts[1]?.trim() || '';
+
+    if (!home || !away) {
+      log('  ⚠️', `${matchName} — nome inválido, bloqueado`, 'yellow');
+      continue;
+    }
+
+    const url = lookupMatchUrl(home, away, 'prelive');
+
+    if (!url) {
+      log('  🚫', `${matchName.substring(0, 40)} — sem URL Superbet, análise bloqueada`, 'red');
+      continue;
+    }
+
+    // Valida se a URL ainda está acessível (evita link morto no Telegram)
+    let urlOk = false;
+    try {
+      const probe = await axios.head(url, {
+        timeout: 6000,
+        maxRedirects: 3,
+        validateStatus: s => s < 500,
+        headers: { 'User-Agent': 'Mozilla/5.0' },
+      });
+      urlOk = probe.status < 400;
+    } catch {
+      urlOk = false;
+    }
+
+    if (!urlOk) {
+      log('  🔴', `${matchName.substring(0, 40)} — link Superbet inativo (${url.slice(0, 50)}...), bloqueado`, 'red');
+      continue;
+    }
+
+    item.superbetUrl = url;
+    gated.push(item);
+    log('  ✅', `${matchName.substring(0, 40)} — URL validada e ativa`, 'green');
+  }
+
+  log(
+    '🔗',
+    `URL Gate: ${gated.length}/${qualified.length} com link confirmado ${gated.length < qualified.length ? `(${qualified.length - gated.length} bloqueadas)` : ''}`,
+    gated.length > 0 ? 'green' : 'yellow'
+  );
+
+  return gated;
+}
+
 // ── ETAPA 5: Telegram ─────────────────────────────────────────────────────────
 async function etapa5_telegram(qualified, dryRun) {
   log('📲', 'ETAPA 5 — Envio ao Telegram', 'bold');
@@ -382,7 +456,8 @@ async function etapa5_telegram(qualified, dryRun) {
   const bankroll = parseFloat(process.env.USER_BANKROLL || '1000');
   const db = loadDB();
 
-  for (const { pred, market: m, cal } of qualified) {
+  for (const item of qualified) {
+    const { pred, market: m, cal } = item;
     // Deduplicação cross-pipeline: verifica se auto-monitor ou outro processo já enviou esta análise
     const notifKey = `${pred.sofascore_id || pred.match_name.replace(/\s+/g, '_').substring(0, 30)}_${m.market}`;
     if (_isAlreadyNotified(notifKey)) {
@@ -431,8 +506,10 @@ async function etapa5_telegram(qualified, dryRun) {
     const stakeInfo = calcRetornoPotencial(m.odds_minima, bankroll, stakePct);
 
     if (!dryRun) {
+      // superbetUrl vem da ETAPA 4.5 — garantia de link real antes do envio
       await notifyPreLiveAnalysis(analysis, {
         stakeInfo, risco, pieAccuracy, horasAte, bankroll,
+        directUrl: item.superbetUrl || null,
       }).catch(e => log('  ⚠️', `Telegram: ${e.message}`, 'yellow'));
       // Registra no notified-keys.json para evitar reenvio por outros processos (24h)
       _saveNotifiedKey(notifKey);
@@ -505,6 +582,16 @@ async function etapa7_resumo(resultados, dryRun) {
   console.log(`  💾 Base total PIE:      ~${total} amostras (T1 markets)`);
   if (dryRun) console.log(chalk.yellow('\n  ⚠️  DRY-RUN: nenhum dado foi salvo'));
   console.log(chalk.bold('─'.repeat(60)) + '\n');
+
+  // Snapshot diário do PIE — grava estado atual para histórico de evolução
+  if (!dryRun) {
+    try {
+      const snap = savePieSnapshot();
+      log('💾', `Snapshot PIE gravado — taxa global: ${snap.globalRate ?? '—'}%  |  ${Object.keys(snap.markets).length} mercados`, 'gray');
+    } catch (e) {
+      log('⚠️', `Snapshot PIE falhou: ${e.message}`, 'yellow');
+    }
+  }
 }
 
 // ── SofaScore Helpers ──────────────────────────────────────────────────────────
@@ -612,21 +699,71 @@ function resolveMarket(market, rec, score, stats = null) {
 // ── Orquestrador Principal ─────────────────────────────────────────────────────
 export async function runDailyPipeline(opts = {}) {
   const dryRun   = opts.dryRun   || false;
-  const datesN   = opts.datesBack || 2;     // padrão: ontem + anteontem
-  const dates    = Array.from({ length: datesN }, (_, i) => dateStr(i + 1)); // i+1: exclui hoje
+  const datesN   = opts.datesBack || 2;
+  const dates    = Array.from({ length: datesN }, (_, i) => dateStr(i + 1));
 
   console.log('\n' + chalk.bold('═'.repeat(64)));
   console.log(chalk.bold.cyan('  🗓️  PIPELINE DIÁRIO — Coleta + Análise + Aprendizado'));
   console.log(`  Datas: ${dates.join(', ')} | ${dryRun ? chalk.yellow('DRY-RUN') : chalk.green('REAL')}`);
   console.log(chalk.bold('═'.repeat(64)) + '\n');
 
-  const coletadas  = await etapa1_coletar(dates, dryRun);
-  const fechadas   = await etapa2_backfill(dryRun);
-  const injetados  = await etapa3_injetar(dates, dryRun);
+  // ── Watchdog de rede ────────────────────────────────────────────────────────
+  watchdog.start();
+
+  // ── Verificação de recuperação pós-queda ────────────────────────────────────
+  const prevState = logRecoveryStatus();
+  const canResume = prevState && isRecoverable(prevState);
+  if (canResume) {
+    log('⚡', `Retomando execução interrompida (etapa: ${prevState.stage})`, 'yellow');
+  }
+
+  // ── Inicia run e salva checkpoint inicial ───────────────────────────────────
+  const { runId } = startRun(dates);
+  log('💾', `Run ID: ${runId}`, 'gray');
+
+  let coletadas = prevState?.data?.coletadas ?? 0;
+  let fechadas  = prevState?.data?.fechadas  ?? 0;
+  let injetados = prevState?.data?.injetados ?? 0;
+
+  // ── Etapas com checkpoint ───────────────────────────────────────────────────
+  const skipTo = canResume ? prevState.stage : null;
+
+  if (!skipTo || ['start','etapa1_coletar'].includes(skipTo)) {
+    checkpoint('etapa1_coletar', { dates });
+    coletadas = await etapa1_coletar(dates, dryRun);
+    checkpoint('etapa1_done', { coletadas });
+  }
+
+  if (!skipTo || ['etapa1_done','etapa2_backfill'].includes(skipTo) || !canResume) {
+    checkpoint('etapa2_backfill');
+    fechadas = await etapa2_backfill(dryRun);
+    checkpoint('etapa2_done', { fechadas });
+  }
+
+  if (!skipTo || !canResume || ['etapa2_done','etapa3_injetar'].includes(skipTo)) {
+    checkpoint('etapa3_injetar');
+    injetados = await etapa3_injetar(dates, dryRun);
+    checkpoint('etapa3_done', { injetados });
+  }
+
+  checkpoint('etapa4_validar');
   const qualified  = await etapa4_validar();
-  const enviadas   = await etapa5_telegram(qualified, dryRun);
+  checkpoint('etapa4_done', { qualified: qualified.map(q => q.pred?.match_name) });
+
+  checkpoint('etapa4b_urlGate');
+  const gatedByUrl = dryRun ? qualified : await etapa4b_urlGate(qualified);
+  checkpoint('etapa4b_done', { gatedByUrl: gatedByUrl.map(q => q.pred?.match_name) });
+
+  checkpoint('etapa5_telegram');
+  const enviadas = await etapa5_telegram(gatedByUrl, dryRun);
+  checkpoint('etapa5_done', { enviadas });
+
   await etapa6_relatorio(dryRun);
   await etapa7_resumo({ coletadas, fechadas, injetados, qualified: qualified.length, enviadas }, dryRun);
+
+  // ── Marca execução como concluída ───────────────────────────────────────────
+  completeRun({ coletadas, fechadas, injetados, qualified: qualified.length, enviadas });
+  log('💾', 'Estado salvo — execução concluída com sucesso', 'green');
 
   return { coletadas, fechadas, injetados, qualified: qualified.length, enviadas };
 }

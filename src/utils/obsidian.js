@@ -1239,6 +1239,128 @@ function buildProgressBar(current, target) {
   return `\`${'█'.repeat(fill)}${'░'.repeat(10 - fill)}\``;
 }
 
+// ── Evolução do PIE — snapshots diários ──────────────────────────────────────
+
+/**
+ * Cria/atualiza a nota `📈 Evolução PIE.md` com gráfico de tendência
+ * da accurácia por mercado ao longo do tempo (últimos 30 snapshots).
+ *
+ * @param {Array} snapshots — resultado de loadPieSnapshots() do pie-storage
+ */
+export function updatePieEvolution(snapshots) {
+  if (!isObsidianConfigured()) return null;
+  const filePath = join(_dir(), '📈 Evolução PIE.md');
+  const t = _now();
+
+  if (!snapshots?.length) return null;
+
+  // Mercados principais a rastrear (ordenados por importância)
+  const KEY_MARKETS = [
+    'Over 1.5', 'BTTS', 'Over 2.5', 'Over 3.5',
+    'Over Corners 6.5', 'Over Corners 7.5',
+    'YC 2.5', 'YC 3.5', '1X', 'X2',
+  ];
+
+  // Para cada mercado, gera linha de tendência com os últimos N snapshots
+  function marketTrendRow(market) {
+    const points = snapshots.slice(0, 30).reverse()  // ordem cronológica
+      .filter(s => s.markets?.[market])
+      .slice(-10);  // últimos 10 dias com dados
+    if (points.length < 2) return null;
+
+    const latest  = points[points.length - 1].markets[market].acc;
+    const first   = points[0].markets[market].acc;
+    const delta   = (latest - first).toFixed(1);
+    const trend   = delta > 0 ? '📈' : delta < 0 ? '📉' : '➡️';
+    const samples = points[points.length - 1].markets[market].total;
+    const bar     = buildProgressBar(latest, 100);
+
+    // Mini-sparkline dos últimos 10 pontos
+    const spark = points.map(p => {
+      const a = p.markets[market]?.acc ?? 0;
+      if (a >= 85) return '▓';
+      if (a >= 70) return '▒';
+      if (a >= 55) return '░';
+      return '·';
+    }).join('');
+
+    const deltaStr = delta > 0 ? `+${delta}pp` : `${delta}pp`;
+    return `| **${market}** | ${bar} ${latest}% | ${trend} ${deltaStr} | \`${spark}\` | ${samples} |`;
+  }
+
+  // Tabela da taxa global ao longo do tempo
+  const globalRows = snapshots.slice(0, 14).map(s => {
+    const date = new Date(s.ts).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+    const bar  = buildProgressBar(s.globalRate || 0, 100);
+    return `| ${date} | ${bar} ${s.globalRate ?? '—'}% | ${s.totalOutcomes} |`;
+  }).join('\n');
+
+  const marketRows = KEY_MARKETS
+    .map(m => marketTrendRow(m))
+    .filter(Boolean)
+    .join('\n');
+
+  const lastSnap   = snapshots[0];
+  const firstSnap  = snapshots[snapshots.length - 1];
+  const globalDelta = lastSnap.globalRate && firstSnap.globalRate
+    ? (lastSnap.globalRate - firstSnap.globalRate).toFixed(1)
+    : null;
+
+  const content = `---
+tipo: evolucao-pie
+atualizado: ${t.iso}
+taxa_global: ${lastSnap.globalRate ?? null}
+total_outcomes: ${lastSnap.totalOutcomes ?? 0}
+snapshots_disponiveis: ${snapshots.length}
+tags:
+  - pie
+  - evolucao
+  - calibracao
+---
+
+# 📈 Evolução do PIE — Histórico de Calibração
+
+> [!info] Atualizado em ${t.display}
+> **${snapshots.length} snapshots** disponíveis · Taxa global atual: **${lastSnap.globalRate ?? '—'}%**${globalDelta ? ` · Tendência: **${globalDelta > 0 ? '+' : ''}${globalDelta}pp**` : ''}
+
+---
+
+## 🎯 Tendência por Mercado
+
+| Mercado | Precisão Atual | Tendência | Histórico (10d) | Amostras |
+|---------|---------------|-----------|-----------------|----------|
+${marketRows || '> *Execute o pipeline para gerar os primeiros snapshots.*'}
+
+---
+
+## 📊 Taxa Global — Últimas 14 execuções
+
+| Data | Precisão | Outcomes |
+|------|----------|---------|
+${globalRows || '> *Aguardando dados.*'}
+
+---
+
+## 💡 Como Ler o Gráfico
+
+| Símbolo | Significado |
+|---------|-------------|
+| ▓ | Precisão ≥ 85% |
+| ▒ | Precisão 70–84% |
+| ░ | Precisão 55–69% |
+| · | Precisão < 55% |
+| 📈 | Mercado melhorando |
+| 📉 | Mercado piorando |
+| ➡️ | Estável |
+
+---
+
+> *[[📊 Dashboard]] · [[🎯 Protocolo Sniper]] · [[📈 ROI e Performance]]*
+`;
+
+  return _write(filePath, content);
+}
+
 // ── Nota por Partida — histórico rastreável ───────────────────────────────────
 
 /**

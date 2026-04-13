@@ -3,13 +3,14 @@
  * Camada de persistência: predições, resultados, lições, calibração e logs de agentes.
  */
 
-import { readFileSync, writeFileSync, existsSync } from 'fs';
+import { readFileSync, writeFileSync, appendFileSync, existsSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { randomUUID } from 'crypto';
 
 const __dir   = dirname(fileURLToPath(import.meta.url));
-const DB_PATH = join(__dir, '../../data/pie.json');
+const DB_PATH       = join(__dir, '../../data/pie.json');
+const SNAPSHOT_PATH = join(__dir, '../../data/pie-snapshots.jsonl');
 
 // ── DB Schema ─────────────────────────────────────────────────────────────────
 const EMPTY_DB = () => ({
@@ -514,3 +515,63 @@ export function saveModelImprovement({
   return entry;
 }
 
+
+
+// ── Snapshot Diário — evolução histórica da calibração ───────────────────────
+/**
+ * Grava um snapshot instantâneo da calibração do PIE em data/pie-snapshots.jsonl.
+ * Chamado ao final de cada execução do pipeline diário.
+ * Cada linha é um JSON independente (JSONL) — append-only, nunca sobrescreve.
+ *
+ * Estrutura de cada linha:
+ * { ts, date, globalRate, totalOutcomes, markets: { [market]: { acc, total } } }
+ */
+export function savePieSnapshot() {
+  const db  = loadDB();
+  const now = new Date();
+
+  const verificaveis = db.stats.acertos + db.stats.erros;
+  const globalRate   = verificaveis > 0
+    ? parseFloat(((db.stats.acertos / verificaveis) * 100).toFixed(2))
+    : null;
+
+  const markets = {};
+  for (const [market, cal] of Object.entries(db.calibration)) {
+    if (cal.total >= 5) {  // só mercados com amostras suficientes
+      markets[market] = {
+        acc:   parseFloat(((cal.hits / cal.total) * 100).toFixed(2)),
+        total: cal.total,
+      };
+    }
+  }
+
+  const snap = {
+    ts:            now.toISOString(),
+    date:          now.toISOString().slice(0, 10),
+    globalRate,
+    totalOutcomes: verificaveis,
+    markets,
+  };
+
+  try {
+    appendFileSync(SNAPSHOT_PATH, JSON.stringify(snap) + '\n', 'utf-8');
+  } catch (e) {
+    console.warn('[PIE] Falha ao gravar snapshot:', e.message);
+  }
+
+  return snap;
+}
+
+/**
+ * Carrega todos os snapshots históricos.
+ * @param {number} [limit] — máximo de entradas (mais recentes primeiro)
+ */
+export function loadPieSnapshots(limit = 90) {
+  try {
+    const lines = readFileSync(SNAPSHOT_PATH, 'utf-8')
+      .split('\n').filter(Boolean)
+      .map(l => { try { return JSON.parse(l); } catch { return null; } })
+      .filter(Boolean);
+    return lines.slice(-limit).reverse();
+  } catch { return []; }
+}
