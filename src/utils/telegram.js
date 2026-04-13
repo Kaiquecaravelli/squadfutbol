@@ -1750,7 +1750,8 @@ export async function notifyPreLiveOpportunity(matchData, markets) {
     const risk = _calcRisk(m.probabilidade, m.confianca);
 
     // ── Nome do mercado com direção clara ─────────────────────────────────
-    const rawMarket = m.market || m.mercado || '—';
+    // Prioriza m.mercado (ex: "Over 2.5") sobre m.market (ex: "Total de Gols")
+    const rawMarket = m.mercado || m.market || '—';
     const rec       = String(m.recomendacao || '').toUpperCase();
 
     let marketLabel;
@@ -1792,7 +1793,8 @@ export async function notifyPreLiveOpportunity(matchData, markets) {
 
   lines.push(_buildLegenda(markets));
   lines.push(SEP_LIGHT);
-  lines.push(_houseLink('Superbet', matchData.competition || ''));
+  // Usa URL direta do jogo (Playwright) se disponível; senão fallback por competição
+  lines.push(_houseLink('Superbet', matchData.competition || '', matchData.superbet_url || null));
   lines.push(`🤖  <i>Betting Analysis Squad</i>`);
 
   // Chave estável: match + mercados + recomendações (ignora horário dinâmico do rodapé)

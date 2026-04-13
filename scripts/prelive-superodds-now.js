@@ -197,6 +197,14 @@ async function run() {
   matches.length = 0;
   matches.push(...sorted);
 
+  // ── ETAPA 1.5: Atualiza cache Superbet ───────────────────────────────────
+  log('🔗', 'ETAPA 1.5 — Atualizando cache Superbet (URLs diretas dos jogos)...', 'bold');
+  try {
+    await ensureFresh('prelive');
+  } catch (e) {
+    log('⚠️', `Cache Superbet falhou (links serão por competição): ${e.message}`, 'yellow');
+  }
+
   // ── ETAPA 2: Funil Pré-Live ───────────────────────────────────────────────
   log('🔵', 'ETAPA 2 — Funil Pré-Live (todos os mercados)...', 'bold');
 
@@ -210,6 +218,14 @@ async function run() {
     if (!DRY_RUN) {
       for (const r of preLiveResults) {
         try {
+          // Enriquece matchData com URL direta do jogo no Superbet (Playwright cache)
+          if (!r.matchData.superbet_url) {
+            r.matchData.superbet_url = lookupMatchUrl(
+              r.matchData.home?.team || r.matchData.home_team,
+              r.matchData.away?.team || r.matchData.away_team,
+              'prelive'
+            );
+          }
           await notifyPreLiveOpportunity(r.matchData, r.enriched);
           preLiveSent++;
           await new Promise(res => setTimeout(res, 1500)); // throttle Telegram
@@ -241,14 +257,13 @@ async function run() {
   } else {
     log('', `  Agregando dados de ${parlayMatches.length} partidas para parlay...`, 'cyan');
 
-    // Busca mapa de URLs Superbet (pré-jogo) para enriquecer os links das pernas
-    let superbetEventMap = new Map();
+    // Garante que o cache Superbet está fresco para enriquecer links das pernas
     try {
-      log('', '  Mapeando URLs Superbet...', 'gray');
-      superbetEventMap = await getSuperbetEventMap();
-      log('', `  ${superbetEventMap.size / 2 | 0} partidas mapeadas na Superbet`, 'gray');
+      log('', '  Verificando cache Superbet (pré-live)...', 'gray');
+      await ensureFresh('prelive');
+      log('', '  Cache Superbet atualizado', 'gray');
     } catch (e) {
-      log('⚠️', `Mapa Superbet falhou: ${e.message}`, 'yellow');
+      log('⚠️', `Cache Superbet falhou: ${e.message}`, 'yellow');
     }
 
     // Coleta + quant em lotes de 4 para não sobrecarregar as fontes
@@ -302,7 +317,7 @@ async function run() {
             NO_ODDS_FLOOR
           );
 
-          const superbet_url = findUrlInLiveMap(superbetEventMap, m.home_team, m.away_team);
+          const superbet_url = lookupMatchUrl(m.home_team, m.away_team, 'prelive');
 
           return {
             confidence_score,
