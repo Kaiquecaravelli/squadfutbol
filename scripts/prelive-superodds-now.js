@@ -29,14 +29,17 @@ import { notifySuperOddsParlay,
          notifyPreLiveOpportunity }  from '../src/utils/telegram.js';
 import { loadDB }                    from '../src/pie/pie-storage.js';
 import { ensureFresh,
-         lookupMatchUrl }            from '../src/scrapers/superbet-cache.js';
+         lookupMatchUrl,
+         listCachedMatches }         from '../src/scrapers/superbet-cache.js';
+import { ScanHealthAgent }           from '../src/agents/scan-health-agent.js';
+import { checkPreLiveEligible }      from '../src/utils/match-status-guard.js';
 
 // ── Configuração ──────────────────────────────────────────────────────────────
 const ARGS      = process.argv.slice(2);
 const DRY_RUN   = ARGS.includes('--dry-run');
-const HOURS     = parseInt(ARGS.find(a => a.startsWith('--hours='))?.split('=')[1]     || '24');
-const MIN_HOURS = parseInt(ARGS.find(a => a.startsWith('--min-hours='))?.split('=')[1] || '6');   // mínimo 6h antes do kickoff
-const TIER_MAX  = parseInt(ARGS.find(a => a.startsWith('--tier='))?.split('=')[1]      || '2');
+const HOURS     = parseInt(ARGS.find(a => a.startsWith('--hours='))?.split('=')[1]     || '36');
+const MIN_HOURS = parseInt(ARGS.find(a => a.startsWith('--min-hours='))?.split('=')[1] || '3');   // mínimo 3h antes do kickoff
+const TIER_MAX  = parseInt(ARGS.find(a => a.startsWith('--tier='))?.split('=')[1]      || '3');
 const LIMIT     = parseInt(ARGS.find(a => a.startsWith('--limit='))?.split('=')[1]     || '20');  // máx partidas Gemini
 const BANKROLL  = parseFloat(process.env.USER_BANKROLL || '1000');
 
@@ -53,13 +56,24 @@ const PRIORITY_LEAGUES = {
   679:  { name: 'Copa do Brasil',      tier: 1 },
   // Tier 2
   390:  { name: 'Eredivisie',                tier: 2 },
-  155:  { name: 'Liga Profesional Argentina', tier: 2 },   // SofaScore ID 155 = Argentina
+  155:  { name: 'Liga Profesional Argentina', tier: 2 },
   37:   { name: 'Jupiler Pro League',         tier: 2 },
-  130:  { name: 'Super Lig',           tier: 2 },
-  238:  { name: 'MLS',                 tier: 2 },
-  571:  { name: 'Europa League',       tier: 2 },
-  329:  { name: 'Copa Libertadores',   tier: 2 },
-  480:  { name: 'Conference League',   tier: 2 },
+  130:  { name: 'Super Lig',                  tier: 2 },
+  238:  { name: 'MLS',                        tier: 2 },
+  571:  { name: 'Europa League',              tier: 2 },
+  329:  { name: 'Copa Libertadores',          tier: 2 },
+  480:  { name: 'Conference League',          tier: 2 },
+  // Tier 3 — Mercados secundários com boa liquidez
+  337:  { name: 'Brasileirão Série B',        tier: 3 },
+  352:  { name: 'Liga MX',                    tier: 3 },
+  44:   { name: 'Championship (ENG)',         tier: 3 },
+  36:   { name: 'Scottish Premiership',       tier: 3 },
+  242:  { name: 'Copa Sudamericana',          tier: 3 },
+  196:  { name: 'J1 League',                  tier: 3 },
+  981:  { name: 'Campeonato Paulista',        tier: 3 },
+  982:  { name: 'Campeonato Carioca',         tier: 3 },
+  553:  { name: 'Recopa Sudamericana',        tier: 3 },
+  160:  { name: 'Primeira Liga (POR)',        tier: 3 },
 };
 
 const SOFA_HEADERS = {
@@ -82,11 +96,11 @@ async function fetchUpcomingMatches(hoursAhead = 24, minHoursAhead = 6) {
   const cutoffTime = now + hoursAhead    * 3_600_000;   // máximo: 24h à frente
   const results    = [];
 
-  // Busca hoje e amanhã para cobrir a janela de 24h
-  const dates = [
-    new Date().toISOString().split('T')[0],
-    new Date(Date.now() + 86_400_000).toISOString().split('T')[0],
-  ];
+  // Busca até 3 dias para cobrir janelas de até 36h
+  const numDays = hoursAhead > 24 ? 3 : 2;
+  const dates = Array.from({ length: numDays }, (_, i) =>
+    new Date(Date.now() + i * 86_400_000).toISOString().split('T')[0]
+  );
 
   for (const date of dates) {
     try {
@@ -150,6 +164,9 @@ function getPieQualityLabel(db) {
 
 // ── Pipeline principal ────────────────────────────────────────────────────────
 async function run() {
+  const health = new ScanHealthAgent();
+  health.startRun();
+
   console.log('\n' + '═'.repeat(70));
   console.log(chalk.bold.cyan('  🎯 PIPELINE IMEDIATO — PRÉ-LIVE + SUPER ODDS'));
   console.log(chalk.gray(`  Modo: ${DRY_RUN ? 'DRY-RUN (sem Telegram)' : 'REAL'} | Janela: ${HOURS}h | Tier: ≤${TIER_MAX} | Banca: R$${BANKROLL}`));
@@ -170,6 +187,7 @@ async function run() {
   if (!matches.length) {
     log('⚠️', 'Nenhuma partida encontrada nas ligas prioritárias na janela selecionada.', 'yellow');
     console.log(chalk.gray('  Tente ampliar a janela: --hours=48 ou --tier=3'));
+    await health.finishRun({ sent: 0, opportunities: 0 });
     return;
   }
 
@@ -183,6 +201,7 @@ async function run() {
   const tier2Count = sorted.filter(m => m.league_tier === 2).length;
   log('✅', `${matches.length} encontradas → ${sorted.length} selecionadas (limite ${LIMIT})`, 'green');
   console.log(chalk.gray(`  Tier 1: ${tier1Count} | Tier 2: ${tier2Count}`));
+  health.setMatchesFound(sorted.length);
   console.log('');
 
   // Lista resumida
@@ -199,10 +218,33 @@ async function run() {
 
   // ── ETAPA 1.5: Atualiza cache Superbet ───────────────────────────────────
   log('🔗', 'ETAPA 1.5 — Atualizando cache Superbet (URLs diretas dos jogos)...', 'bold');
+  let superbetFresh = false;
   try {
     await ensureFresh('prelive');
+    health.setCacheSize(listCachedMatches('prelive').count);
+    superbetFresh = true;
   } catch (e) {
     log('⚠️', `Cache Superbet falhou (links serão por competição): ${e.message}`, 'yellow');
+    health.recordError(`Cache Superbet: ${e.message}`);
+  }
+
+  // ── ETAPA 1.6: Filtra jogos inelegíveis ANTES de rodar agentes (economiza tokens) ──
+  log('🔍', 'ETAPA 1.6 — Verificando status pré-live (filtra jogos já iniciados)...', 'bold');
+  const eligibleMatches = [];
+  for (const m of matches) {
+    try {
+      const eligible = await checkPreLiveEligible(m);
+      if (eligible) {
+        eligibleMatches.push(m);
+      } else {
+        log('🚫', `Jogo já iniciado — ignorado antes da análise: ${m.match}`, 'yellow');
+      }
+    } catch {
+      eligibleMatches.push(m); // em caso de falha na verificação, mantém o jogo
+    }
+  }
+  if (eligibleMatches.length < matches.length) {
+    log('✅', `${matches.length - eligibleMatches.length} jogo(s) removido(s) por status — ${eligibleMatches.length} restantes`, 'cyan');
   }
 
   // ── ETAPA 2: Funil Pré-Live ───────────────────────────────────────────────
@@ -212,8 +254,18 @@ async function run() {
   let preLiveSent    = 0;
 
   try {
-    preLiveResults = await runPreLiveFunnel(matches, new Map());
+    preLiveResults = await runPreLiveFunnel(eligibleMatches, new Map());
     log('✅', `Pré-Live: ${preLiveResults.length}/${matches.length} com oportunidades`, 'green');
+
+    // Registra métricas por partida no health agent
+    for (const r of preLiveResults) {
+      const odds = r.matchData?.odds || {};
+      health.recordMatch({
+        match:         r.matchData?.match || '',
+        oddsColetadas: Object.keys(odds).filter(k => odds[k] != null),
+        aprovados:     r.enriched?.length || 0,
+      });
+    }
 
     if (!DRY_RUN) {
       for (const r of preLiveResults) {
@@ -226,8 +278,8 @@ async function run() {
               'prelive'
             );
           }
-          await notifyPreLiveOpportunity(r.matchData, r.enriched);
-          preLiveSent++;
+          const sent = await notifyPreLiveOpportunity(r.matchData, r.enriched);
+          if (sent) preLiveSent++;
           await new Promise(res => setTimeout(res, 1500)); // throttle Telegram
         } catch (e) {
           log('⚠️', `Telegram pré-live falhou: ${e.message}`, 'yellow');
@@ -257,14 +309,23 @@ async function run() {
   } else {
     log('', `  Agregando dados de ${parlayMatches.length} partidas para parlay...`, 'cyan');
 
-    // Garante que o cache Superbet está fresco para enriquecer links das pernas
-    try {
-      log('', '  Verificando cache Superbet (pré-live)...', 'gray');
-      await ensureFresh('prelive');
-      log('', '  Cache Superbet atualizado', 'gray');
-    } catch (e) {
-      log('⚠️', `Cache Superbet falhou: ${e.message}`, 'yellow');
+    // Cache Superbet já foi atualizado na ETAPA 1.5 — reutiliza se ainda fresco (< 10min)
+    if (!superbetFresh) {
+      try {
+        log('', '  Verificando cache Superbet (pré-live)...', 'gray');
+        await ensureFresh('prelive');
+        log('', '  Cache Superbet atualizado', 'gray');
+      } catch (e) {
+        log('⚠️', `Cache Superbet falhou: ${e.message}`, 'yellow');
+      }
     }
+
+    // Índice de resultados quant já computados no funil pré-live (reutiliza, evita re-análise)
+    const preLiveQuantMap = new Map(
+      preLiveResults
+        .filter(r => r.matchData?.sofascore_id || r.matchData?.match_id)
+        .map(r => [String(r.matchData.sofascore_id || r.matchData.match_id), r])
+    );
 
     // Coleta + quant em lotes de 4 para não sobrecarregar as fontes
     const analyses = [];
@@ -273,7 +334,9 @@ async function run() {
       const batch = parlayMatches.slice(i, i + BATCH);
       const results = await Promise.allSettled(
         batch.map(async (m) => {
-          const matchData = await aggregateMatchData({
+          // Reutiliza matchData do funil pré-live se disponível (evita re-aggregação)
+          const cached = preLiveQuantMap.get(String(m.sofascore_id));
+          const matchData = cached?.matchData ?? await aggregateMatchData({
             ...m,
             match_date: m.date?.split('T')[0],
           });
@@ -375,6 +438,9 @@ async function run() {
   console.log(chalk.white(`  Super Odds: pipeline executado com ${parlayMatchIds.length || 0} partidas`));
   if (DRY_RUN) console.log(chalk.yellow('  [DRY-RUN] Nenhuma notificação enviada ao Telegram'));
   console.log('═'.repeat(70) + '\n');
+
+  // ── Health Agent: finaliza métricas e alerta admin se necessário ───────────
+  await health.finishRun({ sent: preLiveSent, opportunities: preLiveResults.length }).catch(() => {});
 }
 
 // ── Exporta para uso pelo scheduler ───────────────────────────────────────────

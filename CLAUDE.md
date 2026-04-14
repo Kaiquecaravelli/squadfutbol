@@ -1,6 +1,6 @@
 # CLAUDE.md — Squadfutbol Project Brain
 
-**Índice virtual do projeto.** Atualizado: 2026-04-11
+**Índice virtual do projeto.** Atualizado: 2026-04-12
 **Regra:** máximo 200 linhas. Se crescer → split em `docs/CLAUDE-part2.md`.
 
 ## 🎯 Foco Atual
@@ -42,8 +42,11 @@
 | `npm run pie-diag` | Diagnóstico completo com metas |
 | `npm run collect-auto` | Coleta SofaScore + injeta PIE |
 | `npm run train-week` | Treina últimos 7 dias |
+| `npm run sb-cache` | Testa cache PRÉ-LIVE Superbet |
+| `npm run sb-cache-live` | Testa cache AO VIVO Superbet |
 
 ## 🧠 Arquivos Principais
+- `src/scrapers/superbet-cache.js` — cache de URLs diretas Superbet (TTL 20min/5min)
 - `scripts/daily-pipeline.js` — orquestrador da rotina diária
 - `scripts/scheduler.js` — cron automático (08h/13h/dom 21h)
 - `scripts/result-backfill.js` — fecha loop de feedback via SofaScore
@@ -65,6 +68,7 @@ SofaScore API → sofascore-collector.js → data/daily-matches/YYYY-MM-DD.json
 - EV esperado ≥ 8%
 - Odds no sweet spot do mercado
 - Confiança do modelo ≥ 75
+- **URL Superbet direta obrigatória** — sem link = análise bloqueada (ETAPA 4.5)
 
 ## 🛡️ Protocolos Ativos
 - **Token Economy:** zero filler, markdown hierarchy, ≤200 linhas/doc

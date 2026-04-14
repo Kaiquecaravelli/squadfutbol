@@ -76,12 +76,17 @@
     "pm2-stop": "pm2 stop all",
     "pm2-status": "pm2 list",
     "pm2-logs": "pm2 logs --lines 50",
-    "idle-mode": "powershell -ExecutionPolicy Bypass -File scripts/idle-mode.ps1",
-    "idle-restore": "powershell -ExecutionPolicy Bypass -File scripts/idle-restore.ps1",
+    "idle-mode": "powershell -ExecutionPolicy Bypass -WindowStyle Hidden -NonInteractive -File scripts/idle-mode.ps1",
+    "idle-restore": "powershell -ExecutionPolicy Bypass -WindowStyle Hidden -NonInteractive -File scripts/idle-restore.ps1",
     "morning": "node scripts/morning-message.js",
     "morning-dry": "node scripts/morning-message.js --dry",
     "engagement": "node scripts/engagement-stats.js",
-    "engagement-week": "node scripts/engagement-stats.js --days=7"
+    "engagement-week": "node scripts/engagement-stats.js --days=7",
+    "radar": "node scripts/games-radar.js",
+    "radar-dry": "node scripts/games-radar.js --dry",
+    "radar-top5": "node scripts/games-radar.js --top=5",
+    "radar-json": "node scripts/games-radar.js --json",
+    "fix-signals": "node scripts/fix-resend-signals.js"
   },
   "dependencies": {
     "axios": "^1.7.2",

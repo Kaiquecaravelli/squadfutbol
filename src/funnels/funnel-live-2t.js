@@ -11,6 +11,7 @@ import { getLiveMatches, collectLiveMatchData } from '../scrapers/sofascore-live
 import { Live2TAgent } from '../../squads/betting-analysis/market-agents/Live2TAgent.js';
 import { saveLiveOpportunity } from '../utils/obsidian.js';
 import { checkSuperbetLiveEligibility } from '../scrapers/superbet.js';
+import { lookupMatchUrl } from '../scrapers/superbet-cache.js';
 
 const MIN_PROBABILITY   = parseInt(process.env.LIVE2T_MIN_PROBABILITY   || '80');
 const MIN_CONFIDENCE    = parseInt(process.env.LIVE2T_MIN_CONFIDENCE    || '80');
@@ -174,6 +175,19 @@ async function _analyzeMatch(match, notifiedKeys) {
   // Salva oportunidades live 2T no Obsidian
   if (novos.length) {
     saveLiveOpportunity(liveData, novos, 'live-2t');
+  }
+
+  // Enriquece liveData com URL direta da Superbet (cache AO VIVO)
+  if (!liveData.superbet_url) {
+    liveData.superbet_url = lookupMatchUrl(
+      liveData.home?.team || match.home_team,
+      liveData.away?.team || match.away_team,
+      'live'
+    ) || lookupMatchUrl(
+      liveData.home?.team || match.home_team,
+      liveData.away?.team || match.away_team,
+      'prelive'
+    );
   }
 
   // Anexa dados do jogo para uso posterior (Telegram notify)

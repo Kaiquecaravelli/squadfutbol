@@ -447,7 +447,8 @@ export async function handleGuardianCommand(update) {
   const cmdClean = cmd.toLowerCase().split('@')[0];
 
   const adminCmds = ['/proteger', '/lock', '/desbloquear', '/unlock', '/ban', '/kick',
-                     '/admins', '/status', '/guardian', '/link', '/pendentes', '/myid', '/stats'];
+                     '/admins', '/status', '/guardian', '/link', '/pendentes', '/myid', '/stats',
+                     '/pie-semanal'];
   if (!adminCmds.includes(cmdClean)) return false;
 
   // /myid — qualquer membro pode usar
@@ -574,20 +575,168 @@ export async function handleGuardianCommand(update) {
 
     case '/status':
     case '/guardian': {
-      const db   = _loadDB();
-      const chat = await api('getChat', { chat_id: chatId });
-      const prot = chat?.has_protected_content ? '🔒 Ativo' : '🔓 Inativo';
-      const pend = Object.keys(db.pendingRequests || {}).length;
+      const db      = _loadDB();
+      const chat    = await api('getChat', { chat_id: chatId });
+      const prot    = chat?.has_protected_content ? '🔒 Ativo' : '🔓 Inativo';
+      const pend    = Object.keys(db.pendingRequests || {}).length;
       const adminId = ADMIN_NOTIFY_ID();
-      await sendMsg(chatId,
-        `🛡️ <b>Status do Guardian</b>\n\n` +
-        `Conteúdo protegido: <b>${prot}</b>\n` +
-        `Pedidos pendentes: <b>${pend}</b>\n` +
-        `Admin notificações: <b>${adminId ? `✅ ID ${adminId}` : '⚠️ Não configurado'}</b>\n` +
-        `Banidos: <b>${db.bannedUsers?.length || 0}</b>\n` +
-        `Membros: <b>${chat?.member_count ?? '—'}</b>\n\n` +
-        `<i>/link — gerar convite com aprovação | /pendentes — ver fila</i>`
-      );
+
+      const lines = [
+        `🛡️ <b>Status do Guardian</b>`,
+        ``,
+        `Conteúdo protegido: <b>${prot}</b>`,
+        `Pedidos pendentes: <b>${pend}</b>`,
+        `Admin notificações: <b>${adminId ? `✅ ID ${adminId}` : '⚠️ Não configurado'}</b>`,
+        `Banidos: <b>${db.bannedUsers?.length || 0}</b>`,
+        `Membros: <b>${chat?.member_count ?? '—'}</b>`,
+      ];
+
+      // ── Seção PIE ─────────────────────────────────────────────────────────
+      try {
+        const pieDB = JSON.parse(readFileSync(join(ROOT, 'data/pie.json'), 'utf-8'));
+        const cal   = pieDB.calibration || {};
+
+        // Total outcomes e taxa global
+        let totalOutcomes = 0;
+        let totalHits     = 0;
+        const marketList  = [];
+
+        for (const [market, data] of Object.entries(cal)) {
+          const t = data.total || 0;
+          const h = data.hits  || 0;
+          totalOutcomes += t;
+          totalHits     += h;
+          if (t >= 30) {
+            marketList.push({ market, total: t, rate: t > 0 ? h / t : 0 });
+          }
+        }
+
+        const globalRate = totalOutcomes > 0
+          ? `${(totalHits / totalOutcomes * 100).toFixed(1)}%`
+          : '—';
+
+        // Top 3 mercados por calibração
+        marketList.sort((a, b) => b.rate - a.rate);
+        const top3 = marketList.slice(0, 3)
+          .map(m => `  • ${m.market}: ${(m.rate * 100).toFixed(1)}% (${m.total})`)
+          .join('\n') || '  (sem dados suficientes)';
+
+        lines.push(``);
+        lines.push(`📊 <b>PIE</b>`);
+        lines.push(`Outcomes: <b>${totalOutcomes}</b> · Taxa global: <b>${globalRate}</b>`);
+        lines.push(`Top mercados:\n${top3}`);
+      } catch {}
+
+      // ── Seção Análises pendentes ───────────────────────────────────────────
+      try {
+        const analyses = JSON.parse(readFileSync(join(ROOT, 'data/pending-analyses.json'), 'utf-8'));
+        const list      = Array.isArray(analyses) ? analyses : Object.values(analyses);
+        const now       = Date.now();
+        const h24       = 24 * 60 * 60 * 1000;
+
+        const pending   = list.filter(a => !a.result);
+        const resolved  = list.filter(a => a.result && a.resolvedAt && (now - new Date(a.resolvedAt).getTime()) < h24);
+        const greens    = resolved.filter(a => a.result === 'GREEN').length;
+        const reds      = resolved.filter(a => a.result === 'RED').length;
+
+        lines.push(``);
+        lines.push(`🔍 <b>Análises</b>`);
+        lines.push(`Pendentes de resultado: <b>${pending.length}</b>`);
+        lines.push(`Resolvidas (24h): <b>${resolved.length}</b> — ✅ ${greens} GREEN · ❌ ${reds} RED`);
+      } catch {}
+
+      // ── Seção Próximos jogos ───────────────────────────────────────────────
+      try {
+        const health = JSON.parse(readFileSync(join(ROOT, 'data/pipeline-health.json'), 'utf-8'));
+        const runs   = Array.isArray(health) ? health : (health.runs || []);
+        const last   = runs[runs.length - 1] || health;
+
+        if (last && (last.aprovados || last.matches_details?.length)) {
+          const details = (last.matches_details || []).slice(0, 5);
+          const matchLines = details
+            .map(m => `  • ${m.match || m.home + ' x ' + m.away || '?'} (${m.market || ''}${m.ev ? ` EV:${m.ev}%` : ''})`)
+            .join('\n');
+
+          lines.push(``);
+          lines.push(`⚽ <b>Próximos jogos aprovados</b> (último run: ${last.aprovados ?? details.length})`);
+          if (matchLines) lines.push(matchLines);
+        }
+      } catch {}
+
+      lines.push(``);
+      lines.push(`<i>/link — gerar convite com aprovação | /pendentes — ver fila</i>`);
+
+      await sendMsg(chatId, lines.join('\n'));
+      break;
+    }
+
+    case '/pie-semanal': {
+      const snapshotPath = join(ROOT, 'data/pie-snapshots.jsonl');
+      if (!existsSync(snapshotPath)) {
+        await sendMsg(chatId, `⚠️ Nenhum snapshot encontrado em <code>data/pie-snapshots.jsonl</code>.`);
+        break;
+      }
+
+      let snapshots;
+      try {
+        snapshots = readFileSync(snapshotPath, 'utf-8')
+          .split('\n')
+          .filter(l => l.trim())
+          .map(l => JSON.parse(l));
+      } catch (e) {
+        await sendMsg(chatId, `⚠️ Erro ao ler snapshots: ${e.message}`);
+        break;
+      }
+
+      if (!snapshots.length) {
+        await sendMsg(chatId, `⚠️ Arquivo de snapshots está vazio.`);
+        break;
+      }
+
+      // Seleciona até 4 snapshots (1 por semana — domingos ou últimos N disponíveis)
+      const weekly = snapshots
+        .filter(s => {
+          if (!s.ts) return false;
+          const d = new Date(s.ts);
+          return d.getDay() === 0; // domingos
+        });
+
+      // Se não há domingos suficientes, pega os últimos 4 disponíveis
+      const selected = (weekly.length >= 2 ? weekly : snapshots).slice(-4);
+
+      const lines = [`📈 <b>Evolução PIE — Últimas ${selected.length} semanas</b>`, ``];
+
+      for (const snap of selected) {
+        const date  = new Date(snap.ts).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' });
+        const cal   = snap.calibration || {};
+        const stats = snap.stats || {};
+
+        // Calcula totais do snapshot
+        let total  = stats.total  || 0;
+        let acertos = stats.acertos || 0;
+        if (!total) {
+          for (const d of Object.values(cal)) {
+            total   += d.total || 0;
+            acertos += d.hits  || 0;
+          }
+        }
+        const taxa = total > 0 ? `${(acertos / total * 100).toFixed(1)}%` : '—';
+
+        // Top 3 mercados do snapshot
+        const markets = Object.entries(cal)
+          .filter(([, d]) => (d.total || 0) >= 30)
+          .map(([m, d]) => ({ m, rate: d.total > 0 ? d.hits / d.total : 0, total: d.total }))
+          .sort((a, b) => b.rate - a.rate)
+          .slice(0, 3)
+          .map(x => `    ${x.m}: ${(x.rate * 100).toFixed(1)}% (${x.total})`)
+          .join('\n') || '    (sem dados)';
+
+        lines.push(`📅 <b>${date}</b> — ${total} outcomes · ${taxa}`);
+        lines.push(markets);
+        lines.push(``);
+      }
+
+      await sendMsg(chatId, lines.join('\n'));
       break;
     }
   }

@@ -1,0 +1,152 @@
+name: betting-analysis
+version: "1.0.0"
+description: Squad completo de análise de apostas esportivas com dados em tempo real, análise tática, quantitativa, notícias e gestão de risco para bet365 e betano.
+author: Synkra AIOS
+icon: "⚽"
+
+agents:
+  - id: betting-master
+    file: agents/betting-master.md
+    role: lead
+
+  # Agentes operacionais do pipeline principal
+  - id: scout
+    file: agents/scout.md
+    role: member
+  - id: news-analyst
+    file: agents/news-analyst.md
+    role: member
+  - id: tactician
+    file: agents/tactician.md
+    role: member
+  - id: quant
+    file: agents/quant.md
+    role: member
+  - id: odds-tracker
+    file: agents/odds-tracker.md
+    role: member
+  - id: risk-manager
+    file: agents/risk-manager.md
+    role: member
+  - id: reporter
+    file: agents/reporter.md
+    role: member
+
+  # Sharp Agents — Conselho Independente de Lendas
+  # Executados via: node squads/betting-analysis/test-squad.js
+  - id: rebelo
+    file: sharp-agents/RebeloAgent.js
+    prompt: prompts/rebelo.txt
+    role: sharp
+    specialty: Arbitragem e Exchange Trading
+    model: gemini|openai
+    persona: Paulo Rebelo
+    output_schema: rebelo_logic
+
+  - id: bloom
+    file: sharp-agents/BloomAgent.js
+    prompt: prompts/bloom.txt
+    role: sharp
+    specialty: Probabilidade Estatística e Volume (High-Frequency)
+    model: gemini|openai
+    persona: Tony Bloom
+    output_schema: bloom_insight
+
+  - id: benham
+    file: sharp-agents/BenhamAgent.js
+    prompt: prompts/benham.txt
+    role: sharp
+    specialty: Métricas Avançadas e Value Oculto (xG Analysis)
+    model: gemini|openai
+    persona: Matthew Benham
+    output_schema: benham_insight
+
+  - id: webb
+    file: sharp-agents/WebbAgent.js
+    prompt: prompts/webb.txt
+    role: sharp
+    specialty: Scalping e Microestrutura de Mercado
+    model: gemini|openai
+    persona: Peter Webb
+    output_schema: webb_insight
+
+  - id: ranogajac
+    file: sharp-agents/RanogajacAgent.js
+    prompt: prompts/ranogajac.txt
+    role: sharp
+    specialty: Volume Astronômico e Arbitragem Global
+    model: gemini|openai
+    persona: Zeljko Ranogajac
+    output_schema: ranogajec_insight
+
+  - id: voulgaris
+    file: sharp-agents/VoulgarisAgent.js
+    prompt: prompts/voulgaris.txt
+    role: sharp
+    specialty: Modelagem Contextual e Closing Line Value
+    model: gemini|openai
+    persona: Haralabos Voulgaris
+    output_schema: voulgaris_insight
+
+  - id: walters
+    file: sharp-agents/WaltersAgent.js
+    prompt: prompts/walters.txt
+    role: sharp
+    specialty: Sharp Money e Timing de Mercado
+    model: gemini|openai
+    persona: Billy Walters
+    output_schema: walters_insight
+
+tasks:
+  - id: collect-data
+    file: tasks/collect-data.md
+    agent: scout
+  - id: fetch-news
+    file: tasks/fetch-news.md
+    agent: news-analyst
+  - id: analyze-tactical
+    file: tasks/analyze-tactical.md
+    agent: tactician
+  - id: analyze-quantitative
+    file: tasks/analyze-quantitative.md
+    agent: quant
+  - id: track-odds
+    file: tasks/track-odds.md
+    agent: odds-tracker
+  - id: assess-risk
+    file: tasks/assess-risk.md
+    agent: risk-manager
+  - id: generate-report
+    file: tasks/generate-report.md
+    agent: reporter
+  - id: full-analysis
+    file: tasks/full-analysis.md
+    agent: betting-master
+
+workflows:
+  - id: full-match-analysis
+    file: workflows/full-match-analysis.md
+  - id: live-monitoring
+    file: workflows/live-monitoring.md
+  - id: daily-scan
+    file: workflows/daily-scan.md
+
+config:
+  platforms:
+    - bet365
+    - betano
+  news_api:
+    provider: newsapi
+    endpoint: https://newsapi.org/v2/everything
+    categories: [sports, football, soccer]
+  default_sport: football
+  default_leagues:
+    - Premier League
+    - La Liga
+    - Serie A
+    - Bundesliga
+    - Ligue 1
+    - Champions League
+    - Brasileirão
+  analysis_depth: full
+  auto_flow: true

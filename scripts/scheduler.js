@@ -29,6 +29,7 @@ import { runResultChecker } from './result-checker.js';
 // ── Lock anti-overlap ──────────────────────────────────────────────────────────
 // Evita que duas execuções simultâneas corrompam o PIE
 let isRunning = false;
+const PIPELINE_TIMEOUT_MS = 55 * 60_000; // 55 minutos — libera lock se pipeline travar
 
 async function safePipeline(label, opts = {}) {
   if (isRunning) {
@@ -37,11 +38,21 @@ async function safePipeline(label, opts = {}) {
   }
   isRunning = true;
   console.log(chalk.bold.cyan(`\n[${ts()}] 🚀 Iniciando: ${label}`));
+
+  // Watchdog — libera lock automaticamente se pipeline travar
+  const watchdog = setTimeout(() => {
+    if (isRunning) {
+      console.error(chalk.red(`[${ts()}] ⏰ TIMEOUT — ${label} travou há mais de 55min; liberando lock`));
+      isRunning = false;
+    }
+  }, PIPELINE_TIMEOUT_MS);
+
   try {
     await runDailyPipeline(opts);
   } catch (err) {
     console.error(chalk.red(`[${ts()}] ❌ ${label} — erro: ${err.message}`));
   } finally {
+    clearTimeout(watchdog);
     isRunning = false;
     console.log(chalk.green(`[${ts()}] ✅ ${label} — concluído\n`));
   }
@@ -76,9 +87,9 @@ console.log('  Rotinas programadas:');
 console.log('  🌅 05:45 diário  → Mensagem de bom dia + resumo do dia anterior');
 console.log('  📡 06:00 diário  → Pipeline histórico (calibração PIE)');
 console.log('  📡 13:00 diário  → Pipeline histórico extra (tarde)');
-console.log('  🔵 07,10,14,17h  → PRÉ-LIVE: oportunidades 6-24h antes do kickoff');
+console.log('  🔵 07-22h (cada 30min) → PRÉ-LIVE + Super Odds: 32 varreduras/dia');
 console.log('  🟢 */1h          → LIVE: verificação Superbet + análise 2° Tempo');
-console.log('  🔍 */30 min      → Verificação de resultados GREEN/RED');
+console.log('  🔍 */5 min       → Verificação de resultados GREEN/RED');
 console.log('  📊 21:00 domingo → Relatório semanal');
 console.log('  💡 Ctrl+C para parar\n');
 
@@ -107,6 +118,34 @@ cron.schedule('0 13 * * *', async () => {
   await safePipeline('Pipeline Extra 13h', { datesBack: 1 });
 }, { timezone: 'America/Sao_Paulo' });
 
+// ── GAMES RADAR — top jogos do dia ────────────────────────────────────────────
+// Executado às 07:15 (após pipeline 06:00) e às 12:30 (resumo da tarde)
+async function safeRadar(label) {
+  console.log(chalk.bold.yellow(`\n[${ts()}] 📡 ${label}`));
+  try {
+    const { execFileSync } = await import('child_process');
+    execFileSync(process.execPath, ['scripts/games-radar.js'], {
+      cwd:         new URL('..', import.meta.url).pathname.replace(/^\//, ''),
+      stdio:       'inherit',
+      timeout:     60_000,
+      windowsHide: true,
+    });
+    console.log(chalk.yellow(`[${ts()}] ✅ ${label} — concluído\n`));
+  } catch (e) {
+    console.error(chalk.red(`[${ts()}] ❌ ${label} — erro: ${e.message}`));
+  }
+}
+
+// Radar matutino — todos os dias às 07:15 (após pipeline 06:00)
+cron.schedule('15 7 * * *', async () => {
+  await safeRadar('Games Radar — Top jogos do dia (07:15)');
+}, { timezone: 'America/Sao_Paulo' });
+
+// Radar da tarde — todos os dias às 12:30 (antes do pipeline extra das 13:00)
+cron.schedule('30 12 * * *', async () => {
+  await safeRadar('Games Radar — Atualização da tarde (12:30)');
+}, { timezone: 'America/Sao_Paulo' });
+
 // ── PRÉ-LIVE — busca oportunidades 6-24h antes do kickoff ─────────────────────
 // Executado às 07:00, 10:00, 14:00, 17:00 para cobrir todas as grades do dia
 let _preLiveRunning = false;
@@ -129,14 +168,26 @@ async function safePreLive(label) {
   }
 }
 
-cron.schedule('0 7,10,14,17 * * *', async () => {
+// Executa a cada 30min das 07h às 22h — 32 varreduras/dia (janela 3-24h)
+cron.schedule('*/30 7-22 * * *', async () => {
   const h = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-  await safePreLive(`Pipeline PRÉ-LIVE ${h} (janela 6-24h)`);
+  await safePreLive(`Pipeline PRÉ-LIVE + Super Odds ${h} (janela 3-24h)`);
 }, { timezone: 'America/Sao_Paulo' });
 
 // ── LIVE — verifica Superbet a cada 1h e analisa jogos em andamento ────────────
 // Refresca o cache LIVE (playwright), depois executa o funil 2° Tempo
 const _liveNotifiedKeys = new Map();
+
+// Cleanup diário do Map de notificações live — evita memory leak após meses de execução
+setInterval(() => {
+  const cutoff = Date.now() - 24 * 3_600_000; // entradas > 24h
+  for (const [key, ts] of _liveNotifiedKeys) {
+    if (ts < cutoff) _liveNotifiedKeys.delete(key);
+  }
+  if (_liveNotifiedKeys.size > 0) {
+    console.log(chalk.gray(`[Scheduler] 🧹 _liveNotifiedKeys limpo — ${_liveNotifiedKeys.size} entradas ativas`));
+  }
+}, 6 * 3_600_000); // a cada 6h
 
 cron.schedule('0 * * * *', async () => {
   const h = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
@@ -210,8 +261,8 @@ cron.schedule('0 21 * * 0', async () => {
   }
 }, { timezone: 'America/Sao_Paulo' });
 
-// Verificação de resultados GREEN/RED — a cada 30 minutos
-cron.schedule('*/30 * * * *', async () => {
+// Verificação de resultados GREEN/RED — a cada 5 minutos
+cron.schedule('*/5 * * * *', async () => {
   console.log(chalk.cyan(`\n[${ts()}] 🔍 Verificando resultados pendentes (GREEN/RED)...`));
   try {
     await runResultChecker();
@@ -271,5 +322,5 @@ setInterval(async () => {
 // Mantém processo vivo
 console.log(chalk.gray(`[${ts()}] 💓 Scheduler iniciado — aguardando horários agendados...`));
 console.log(chalk.bold.green(`[${ts()}] 🛡️  Group Guardian ativo — polling a cada 10s`));
-console.log(chalk.blue(`[${ts()}] 🔵 PRÉ-LIVE ativo — varredura às 07h, 10h, 14h, 17h (janela 6-24h)`));
+console.log(chalk.blue(`[${ts()}] 🔵 PRÉ-LIVE + Super Odds — varredura cada 30min (07-22h) | 32×/dia`));
 console.log(chalk.green(`[${ts()}] 🟢 LIVE ativo — Superbet verificado a cada 1h`));

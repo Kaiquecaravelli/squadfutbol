@@ -23,6 +23,7 @@ import { readFileSync, writeFileSync, mkdirSync } from 'fs';
 import { join, dirname }           from 'path';
 import { fileURLToPath }           from 'url';
 import chalk                       from 'chalk';
+import { resolveTeamName }         from '../utils/team-aliases.js';
 
 const __dirname  = dirname(fileURLToPath(import.meta.url));
 const CACHE_PATH = join(__dirname, '../../data/superbet-url-cache.json');
@@ -269,8 +270,13 @@ export function lookupMatchUrl(homeTeam, awayTeam, type = 'prelive') {
   const hSlug = _norm(homeTeam);
   const aSlug = _norm(awayTeam);
 
-  // Nível 1 — Slug exato
-  const exact = entries.find(e => e.home === hSlug && e.away === aSlug);
+  // Resolve aliases para aumentar chance de match
+  const hResolved = _norm(resolveTeamName(homeTeam));
+  const aResolved = _norm(resolveTeamName(awayTeam));
+
+  // Nível 1 — Slug exato (tenta original e, se diferente, o nome resolvido via alias)
+  const exact = entries.find(e => e.home === hSlug && e.away === aSlug)
+    || (hResolved !== hSlug ? entries.find(e => e.home === hResolved && e.away === aResolved) : null);
   if (exact) return exact.url;
 
   // Nível 2 — Palavra-chave (primeira palavra significativa ≥4 chars)
@@ -299,14 +305,25 @@ export function lookupMatchUrl(homeTeam, awayTeam, type = 'prelive') {
   });
   if (fragMatch) return fragMatch.url;
 
-  // Nível 4 — altNames da API (matchName como "Flamengo · Palmeiras")
+  // Nível 4 — altNames da API (formato "Home·Away")
+  // Verifica ordem: home no primeiro segmento, away no segundo — evita false-positives
+  // com e-sports (ex: "PSG (Haidan)·Liverpool (Beckham)" não deve resolver Liverpool vs PSG)
   const hNorm = homeTeam.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
   const aNorm = awayTeam.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const hKey  = hNorm.split(/[\s-]/)[0];
+  const aKey  = aNorm.split(/[\s-]/)[0];
 
   const altMatch = entries.find(e =>
     e.altNames?.some(n => {
-      const nn = n.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-      return nn.includes(hNorm.split(/\s/)[0]) && nn.includes(aNorm.split(/\s/)[0]);
+      const parts = n.split('·');
+      if (parts.length < 2) {
+        // Sem separador: fallback tolerante (mantém comportamento anterior)
+        const nn = n.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        return nn.includes(hKey) && nn.includes(aKey);
+      }
+      const h = parts[0].toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      const a = parts[1].toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      return h.includes(hKey) && a.includes(aKey);
     })
   );
   if (altMatch) return altMatch.url;

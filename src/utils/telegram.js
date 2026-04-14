@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { readFileSync, writeFileSync, mkdirSync } from 'fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { randomUUID } from 'crypto';
@@ -16,6 +16,15 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const SEP_HEAVY = '<b>━━━━━━━━━━━━━━━━</b>';  // separador principal
 const SEP_LIGHT = '<b>━━━━━━━━━━━━━━━━</b>';   // separador secundário
 const BR        = '';                   // linha em branco
+
+/** Escapa caracteres HTML especiais em dados externos (nomes de times, ligas, etc.) */
+function _esc(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
 
 /** Links diretos por competição no Superbet (superbet.bet.br) */
 const SUPERBET_COMPETITION_LINKS = {
@@ -114,8 +123,8 @@ function isConfigured() {
 
 /** Janela de tempo em ms para considerar mensagem como duplicada (padrão: 10 min) */
 const DEDUP_WINDOW_MS      = Number(process.env.TELEGRAM_DEDUP_WINDOW_MS) || 10 * 60 * 1000;
-/** Janela de dedup estendida para mensagens live — evita reenvio entre ciclos de 10min */
-const DEDUP_WINDOW_LIVE_MS = 25 * 60 * 1000; // 25 min (cobre 2 ciclos de scan + margem)
+/** Janela de dedup estendida para mensagens live — cobre ciclo de monitoramento + folga */
+const DEDUP_WINDOW_LIVE_MS = 90 * 60 * 1000; // 90 min (evita duplicata mesmo se placar mudar)
 
 // ─────────────────────────────────────────────────────────────
 // RASTREAMENTO DE ANÁLISES PENDENTES — para feedback GREEN/RED
@@ -151,11 +160,15 @@ function _savePendingDb(entries) {
  * @param {string}   [meta.gameTime]    — ISO string do horário do jogo
  */
 export function savePendingAnalysis(meta) {
-  if (!meta?.msgId || !meta?.match) return;
+  // msgId pode ser null apenas em sinais retroativos (meta.retroactive = true)
+  if (!meta?.match) return;
+  if (meta.msgId === 0) return;  // msgId=0 é falha parcial do Telegram — não registrar
+  if (!meta.msgId && !meta.retroactive) return;  // sem ID e não retroativo — ignorar
+
   const entries = _loadPendingDb();
 
   // Deduplicação: se já existe entrada pending com mesmo sofascoreId + market,
-  // ATUALIZA o msgId (caso a mensagem tenha sido substituída pelo dedup do Telegram)
+  // ATUALIZA msgId E outros campos relevantes (odds podem ter chegado depois)
   if (meta.sofascoreId && meta.market) {
     const existing = entries.find(e =>
       e.status === 'pending' &&
@@ -163,11 +176,23 @@ export function savePendingAnalysis(meta) {
       e.market === meta.market
     );
     if (existing) {
-      if (existing.msgId !== meta.msgId) {
-        existing.msgId   = meta.msgId;
-        existing.sentAt  = new Date().toISOString();
-        _savePendingDb(entries);
+      let changed = false;
+      if (meta.msgId && existing.msgId !== meta.msgId) {
+        existing.msgId  = meta.msgId;
+        existing.sentAt = new Date().toISOString();
+        changed = true;
       }
+      // Atualiza odds se chegaram agora
+      if (meta.odds != null && existing.odds == null) {
+        existing.odds = meta.odds;
+        changed = true;
+      }
+      // Atualiza messageText se chegou agora
+      if (meta.messageText && !existing.messageText) {
+        existing.messageText = meta.messageText;
+        changed = true;
+      }
+      if (changed) _savePendingDb(entries);
       return;
     }
   }
@@ -346,7 +371,7 @@ export async function notifyResultFeedback(opts) {
     editOk = await editMessage(msgId, edited);
   }
 
-  // Se edição falhou (mensagem muito antiga, apagada, etc.) — envia reply
+  // Se edição falhou (mensagem muito antiga, apagada, etc.) — envia reply ou standalone
   let resultMsgId = null;
   if (!editOk) {
     const fallbackLines = [
@@ -360,7 +385,14 @@ export async function notifyResultFeedback(opts) {
       ``,
       `🤖  <i>Betting Analysis Squad</i>`,
     ].filter(l => l !== undefined);
-    resultMsgId = await sendReply(msgId, fallbackLines.join('\n'));
+
+    if (msgId) {
+      // Tem ID original — tenta reply
+      resultMsgId = await sendReply(msgId, fallbackLines.join('\n'));
+    } else {
+      // Sem ID original (sinal retroativo) — envia mensagem standalone
+      resultMsgId = await send(fallbackLines.join('\n'));
+    }
     if (resultMsgId) _trackResultMessage(resultMsgId);
   } else {
     // Edição OK — rastreia msgId original como resultado (não apaga mais)
@@ -486,9 +518,12 @@ async function send(text, options = {}) {
       return db[key].msgId;
     }
     // Mensagem normal: apaga antiga, envia nova (atualização)
+    // Aguarda o delete completar ANTES de remover do DB — evita mensagens órfãs
     console.warn(`[Telegram] Duplicata detectada — removendo mensagem anterior (msg_id: ${db[key].msgId})`);
-    await _deleteOldMessage(db[key].msgId);
+    const oldMsgId = db[key].msgId;
     delete db[key];
+    _saveSentDb(db);  // persiste remoção antes do delete (protege contra crash)
+    await _deleteOldMessage(oldMsgId);
   }
 
   try {
@@ -526,14 +561,18 @@ function formatDateTime(dateStr) {
 function formatDate(dateStr) {
   if (!dateStr) return '';
   try {
-    return new Date(dateStr).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+    return new Date(dateStr).toLocaleDateString('pt-BR', {
+      weekday: 'short', day: '2-digit', month: '2-digit', timeZone: 'America/Sao_Paulo',
+    });
   } catch { return dateStr; }
 }
 
 function formatTime(dateStr) {
   if (!dateStr) return '—';
   try {
-    return new Date(dateStr).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    return new Date(dateStr).toLocaleTimeString('pt-BR', {
+      hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo',
+    });
   } catch { return dateStr; }
 }
 
@@ -719,13 +758,13 @@ export async function notifyMiniGrade(approvedMatches) {
   const byComp = _groupByComp(approvedMatches, (r) => r.matchData?.competition);
 
   for (const [comp, items] of byComp) {
-    lines.push(`🏆  <b>${comp}</b>`);
+    lines.push(`🏆  <b>${_esc(comp)}</b>`);
     for (const { idx, matchData } of items) {
       const hora  = matchData.match_time || (matchData.date ? formatTime(matchData.date) : '—');
       const [h, a] = (matchData.match || '').split(' vs ');
       const label  = h && a
-        ? `<b>${h.trim()}</b>  vs  <b>${a.trim()}</b>`
-        : `<b>${matchData.match}</b>`;
+        ? `<b>${_esc(h.trim())}</b>  vs  <b>${_esc(a.trim())}</b>`
+        : `<b>${_esc(matchData.match)}</b>`;
       lines.push(`  #${idx}  ·  ⏰  ${hora}  —  ${label}`);
     }
     lines.push(BR);
@@ -763,7 +802,7 @@ export async function notifyMarketAnalysis(matchData, approvedResults) {
     `🟢  <b>PRÉ-LIVE</b>`,
     SEP_HEAVY,
     `⚽  ${matchLabel}`,
-    comp ? `🏆  <b>${comp}</b>  ·  ⏰  ${hora}${data ? '  ·  📅  ' + data : ''}` : `⏰  ${hora}${data ? '  ·  📅  ' + data : ''}`,
+    comp ? `🏆  <b>${_esc(comp)}</b>  ·  📅  ${data}  ·  ⏰  ${hora}` : `📅  ${data}  ·  ⏰  ${hora}`,
     BR,
   ];
 
@@ -869,8 +908,8 @@ export async function notifyMatchOpportunity(matchData, report) {
     `${icon}  <b>${recLabel}</b>`,
     SEP_HEAVY,
     BR,
-    `🏆  <b>${comp}</b>`,
-    `⚽  <b>${matchData.match}</b>`,
+    `🏆  <b>${_esc(comp)}</b>`,
+    `⚽  <b>${_esc(matchData.match)}</b>`,
     `📅  ${matchDateTime}`,
     BR,
     `🎯  <b>MELHOR  MERCADO</b>`,
@@ -1162,7 +1201,31 @@ export async function notifyPIEStats(stats) {
   lines.push(BR, SEP_HEAVY);
   lines.push(`🤖  <i>${new Date().toLocaleString('pt-BR')}  ·  Betting Analysis Squad</i>`);
 
-  await send(lines.join('\n'));
+  // Envia SOMENTE ao admin via DM — não expõe métricas internas no grupo
+  const adminId = process.env.TELEGRAM_ADMIN_USER_ID;
+  const token   = process.env.TELEGRAM_BOT_TOKEN;
+  if (!adminId || !token) return;
+
+  // Dedup de 6 horas — impede spam de stats com múltiplos restarts / pipelines
+  const statsLockPath = join(__dirname, '../../data/pie-stats-sent.json');
+  const STATS_COOLDOWN_MS = 6 * 60 * 60_000; // 6 horas
+  try {
+    if (existsSync(statsLockPath)) {
+      const lock = JSON.parse(readFileSync(statsLockPath, 'utf8'));
+      if (Date.now() - (lock.ts || 0) < STATS_COOLDOWN_MS) {
+        console.log('[Telegram] notifyPIEStats ignorado — já enviado há menos de 6h');
+        return;
+      }
+    }
+  } catch {}
+
+  await axios.post(`https://api.telegram.org/bot${token}/sendMessage`, {
+    chat_id:    adminId,
+    text:       lines.join('\n'),
+    parse_mode: 'HTML',
+  }).catch(() => {});
+
+  try { writeFileSync(statsLockPath, JSON.stringify({ ts: Date.now() }), 'utf8'); } catch {}
 }
 
 // ═════════════════════════════════════════════════════════════════
@@ -1211,7 +1274,7 @@ export async function notifyPreLiveAnalysis(analysis, opts = {}) {
     `<b>🔵  PRÉ-LIVE</b>`,
     `<b>🏆  ${comp.toUpperCase()}</b>`,
     `<b>⚽️  ${homeStr}  vs  ${awayStr}</b>`,
-    `<b>⏰  ${hora}${data ? '  ·  📅  ' + data : ''}${horaStr}</b>`,
+    `<b>📅  ${data}  ·  ⏰  ${hora}${horaStr}</b>`,
     BR,
     SEP_HEAVY,
     BR,
@@ -1292,13 +1355,13 @@ export async function notifyLiveSecondHalf(liveData, opportunities, opts = {}) {
 
   const [homeRaw, awayRaw] = match.split(' vs ');
   const matchBold = homeRaw && awayRaw
-    ? `<b>${homeRaw.trim()}  vs  ${awayRaw.trim()}</b>`
-    : `<b>${match}</b>`;
+    ? `<b>${_esc(homeRaw.trim())}  vs  ${_esc(awayRaw.trim())}</b>`
+    : `<b>${_esc(match)}</b>`;
 
   const lines = [
     `<b>🔴  AO VIVO  ·  2° TEMPO</b>`,
-    comp ? `<b>🏆  ${comp.toUpperCase()}</b>` : null,
-    `<b>⚽️  ${homeRaw?.trim() || match}  vs  ${awayRaw?.trim() || ''}</b>`,
+    comp ? `<b>🏆  ${_esc(comp.toUpperCase())}</b>` : null,
+    `<b>⚽️  ${_esc(homeRaw?.trim() || match)}  vs  ${_esc(awayRaw?.trim() || '')}</b>`,
     `<b>⏱  ${min}'  ·  Placar:  ${placarFmt}${restam !== '?' ? `  ·  ${restam}' restantes` : ''}</b>`,
   ].filter(Boolean);
 
@@ -1382,10 +1445,11 @@ export async function notifyLiveSecondHalf(liveData, opportunities, opts = {}) {
  * Retorna URL da competição na Superbet.
  * Prioridade: URL direta da partida → página da competição → futebol geral.
  */
-function _superbetCompUrl() {
-  // Página de futebol do Superbet (URL válida confirmada pelo scraper interno).
-  // Links de partida específica só existem quando há odds coletadas (leg.superbet_url).
-  return 'https://superbet.bet.br/apostas/futebol';
+function _superbetCompUrl(comp = '') {
+  const key = (comp || '').toLowerCase();
+  return Object.entries(SUPERBET_COMPETITION_LINKS)
+    .find(([k]) => key.includes(k))?.[1]
+    ?? SUPERBET_FALLBACK;
 }
 
 // ═════════════════════════════════════════════════════════════════
@@ -1731,15 +1795,29 @@ export async function notifyAgentMiniUpdate(report, matchName) {
 export async function notifyPreLiveOpportunity(matchData, markets) {
   if (!isConfigured() || !markets?.length) return;
 
+  // Regra obrigatória: análise só enviada com link direto Superbet confirmado
+  if (!matchData.superbet_url) {
+    console.log(`[Telegram] PRÉ-LIVE bloqueado — sem URL Superbet para: ${matchData.match || '?'}`);
+    return null;
+  }
+
   const hora = matchData.date
-    ? new Date(matchData.date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+    ? new Date(matchData.date).toLocaleTimeString('pt-BR', {
+        hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo',
+      })
     : '—';
+
+  const data = matchData.date
+    ? new Date(matchData.date).toLocaleDateString('pt-BR', {
+        weekday: 'short', day: '2-digit', month: '2-digit', timeZone: 'America/Sao_Paulo',
+      })
+    : '';
 
   const lines = [
     `🟢  <b>PRÉ-LIVE</b>`,
     SEP_HEAVY,
-    `⚽  <b>${matchData.match}</b>`,
-    `🏆  ${matchData.competition || '—'}  ·  ⏰  ${hora}`,
+    `⚽  <b>${_esc(matchData.match)}</b>`,
+    `🏆  ${_esc(matchData.competition || '—')}  ·  📅  ${data}  ·  ⏰  ${hora}`,
     BR,
     SEP_LIGHT,
     `<b>🎯  OPORTUNIDADES PRÉ-JOGO</b>`,
@@ -1793,13 +1871,33 @@ export async function notifyPreLiveOpportunity(matchData, markets) {
 
   lines.push(_buildLegenda(markets));
   lines.push(SEP_LIGHT);
-  // Usa URL direta do jogo (Playwright) se disponível; senão fallback por competição
-  lines.push(_houseLink('Superbet', matchData.competition || '', matchData.superbet_url || null));
+  lines.push(_houseLink('Superbet', '', matchData.superbet_url));
   lines.push(`🤖  <i>Betting Analysis Squad</i>`);
 
   // Chave estável: match + mercados + recomendações (ignora horário dinâmico do rodapé)
-  const dedupKeyPre = `prelive|${matchData.match}|${markets.map((m) => `${m.market || m.mercado}:${m.recomendacao}`).join(',')}`;
-  await send(lines.join('\n'), { dedupKey: dedupKeyPre, dedupWindowMs: DEDUP_WINDOW_LIVE_MS });
+  const dedupKeyPre   = `prelive|${matchData.match}|${markets.map((m) => `${m.market || m.mercado}:${m.recomendacao}`).join(',')}`;
+  const msgIdPreLive  = await send(lines.join('\n'), { dedupKey: dedupKeyPre, dedupWindowMs: DEDUP_WINDOW_LIVE_MS });
+  const msgTextPreLive = lines.join('\n');
+
+  // Registra cada mercado para fechamento de ciclo GREEN/RED automático
+  if (msgIdPreLive) {
+    for (const m of markets) {
+      savePendingAnalysis({
+        msgId:         msgIdPreLive,
+        type:          'prelive',
+        match:         matchData.match,
+        competition:   matchData.competition || null,
+        sofascoreId:   String(matchData.match_id || matchData.sofascore_id || matchData.event_id || ''),
+        market:        m.market || m.mercado || '',
+        prediction:    String(m.recomendacao || 'Sim'),
+        probabilidade: m.probabilidade ?? 0,
+        confianca:     m.confianca ?? 0,
+        odds:          m.odds_minima ?? null,
+        gameTime:      matchData.date ?? null,
+        messageText:   msgTextPreLive,
+      });
+    }
+  }
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -1850,12 +1948,32 @@ export async function notifyLive2TOpportunity(liveData, markets) {
 
   lines.push(_buildLegenda(markets));
   lines.push(SEP_LIGHT);
-  lines.push(_houseLink('Superbet', liveData.competition || ''));
+  lines.push(_houseLink('Superbet', liveData.competition || '', liveData.superbet_url || null));
   lines.push(`🤖  <i>Betting Analysis Squad</i>`);
 
   // Chave estável: match + placar — se o placar mudar, deleta antiga e envia nova
-  const dedupKey2T = `live_jogo|${liveData.match}|${placar}`;
-  await send(lines.join('\n'), { dedupKey: dedupKey2T, dedupWindowMs: DEDUP_WINDOW_LIVE_MS });
+  const dedupKey2T  = `live_jogo|${liveData.match}|${placar}`;
+  const msgId2T     = await send(lines.join('\n'), { dedupKey: dedupKey2T, dedupWindowMs: DEDUP_WINDOW_LIVE_MS });
+  const msgText2T   = lines.join('\n');
+
+  if (msgId2T) {
+    for (const m of markets) {
+      savePendingAnalysis({
+        msgId:         msgId2T,
+        type:          'live_2t',
+        match:         liveData.match,
+        competition:   liveData.competition || null,
+        sofascoreId:   String(liveData.match_id || liveData.sofascore_id || liveData.event_id || ''),
+        market:        m.mercado || m.market || '',
+        prediction:    String(m.recomendacao || 'Sim'),
+        probabilidade: m.probabilidade ?? 0,
+        confianca:     m.confianca ?? 0,
+        odds:          m.odds_minima ?? null,
+        gameTime:      liveData.date ?? null,
+        messageText:   msgText2T,
+      });
+    }
+  }
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -1911,12 +2029,32 @@ export async function notifyLiveOpportunity(liveData, markets) {
 
   lines.push(_buildLegenda(markets));
   lines.push(SEP_LIGHT);
-  lines.push(_houseLink('Superbet', liveData.competition || ''));
+  lines.push(_houseLink('Superbet', liveData.competition || '', liveData.superbet_url || null));
   lines.push(`🤖  <i>Betting Analysis Squad</i>`);
 
   // Chave no nível do jogo: qualquer funil que notifique esse match+placar será bloqueado como duplicata
-  const dedupKeyLive = `live_jogo|${liveData.match}|${placar}`;
-  await send(lines.join('\n'), { dedupKey: dedupKeyLive, dedupWindowMs: DEDUP_WINDOW_LIVE_MS });
+  const dedupKeyLive  = `live_jogo|${liveData.match}|${placar}`;
+  const msgIdLive     = await send(lines.join('\n'), { dedupKey: dedupKeyLive, dedupWindowMs: DEDUP_WINDOW_LIVE_MS });
+  const msgTextLive   = lines.join('\n');
+
+  if (msgIdLive) {
+    for (const m of markets) {
+      savePendingAnalysis({
+        msgId:         msgIdLive,
+        type:          'live',
+        match:         liveData.match,
+        competition:   liveData.competition || null,
+        sofascoreId:   String(liveData.match_id || liveData.sofascore_id || liveData.event_id || ''),
+        market:        m.mercado || m.market || '',
+        prediction:    String(m.recomendacao || 'Sim'),
+        probabilidade: m.probabilidade ?? 0,
+        confianca:     m.confianca ?? 0,
+        odds:          m.odds_minima ?? null,
+        gameTime:      liveData.date ?? null,
+        messageText:   msgTextLive,
+      });
+    }
+  }
 }
 
 // Resumo de scan live (quantos jogos / oportunidades)

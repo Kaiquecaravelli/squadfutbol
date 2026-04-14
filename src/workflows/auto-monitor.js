@@ -56,6 +56,7 @@ import {
 } from '../utils/obsidian.js';
 import { status as memStatus, wakeUp as memWakeUp, kgAdd, diaryWrite } from '../utils/mempalace.js';
 import { loadAnalysisHistory, persistAnalysisHistory } from '../utils/history-store.js';
+import { checkPreLiveEligible } from '../utils/match-status-guard.js';
 
 import { BTTSAgent }         from '../../squads/betting-analysis/market-agents/BTTSAgent.js';
 import { GoalsAgent }        from '../../squads/betting-analysis/market-agents/GoalsAgent.js';
@@ -441,6 +442,11 @@ async function fetchAndAnalyze() {
 
   // 3. Análise detalhada + persistência de cada jogo aprovado
   for (const r of allApproved) {
+    // ── Gate de status em tempo real ──────────────────────────────────────────
+    // Rejeita envio se o jogo já começou ou terminou desde a análise
+    const eligible = await checkPreLiveEligible(r.matchData).catch(() => true);
+    if (!eligible) continue;
+
     // Guarda o message_id para apagar a mensagem após o resultado
     const msgId = await notifyMarketAnalysis(r.matchData, r.enriched).catch(() => null);
 
@@ -860,9 +866,10 @@ function _reindexMemPalace() {
   const PYTHON = process.env.MEMPALACE_PYTHON
     || 'C:\\Users\\PCHOME01\\AppData\\Local\\Programs\\Python\\Python312\\python.exe';
   execFile(PYTHON, ['-m', 'mempalace', 'mine', '.'], {
-    cwd: join(__dirname, '../../'),
-    env: { ...process.env, PYTHONUTF8: '1', PYTHONIOENCODING: 'utf-8' },
-    timeout: 60_000,
+    cwd:         join(__dirname, '../../'),
+    env:         { ...process.env, PYTHONUTF8: '1', PYTHONIOENCODING: 'utf-8' },
+    timeout:     60_000,
+    windowsHide: true,
   }, (err) => {
     if (!err) console.log(chalk.gray('  🧠 MemPalace: re-indexação concluída'));
   });

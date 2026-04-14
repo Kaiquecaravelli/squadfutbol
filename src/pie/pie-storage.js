@@ -3,7 +3,7 @@
  * Camada de persistência: predições, resultados, lições, calibração e logs de agentes.
  */
 
-import { readFileSync, writeFileSync, appendFileSync, existsSync } from 'fs';
+import { readFileSync, writeFileSync, appendFileSync, existsSync, copyFileSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { randomUUID } from 'crypto';
@@ -11,6 +11,7 @@ import { randomUUID } from 'crypto';
 const __dir   = dirname(fileURLToPath(import.meta.url));
 const DB_PATH       = join(__dir, '../../data/pie.json');
 const SNAPSHOT_PATH = join(__dir, '../../data/pie-snapshots.jsonl');
+const LESSONS_PATH  = join(__dir, '../../data/pie-lessons.json');
 
 // ── DB Schema ─────────────────────────────────────────────────────────────────
 const EMPTY_DB = () => ({
@@ -24,23 +25,69 @@ const EMPTY_DB = () => ({
   stats: { total: 0, acertos: 0, erros: 0, nao_verificaveis: 0 },
 });
 
+// ── Helpers para pie-lessons.json separado ────────────────────────────────────
+function _loadLessons() {
+  if (!existsSync(LESSONS_PATH)) return [];
+  try {
+    const data = JSON.parse(readFileSync(LESSONS_PATH, 'utf-8'));
+    return Array.isArray(data) ? data : [];
+  } catch {
+    return [];
+  }
+}
+
+function _saveLessons(lessons) {
+  writeFileSync(LESSONS_PATH, JSON.stringify(Array.isArray(lessons) ? lessons : [], null, 2), 'utf-8');
+}
+
 export function loadDB() {
   if (!existsSync(DB_PATH)) {
     const db = EMPTY_DB();
-    writeFileSync(DB_PATH, JSON.stringify(db, null, 2), 'utf-8');
+    writeFileSync(DB_PATH, JSON.stringify({ ...db, lessons: [] }, null, 2), 'utf-8');
+    _saveLessons([]);
     return db;
   }
-  const db = JSON.parse(readFileSync(DB_PATH, 'utf-8'));
+  let db;
+  try {
+    db = JSON.parse(readFileSync(DB_PATH, 'utf-8'));
+  } catch (e) {
+    console.error(`[PIE] pie.json corrompido: ${e.message} — restaurando backup`);
+    const bak = DB_PATH + '.backup';
+    if (existsSync(bak)) {
+      try { db = JSON.parse(readFileSync(bak, 'utf-8')); }
+      catch { db = EMPTY_DB(); }
+    } else {
+      db = EMPTY_DB();
+    }
+  }
   // Migração: garante campos novos em DBs antigos
   if (!db.calibration)        db.calibration        = {};
   if (!db.agentLogs)          db.agentLogs          = [];
   if (!db.positivePatterns)   db.positivePatterns   = [];
   if (!db.model_improvements) db.model_improvements = [];
+
+  // Migração automática: se pie.json ainda tem lições e pie-lessons.json ainda não existe
+  if (Array.isArray(db.lessons) && db.lessons.length > 0 && !existsSync(LESSONS_PATH)) {
+    console.log(`[PIE] Migrando ${db.lessons.length} lições para pie-lessons.json...`);
+    _saveLessons(db.lessons);
+    db.lessons = [];
+    writeFileSync(DB_PATH, JSON.stringify({ ...db, lessons: [] }, null, 2), 'utf-8');
+    console.log('[PIE] Migração concluída. pie.json aliviado.');
+  }
+
+  // Sempre carrega lições do arquivo separado
+  db.lessons = _loadLessons();
   return db;
 }
 
 function saveDB(db) {
-  writeFileSync(DB_PATH, JSON.stringify(db, null, 2), 'utf-8');
+  // Backup antes de escrever — protege contra crash durante gravação
+  try { if (existsSync(DB_PATH)) copyFileSync(DB_PATH, DB_PATH + '.backup'); } catch {}
+  // Extrai lições antes de salvar pie.json
+  const { lessons, ...dbWithoutLessons } = db;
+  _saveLessons(lessons || []);
+  // Salva pie.json sem as lições (mas mantém campo vazio para compatibilidade de schema)
+  writeFileSync(DB_PATH, JSON.stringify({ ...dbWithoutLessons, lessons: [] }, null, 2), 'utf-8');
 }
 
 function _probRange(prob) {
@@ -85,8 +132,11 @@ export function savePrediction({ idx, matchData, markets, sofascoreId, kickoffTi
       probabilidade:  m.probabilidade,
       confianca:      m.confianca || 0,
       odds_minima:    m.odds_minima || null,
-      ev_estimado:    m.odds_minima
-        ? Number(((m.probabilidade / 100) * m.odds_minima - 1) * 100).toFixed(1)
+      ev_estimado:    (m.odds_minima && m.probabilidade != null && !isNaN(m.probabilidade))
+        ? (() => {
+            const ev = ((Number(m.probabilidade) / 100) * Number(m.odds_minima) - 1) * 100;
+            return isNaN(ev) ? null : Number(ev.toFixed(1));
+          })()
         : null,
     })),
     created_at: new Date().toISOString(),
@@ -117,14 +167,22 @@ export function saveAgentLog({ predictionId, matchName, competition, matchDate, 
 
 // ── Salvar resultado real e atualizar calibração ──────────────────────────────
 export function saveResult({ predictionId, matchName, placarReal, marketOutcomes, competition = '' }) {
+  // Validações de entrada
+  if (!matchName || typeof matchName !== 'string') return null;
+  if (!Array.isArray(marketOutcomes) || !marketOutcomes.length) return null;
+
+  // Valida formato do placar (ex: "2-1", "0-0")
+  const placarValido = /^\d{1,2}-\d{1,2}$/.test(placarReal || '');
+  const placarFinal  = placarValido ? placarReal : null;
+
   const db = loadDB();
   const id = randomUUID();
 
   db.results.push({
     id,
-    prediction_id:   predictionId,
+    prediction_id:   predictionId || null,
     match_name:      matchName,
-    placar_real:     placarReal,
+    placar_real:     placarFinal,
     competition:     competition || '',
     market_outcomes: marketOutcomes,
     registered_at:   new Date().toISOString(),
@@ -138,16 +196,20 @@ export function saveResult({ predictionId, matchName, placarReal, marketOutcomes
 
   // Atualizar calibração e stats globais
   for (const o of marketOutcomes) {
+    if (!o.market) continue; // ignora outcomes sem mercado definido
+
     if (o.acertou === true)       db.stats.acertos++;
     else if (o.acertou === false) db.stats.erros++;
     else                          db.stats.nao_verificaveis = (db.stats.nao_verificaveis || 0) + 1;
 
-    if (o.acertou !== null) {
-      _updateCalibration(db, o.market, o.probabilidade, o.acertou, comp);
+    const prob = (o.probabilidade != null && !isNaN(o.probabilidade)) ? Number(o.probabilidade) : null;
+    if (o.acertou !== null && prob !== null) {
+      _updateCalibration(db, o.market, prob, o.acertou, comp);
     }
   }
 
   saveDB(db);
+  invalidateCalibrationCache(); // cache desatualizado após novo resultado
   return id;
 }
 
@@ -207,8 +269,8 @@ function _updateCalibration(db, market, prob, acertou, competition) {
 
 // ── Fator de calibração — viés do agente neste mercado/faixa ─────────────────
 export function getCalibrationFactor(market, prob) {
-  const db    = loadDB();
-  const calib = db.calibration[normalizeMarketKey(market)] || db.calibration[market];
+  const calibration = _getCalibrationDB();
+  const calib = calibration[normalizeMarketKey(market)] || calibration[market];
   if (!calib || calib.total < 5) return null; // sem dados suficientes
 
   const range = _probRange(Number(prob) || 0);
@@ -220,10 +282,30 @@ export function getCalibrationFactor(market, prob) {
   return { accuracy: (byR.hits / byR.total * 100).toFixed(1), samples: byR.total, range };
 }
 
+// ── Cache de calibração em memória — evita leituras repetidas de pie.json ────
+let _calibrationCache = null;
+let _calibrationCacheTs = 0;
+const CALIBRATION_CACHE_TTL = 5 * 60_000; // 5 min
+
+function _getCalibrationDB() {
+  if (_calibrationCache && Date.now() - _calibrationCacheTs < CALIBRATION_CACHE_TTL) {
+    return _calibrationCache;
+  }
+  const db = loadDB();
+  _calibrationCache = db.calibration || {};
+  _calibrationCacheTs = Date.now();
+  return _calibrationCache;
+}
+
+/** Invalida o cache de calibração — chamar após saveResult/batchSaveAnalysis */
+export function invalidateCalibrationCache() {
+  _calibrationCache = null;
+}
+
 // ── Estatísticas completas de calibração para um agente ──────────────────────
 export function getAgentCalibration(market) {
-  const db    = loadDB();
-  const calib = db.calibration[normalizeMarketKey(market)] || db.calibration[market];
+  const calibration = _getCalibrationDB();
+  const calib = calibration[normalizeMarketKey(market)] || calibration[market];
   if (!calib || calib.total === 0) return null;
 
   const overall = (calib.hits / calib.total * 100).toFixed(1);
@@ -455,6 +537,7 @@ export function batchSaveAnalysis(analyses, predId) {
   }
 
   saveDB(db);
+  invalidateCalibrationCache(); // cache desatualizado após batch de análises
   return db;
 }
 

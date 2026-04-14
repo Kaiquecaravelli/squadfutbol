@@ -15,19 +15,27 @@
 import 'dotenv/config';
 import axios from 'axios';
 import chalk from 'chalk';
+import { readFileSync, writeFileSync } from 'fs';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
 import {
   getPendingAnalyses,
   resolvePendingAnalysis,
   notifyResultFeedback,
   getAllPendingAnalyses,
 } from '../src/utils/telegram.js';
+import { resolveTeamName } from '../src/utils/team-aliases.js';
 import { saveResult, getPendingPredictions } from '../src/pie/pie-storage.js';
 import { isObsidianConfigured, updateAnaliseNoteResult } from '../src/utils/obsidian.js';
 
-const DRY_RUN        = process.argv.includes('--dry-run');
-const SOFASCORE_BASE = 'https://api.sofascore.com/api/v1';
-const DELAY_MS       = 1200;
-const HEADERS        = {
+const ROOT               = join(dirname(fileURLToPath(import.meta.url)), '..');
+const DRY_RUN            = process.argv.includes('--dry-run');
+const SOFASCORE_BASE     = 'https://api.sofascore.com/api/v1';
+const DELAY_MS           = 1200;
+const MAX_RETRIES        = 10;
+const FAILED_CHECKS_PATH = join(ROOT, 'data/failed-checks.json');
+const PENDING_PATH       = join(ROOT, 'data/pending-analyses.json');
+const HEADERS            = {
   'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
   'Accept':     'application/json',
   'Referer':    'https://www.sofascore.com/',
@@ -38,44 +46,59 @@ const HEADERS        = {
 function determineOutcome(market, prediction, score, entry = {}) {
   if (score.home == null || score.away == null) return null;
 
-  const total = score.home + score.away;
+  // Usa placar do tempo normal (90min) — ignora prorrogação/pênaltis
+  const homeGoals = score.normaltime_home ?? score.home;
+  const awayGoals = score.normaltime_away ?? score.away;
+  const total = homeGoals + awayGoals;
   const rec   = String(prediction || '').toUpperCase().trim();
   const mkt   = (market || '').toUpperCase();
 
+  // ── Gols Over/Under ──────────────────────────────────────────────────────────
   if (market.includes('Over 0.5'))  return total > 0;
   if (market.includes('Over 1.5'))  return total > 1;
   if (market.includes('Over 2.5'))  return total > 2;
   if (market.includes('Over 3.5'))  return total > 3;
   if (market.includes('Over 4.5'))  return total > 4;
+  if (market.includes('Over 5.5'))  return total > 5;
+  if (market.includes('Under 0.5')) return total < 1;
   if (market.includes('Under 1.5')) return total < 2;
   if (market.includes('Under 2.5')) return total < 3;
+  if (market.includes('Under 3.5')) return total < 4;
+  if (market.includes('Under 4.5')) return total < 5;
 
+  // ── BTTS / Ambas Marcam ──────────────────────────────────────────────────────
   if (mkt.includes('BTTS') || mkt.includes('AMBAS')) {
-    const bttsOk = score.home > 0 && score.away > 0;
+    const bttsOk = homeGoals > 0 && awayGoals > 0;
     if (rec === 'NÃO' || rec === 'NAO' || rec === 'NO' || rec === 'NÃO MARCAM') return !bttsOk;
     return bttsOk;
   }
 
-  // Mercados genéricos de home/away — verificados ANTES do bloco "Resultado Final {time}"
-  // para evitar que "Resultado Final Casa/Fora" seja interceptado pelo matcher genérico
-  if (mkt.includes('RESULTADO FINAL CASA') || market.includes('Home Win') || market === '1') return score.home > score.away;
-  if (mkt.includes('RESULTADO FINAL FORA') || market.includes('Away Win') || market === '2') return score.away > score.home;
-  if (market.includes('Draw') || market === 'X') return score.home === score.away;
+  // ── Resultado — genéricos home/away verificados ANTES de "Resultado Final {time}" ──
+  if (mkt.includes('RESULTADO FINAL CASA') || mkt.includes('HOME WIN') || market === '1')
+    return homeGoals > awayGoals;
+  if (mkt.includes('RESULTADO FINAL FORA') || mkt.includes('AWAY WIN') || market === '2')
+    return awayGoals > homeGoals;
+  if (mkt.includes('DRAW') || mkt.includes('EMPATE') || market === 'X')
+    return homeGoals === awayGoals;
 
-  // "Resultado Final {time}" — verifica qual time venceu pelo nome no mercado
+  // ── "Resultado Final {time}" — identifica time pelo nome ────────────────────
   if (mkt.includes('RESULTADO FINAL')) {
     const [homeTeam, awayTeam] = (entry.match || '').split(/\s+vs\s+/i);
-    // Extrai o nome do time do mercado: "Resultado Final Boca Juniors" → "Boca Juniors"
     const teamInMarket = market.replace(/resultado final/i, '').trim().toLowerCase();
-    const isHomeTeam = homeTeam && homeTeam.toLowerCase().includes(teamInMarket.slice(0, 6));
-    const isAwayTeam = awayTeam && awayTeam.toLowerCase().includes(teamInMarket.slice(0, 6));
-    if (isHomeTeam) return score.home > score.away;
-    if (isAwayTeam) return score.away > score.home;
-    // Se não identificou o time, usa a recomendação
-    if (rec === 'APOSTAR' || rec === 'SIM') return score.home !== score.away;
+    if (teamInMarket.length >= 3) {
+      const isHomeTeam = homeTeam && homeTeam.toLowerCase().includes(teamInMarket.slice(0, 6));
+      const isAwayTeam = awayTeam && awayTeam.toLowerCase().includes(teamInMarket.slice(0, 6));
+      if (isHomeTeam) return homeGoals > awayGoals;
+      if (isAwayTeam) return awayGoals > homeGoals;
+    }
+    // Time não identificado no mercado — não verificável
+    return null;
   }
-  if (market === '1X' || market.includes('Dupla Chance 1X')) return score.home >= score.away;
-  if (market === 'X2' || market.includes('Dupla Chance X2')) return score.away >= score.home;
+
+  // ── Dupla Chance ─────────────────────────────────────────────────────────────
+  if (market === '1X' || mkt.includes('DUPLA CHANCE 1X')) return homeGoals >= awayGoals;
+  if (market === 'X2' || mkt.includes('DUPLA CHANCE X2')) return awayGoals >= homeGoals;
+  if (market === '12' || mkt.includes('DUPLA CHANCE 12')) return homeGoals !== awayGoals;
 
   return null;
 }
@@ -92,8 +115,9 @@ async function fetchByEventId(sofascoreId) {
     const status = event.status?.type;
     if (status !== 'finished') return { status, score: null };
 
-    const home = event.homeScore?.current ?? event.homeScore?.normaltime;
-    const away = event.awayScore?.current ?? event.awayScore?.normaltime;
+    // Usa placar do tempo normal (90min) — preferência sobre current que inclui prorrogação
+    const home = event.homeScore?.normaltime ?? event.homeScore?.current;
+    const away = event.awayScore?.normaltime ?? event.awayScore?.current;
     if (home == null || away == null) return { status, score: null };
 
     return {
@@ -101,47 +125,126 @@ async function fetchByEventId(sofascoreId) {
       score:  { home: Number(home), away: Number(away) },
       label:  `${event.homeTeam?.name} ${home}-${away} ${event.awayTeam?.name}`,
     };
-  } catch { return null; }
+  } catch (err) {
+    if (err.response?.status === 429 || err.response?.status === 503)
+      return { status: 'rate_limited', score: null, retryAfter: 60_000 };
+    return null;
+  }
 }
 
-// ── Busca por nome do jogo + data atual (quando sem sofascoreId) ──────────────
+// ── Busca por nome do jogo + data (tenta data fornecida ±1 dia) ──────────────
 async function fetchByMatchName(matchName, dateStr) {
-  try {
-    const date = (dateStr || new Date().toISOString()).split('T')[0];
-    const { data } = await axios.get(`${SOFASCORE_BASE}/sport/football/scheduled-events/${date}`, {
-      headers: HEADERS, timeout: 8000,
-    });
-    const events = data?.events || [];
+  const [homeSearch, awaySearch] = (matchName || '').split(/\s+vs\s+/i);
+  if (!homeSearch || !awaySearch) return null;
 
-    const [homeSearch, awaySearch] = (matchName || '').split(/\s+vs\s+/i);
-    if (!homeSearch || !awaySearch) return null;
+  const hKey = homeSearch.toLowerCase().trim();
+  const aKey = awaySearch.toLowerCase().trim();
 
-    const found = events.find(e => {
-      const hn = (e.homeTeam?.name || '').toLowerCase();
-      const an = (e.awayTeam?.name || '').toLowerCase();
-      return (
-        hn.includes(homeSearch.toLowerCase().slice(0, 6)) &&
-        an.includes(awaySearch.toLowerCase().slice(0, 6))
-      );
-    });
+  // Resolve aliases (ex: "PSG" → "paris saint-germain")
+  const hResolved = resolveTeamName(hKey);
+  const aResolved = resolveTeamName(aKey);
 
-    if (!found) return null;
-    if (found.status?.type !== 'finished') return { status: found.status?.type, score: null };
+  // Gera janela de datas: data fornecida + dia anterior + dia seguinte
+  const base = new Date((dateStr || new Date().toISOString()).split('T')[0] + 'T00:00:00Z');
+  const dates = [
+    new Date(base.getTime() - 86_400_000).toISOString().split('T')[0],
+    base.toISOString().split('T')[0],
+    new Date(base.getTime() + 86_400_000).toISOString().split('T')[0],
+  ];
 
-    const home = found.homeScore?.current;
-    const away = found.awayScore?.current;
-    if (home == null || away == null) return null;
+  for (const date of dates) {
+    try {
+      const { data } = await axios.get(`${SOFASCORE_BASE}/sport/football/scheduled-events/${date}`, {
+        headers: HEADERS, timeout: 8000,
+      });
+      const events = data?.events || [];
 
-    return {
-      status:      'finished',
-      score:       { home: Number(home), away: Number(away) },
-      label:       `${found.homeTeam?.name} ${home}-${away} ${found.awayTeam?.name}`,
-      sofascoreId: String(found.id),
-    };
-  } catch { return null; }
+      const found = events.find(e => {
+        const hn = (e.homeTeam?.name || '').toLowerCase();
+        const an = (e.awayTeam?.name || '').toLowerCase();
+        // Tenta match com 5 chars (mais tolerante que 6 para nomes curtos)
+        const hMatch = hn.includes(hKey.slice(0, 5)) || hn.includes(hResolved.slice(0, 5));
+        const aMatch = an.includes(aKey.slice(0, 5)) || an.includes(aResolved.slice(0, 5));
+        return hMatch && aMatch;
+      });
+
+      if (!found) continue;
+      if (found.status?.type !== 'finished') {
+        return { status: found.status?.type, score: null };
+      }
+
+      const home = found.homeScore?.normaltime ?? found.homeScore?.current;
+      const away = found.awayScore?.normaltime ?? found.awayScore?.current;
+      if (home == null || away == null) continue;
+
+      return {
+        status:      'finished',
+        score:       { home: Number(home), away: Number(away) },
+        label:       `${found.homeTeam?.name} ${home}-${away} ${found.awayTeam?.name}`,
+        sofascoreId: String(found.id),
+      };
+    } catch (err) {
+      if (err.response?.status === 429 || err.response?.status === 503)
+        return { status: 'rate_limited', score: null, retryAfter: 60_000 };
+      continue;
+    }
+  }
+
+  return null;
 }
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// ── Dead-letter queue ─────────────────────────────────────────────────────────
+function _moveToDeadLetter(entry, reason) {
+  let failed = [];
+  try { failed = JSON.parse(readFileSync(FAILED_CHECKS_PATH, 'utf8')); } catch { /* não existe ainda */ }
+  failed.push({ ...entry, failedAt: new Date().toISOString(), reason, status: 'failed' });
+  writeFileSync(FAILED_CHECKS_PATH, JSON.stringify(failed, null, 2));
+  resolvePendingAnalysis(entry.id, { acertou: null, placarReal: null, resultMsgId: null, pieSaved: false });
+  console.log(chalk.yellow(`[DeadLetter] ${entry.match} [${entry.market}] → ${reason}`));
+}
+
+function _incrementRetries(id) {
+  let pending = [];
+  try { pending = JSON.parse(readFileSync(PENDING_PATH, 'utf8')); } catch { return; }
+  const idx = pending.findIndex(e => e.id === id);
+  if (idx === -1) return;
+  pending[idx].retries = (pending[idx].retries || 0) + 1;
+  writeFileSync(PENDING_PATH, JSON.stringify(pending, null, 2));
+}
+
+function _setNextRetry(id, ts) {
+  let pending = [];
+  try { pending = JSON.parse(readFileSync(PENDING_PATH, 'utf8')); } catch { return; }
+  const idx = pending.findIndex(e => e.id === id);
+  if (idx === -1) return;
+  pending[idx].nextRetry = ts;
+  writeFileSync(PENDING_PATH, JSON.stringify(pending, null, 2));
+}
+
+// ── Health alert ao admin ─────────────────────────────────────────────────────
+let _consecutiveSkips = 0;
+
+async function _notifyAdminHealthAlert(pendingCount, consecutiveSkips) {
+  const token   = process.env.TELEGRAM_BOT_TOKEN;
+  const adminId = process.env.TELEGRAM_ADMIN_USER_ID;
+  if (!token || !adminId) {
+    console.log(chalk.yellow(`[HealthAlert] ${pendingCount} análise(s) sem resolução após ${consecutiveSkips} execuções consecutivas. (TELEGRAM_ADMIN_USER_ID não configurado)`));
+    _consecutiveSkips = 0;
+    return;
+  }
+  const text = `⚠️ Result Checker — ${pendingCount} análise(s) pendente(s) sem resolução após ${consecutiveSkips} execuções consecutivas. SofaScore pode estar instável.`;
+  try {
+    await axios.post(`https://api.telegram.org/bot${token}/sendMessage`, {
+      chat_id: adminId,
+      text,
+    });
+  } catch (e) {
+    console.warn(chalk.yellow(`[HealthAlert] Falha ao enviar DM ao admin: ${e.message}`));
+  }
+  _consecutiveSkips = 0;
+}
 
 // ── Pipeline principal ────────────────────────────────────────────────────────
 // ── Recuperação de PIE: reprocessa resolvidos que não foram gravados ─────────
@@ -215,6 +318,12 @@ export async function runResultChecker() {
   let greens = 0, reds = 0, skipped = 0;
 
   for (const entry of pending) {
+    // Melhoria 2: pula silenciosamente entradas em cooldown de rate-limit
+    if (entry.nextRetry && Date.now() < entry.nextRetry) {
+      skipped++;
+      continue;
+    }
+
     const label = `${entry.match} [${entry.market}]`;
     process.stdout.write(`  → ${label.substring(0, 50).padEnd(50)}  `);
 
@@ -226,14 +335,31 @@ export async function runResultChecker() {
         result = await fetchByEventId(entry.sofascoreId);
       }
 
-      if (!result || result.status !== 'finished') {
+      if (!result || (result.status !== 'finished' && result.status !== 'rate_limited')) {
         // Tenta por nome se não tem ID ou jogo não terminou ainda
         const dateToSearch = entry.gameTime || entry.sentAt;
         result = await fetchByMatchName(entry.match, dateToSearch);
       }
 
+      // Melhoria 2: rate limit detectado
+      if (result?.status === 'rate_limited') {
+        const retryAfter = result.retryAfter || 60_000;
+        _setNextRetry(entry.id, Date.now() + retryAfter);
+        console.log(chalk.gray(`[RateLimit] aguardando ${Math.round(retryAfter / 1000)}s`));
+        skipped++;
+        await sleep(DELAY_MS);
+        continue;
+      }
+
       if (!result) {
-        console.log(chalk.gray('SofaScore indisponível — pular'));
+        // Melhoria 1: dead-letter após MAX_RETRIES tentativas sem resposta
+        entry.retries = (entry.retries || 0) + 1;
+        _incrementRetries(entry.id);
+        if (entry.retries >= MAX_RETRIES) {
+          _moveToDeadLetter(entry, `SofaScore indisponível após ${entry.retries} tentativas`);
+        } else {
+          console.log(chalk.gray(`SofaScore indisponível — pular (tentativa ${entry.retries}/${MAX_RETRIES})`));
+        }
         skipped++;
         await sleep(DELAY_MS);
         continue;
@@ -343,6 +469,16 @@ export async function runResultChecker() {
   console.log('\n' + '═'.repeat(64));
   console.log(`  ✅ GREEN: ${greens}  |  ❌ RED: ${reds}  |  ⏳ Pendentes: ${skipped}`);
   console.log('═'.repeat(64) + '\n');
+
+  // Melhoria 3: health alert ao admin após N execuções sem resolução
+  if (skipped > 0 && greens === 0 && reds === 0) {
+    _consecutiveSkips++;
+  } else if (greens > 0 || reds > 0) {
+    _consecutiveSkips = 0;
+  }
+  if (_consecutiveSkips >= 3 && pending.length > 0) {
+    await _notifyAdminHealthAlert(pending.length, _consecutiveSkips);
+  }
 }
 
 // Executa diretamente quando chamado via CLI

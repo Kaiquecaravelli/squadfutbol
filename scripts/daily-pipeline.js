@@ -167,7 +167,7 @@ async function etapa1_coletar(dates, dryRun) {
     try {
       if (!dryRun) {
         execSync(`node scripts/sofascore-collector.js ${date}`, {
-          stdio: 'pipe', cwd: ROOT,
+          stdio: 'pipe', cwd: ROOT, windowsHide: true,
         });
       }
       log('  ✅', `${date} — coletado`, 'green');
@@ -279,7 +279,7 @@ async function etapa3_injetar(dates, dryRun) {
     try {
       if (!dryRun) {
         const out = execSync(`node scripts/daily-pie-update.js ${date}`, {
-          stdio: 'pipe', cwd: ROOT,
+          stdio: 'pipe', cwd: ROOT, windowsHide: true,
         }).toString();
 
         // Extrai número de jogos processados do output
