@@ -168,6 +168,7 @@ async function etapa1_coletar(dates, dryRun) {
       if (!dryRun) {
         execSync(`node scripts/sofascore-collector.js ${date}`, {
           stdio: 'pipe', cwd: ROOT, windowsHide: true,
+          timeout: 60_000, maxBuffer: 10_000_000,  // FIX: evita travamento por retry infinito
         });
       }
       log('  ✅', `${date} — coletado`, 'green');
@@ -204,59 +205,66 @@ async function etapa2_backfill(dryRun) {
 
   let fechadas = 0, erros = 0;
 
-  for (const pred of ready) {
-    const label = (pred.match_name || pred.match_id || '').substring(0, 45);
+  // FIX: paraleliza em lotes de 5 (era serial com sleep(1000) entre cada — 50 predições = ~1min)
+  // Lotes evitam flood na API SofaScore enquanto reduzem tempo em ~80%
+  const BATCH_SIZE = 5;
 
-    // Busca resultado via SofaScore
+  async function _fetchOnePred(pred) {
     let result = null;
-
     if (pred.sofascore_id) {
       result = await withRetry(() => fetchResult(pred.sofascore_id), { label: `SofaScore result ${pred.sofascore_id}` }).catch(() => null);
     }
-
     if (!result) {
       result = await withRetry(() => trySearchByName(pred.match_name, pred.match_date), { label: `SofaScore search ${pred.match_name}` }).catch(() => null);
     }
+    return { pred, result };
+  }
 
-    if (!result || result.status !== 'finished' || !result.score) {
-      erros++;
-      await sleep(800);
-      continue;
-    }
+  for (let i = 0; i < ready.length; i += BATCH_SIZE) {
+    const batch   = ready.slice(i, i + BATCH_SIZE);
+    const results = await Promise.allSettled(batch.map(_fetchOnePred));
 
-    const { score, stats } = result;
+    for (const settled of results) {
+      if (settled.status === 'rejected') { erros++; continue; }
+      const { pred, result } = settled.value;
+      const label = (pred.match_name || pred.match_id || '').substring(0, 45);
 
-    const marketOutcomes = pred.markets.map(m => ({
-      market:         m.market,
-      recommendation: m.recommendation,
-      probabilidade:  m.probabilidade,
-      acertou:        resolveMarket(m.market, m.recommendation, score, stats),
-    }));
+      if (!result || result.status !== 'finished' || !result.score) { erros++; continue; }
 
-    const verificaveis = marketOutcomes.filter(o => o.acertou !== null);
-    const acertos      = verificaveis.filter(o => o.acertou).length;
+      const { score, stats } = result;
+      const marketOutcomes = pred.markets.map(m => ({
+        market:         m.market,
+        recommendation: m.recommendation,
+        probabilidade:  m.probabilidade,
+        acertou:        resolveMarket(m.market, m.recommendation, score, stats),
+      }));
 
-    if (!dryRun) {
-      try {
-        saveResult({
-          predictionId:   pred.id,
-          matchName:      pred.match_name,
-          placarReal:     `${score.home}-${score.away}`,
-          marketOutcomes,
-        });
+      const verificaveis = marketOutcomes.filter(o => o.acertou !== null);
+      const acertos      = verificaveis.filter(o => o.acertou).length;
+
+      if (!dryRun) {
+        try {
+          saveResult({
+            predictionId:   pred.id,
+            matchName:      pred.match_name,
+            placarReal:     `${score.home}-${score.away}`,
+            marketOutcomes,
+          });
+          fechadas++;
+        } catch { erros++; }
+      } else {
         fechadas++;
-      } catch { erros++; }
-    } else {
-      fechadas++;
+      }
+
+      log(
+        '  ✅',
+        `${label} → ${score.home}-${score.away} | ${acertos}/${verificaveis.length} ✅`,
+        acertos === verificaveis.length ? 'green' : 'yellow'
+      );
     }
 
-    log(
-      '  ✅',
-      `${label} → ${score.home}-${score.away} | ${acertos}/${verificaveis.length} ✅`,
-      acertos === verificaveis.length ? 'green' : 'yellow'
-    );
-
-    await sleep(1000);
+    // Pausa apenas entre lotes (não entre cada predição individual)
+    if (i + BATCH_SIZE < ready.length) await sleep(1200);
   }
 
   log('🔄', `Backfill: ${fechadas} fechadas, ${erros} sem resultado ainda`, 'green');
@@ -280,6 +288,7 @@ async function etapa3_injetar(dates, dryRun) {
       if (!dryRun) {
         const out = execSync(`node scripts/daily-pie-update.js ${date}`, {
           stdio: 'pipe', cwd: ROOT, windowsHide: true,
+          timeout: 90_000, maxBuffer: 10_000_000,  // FIX: PIE update pode ser lento com muitos jogos
         }).toString();
 
         // Extrai número de jogos processados do output
@@ -486,6 +495,7 @@ async function etapa5_telegram(qualified, dryRun) {
       },
       match_name:       pred.match_name,
       confidence_score: m.confianca,
+      probabilidade:    m.probabilidade,  // FIX: campo separado para Prob vs Conf no Telegram
       recommendation:   { action: 'BET' },
       top_bet: {
         market:  m.market,

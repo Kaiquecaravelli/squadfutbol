@@ -34,20 +34,27 @@ const PIE_ODDS_TIERS = [
   { minAccuracy: 74, minProb: 80, minSamples: 20, minOdds: 1.45 },
 ];
 
-// Cache de calibração PIE em memória — atualizado 1x por execução do funil (não por match)
-let _calibCache = null;
+// Cache de calibração PIE em memória por mercado — atualizado 1x por execução do funil
+// FIX: cache era por objeto único (não por mercado) e a função era atribuída sem ser chamada
+let _calibCache = null; // Map<market, calib>
 let _calibCacheTs = 0;
 const CALIB_CACHE_TTL = 5 * 60_000; // 5 min
 
-function _getCalibCache() {
-  if (_calibCache && Date.now() - _calibCacheTs < CALIB_CACHE_TTL) return _calibCache;
-  try { _calibCache = getAgentCalibration; _calibCacheTs = Date.now(); } catch {}
-  return null;
+function _getCalibCached(market) {
+  if (!_calibCache || Date.now() - _calibCacheTs >= CALIB_CACHE_TTL) {
+    _calibCache = new Map();
+    _calibCacheTs = Date.now();
+  }
+  if (!_calibCache.has(market)) {
+    try { _calibCache.set(market, getAgentCalibration(market)); }
+    catch { _calibCache.set(market, null); }
+  }
+  return _calibCache.get(market) ?? null;
 }
 
 function _getDynamicMinOdds(market, probability) {
   try {
-    const calib = getAgentCalibration(market);
+    const calib = _getCalibCached(market);
     if (!calib) return MIN_ODDS;
 
     const accuracy = parseFloat(calib.overall);

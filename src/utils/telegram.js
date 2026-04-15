@@ -1364,6 +1364,8 @@ export async function notifyPreLiveAnalysis(analysis, opts = {}) {
   const matchData = analysis.matchData || {};
   const topBet    = analysis.top_bet   || {};
   const score     = analysis.confidence_score ?? 0;
+  // FIX: probabilidade e confiança são métricas distintas — usar campos separados
+  const prob      = analysis.probabilidade ?? score;
   const comp      = matchData.competition || 'N/A';
 
   const hora = matchData.date ? formatTime(matchData.date) : (matchData.match_time || '—');
@@ -1401,7 +1403,7 @@ export async function notifyPreLiveAnalysis(analysis, opts = {}) {
   ];
 
   if (oddsVal) lines.push(`💰  Odds mínimas:  <b>${oddsVal}</b>`);
-  lines.push(`📈  Prob: ${score}%  ·  🎯  Conf: ${score}%`);
+  lines.push(`📈  Prob: ${prob}%  ·  🎯  Conf: ${score}%`);
 
   if (risco) lines.push(`${risco.icon}  Risco:  <b>${risco.label}</b>`);
   if (pieAccuracy != null) lines.push(`📊  Precisão PIE:  ${pieAccuracy}%`);
@@ -1440,7 +1442,7 @@ export async function notifyPreLiveAnalysis(analysis, opts = {}) {
       sofascoreId:  String(matchData.match_id || matchData.sofascore_id || matchData.event_id || ''),
       market:       topBet.market || '',
       prediction:   _formatRec(topBet.market || '', 'APOSTAR') || 'Sim',
-      probabilidade: score,
+      probabilidade: prob,
       confianca:    score,
       odds:         topBet.odds || null,
       gameTime:     matchData.date || null,
