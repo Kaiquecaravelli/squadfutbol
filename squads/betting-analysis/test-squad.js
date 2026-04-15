@@ -173,7 +173,7 @@ function printSummary(results) {
 
 // ── Runner principal ──────────────────────────────────────────────────────────
 async function runSquad() {
-  const provider = process.env.AI_PROVIDER || 'gemini';
+  const provider = process.env.AI_PROVIDER || 'groq';
   const matchArg = process.argv.find((a) => a.startsWith('--match='));
   const matchLabel = matchArg ? matchArg.split('=')[1] : TEST_MATCH.match;
 

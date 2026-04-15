@@ -48,23 +48,105 @@ const SUPERBET_COMPETITION_LINKS = {
   'libertadores':'https://superbet.bet.br/apostas/futebol/america-do-sul/copa-libertadores/todos',
   'sudamericana': 'https://superbet.bet.br/apostas/futebol/america-do-sul/copa-sudamericana/todos',
 };
-const SUPERBET_FALLBACK = 'https://superbet.bet.br/apostas/futebol/hoje';
+/**
+ * Valida se a URL é específica ao jogo (slug home-x-away-id).
+ *
+ * REGRA: análise só pode ter link se a URL contém o padrão "-x-" do jogo.
+ * URLs genéricas (/hoje, /todos) e páginas de competição são rejeitadas.
+ * Formato válido: /odds/futebol/time-a-x-time-b-{eventId}
+ */
+function _isValidMatchUrl(url) {
+  if (!url || typeof url !== 'string') return false;
+  // Padrão de jogo exige "-x-" no slug E número de eventId no final
+  if (!url.includes('-x-')) return false;
+  // Rejeita genéricos: /hoje e páginas de campeonato (/todos)
+  if (url.endsWith('/hoje') || url.endsWith('/todos')) return false;
+  // Exige que termine com -<número> (eventId obrigatório)
+  if (!/\-\d+$/.test(url)) return false;
+  return true;
+}
 
 /**
- * Gera link para a casa de apostas.
- * @param {string} house      - Nome da casa (ex: 'Superbet')
- * @param {string} [comp]     - Competição (fallback por liga)
- * @param {string} [directUrl]- URL direta já resolvida via Playwright
+ * Verificação estrita: URL específica ao jogo E os slugs dos times batem com a URL.
+ * Evita falsos positivos do matching de cache (ex: São Paulo vs Flamengo ao invés de São Paulo vs O'Higgins).
+ *
+ * @param {string} url
+ * @param {string} homeTeam
+ * @param {string} awayTeam
+ * @returns {boolean}
  */
-function _houseLink(house, comp = '', directUrl = null) {
-  let url = directUrl;
-  if (!url) {
-    const key = (comp || '').toLowerCase();
-    url = Object.entries(SUPERBET_COMPETITION_LINKS)
-      .find(([k]) => key.includes(k))?.[1]
-      ?? SUPERBET_FALLBACK;
+function _isMatchSpecificUrl(url, homeTeam, awayTeam) {
+  if (!_isValidMatchUrl(url)) return false;
+  if (!homeTeam || !awayTeam) return true; // sem times para verificar — aceita se formato OK
+
+  // Extrai slugs do home e away da URL (formato: /futebol/{home}-x-{away}-{id})
+  const m = url.match(/\/futebol\/([a-z0-9][a-z0-9-]*)-x-([a-z0-9][a-z0-9-]*)-\d+/);
+  if (!m) return false;
+
+  const urlHome = m[1].replace(/-/g, '');
+  const urlAway = m[2].replace(/-/g, '');
+
+  // Normaliza nomes dos times para comparação
+  function norm(s) {
+    return (s || '').toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]/g, '');
   }
-  return `<a href="${url}">🔗 Apostar agora → ${house}</a>`;
+
+  const hNorm = norm(homeTeam);
+  const aNorm = norm(awayTeam);
+
+  // Prefixos a ignorar: "fc", "ac", "sc", "bv" etc. que o Superbet não inclui na URL
+  const SHORT_PREFIXES = /^(fc|ac|sc|bv|as|ss|cd|sd|sk|cf|ca|rc|us|ss|ad|sv|fk|if|pk|is|rcd|rca|rac|afe|csd|ura|bsc|csf|sfc|jef|fsc|red)\s*/i;
+
+  // Para cada time, gera candidatos de chave: raw + sem prefixo + cada palavra
+  function _keys(norm_str, raw) {
+    const withoutPrefix = norm(raw.replace(SHORT_PREFIXES, ''));
+    const words = norm_str.split(/(?=[A-Z])/).join('').match(/[a-z]{3,}/g) || [];
+    return [...new Set([
+      norm_str.slice(0, 5),
+      withoutPrefix.slice(0, 5),
+      ...words.map(w => w.slice(0, 5)),
+    ])].filter(k => k.length >= 3);
+  }
+
+  const hKeys = _keys(hNorm, homeTeam);
+  const aKeys = _keys(aNorm, awayTeam);
+
+  // A URL deve conter pelo menos UM dos candidatos de cada time
+  const homeOk = hKeys.some(k => urlHome.startsWith(k) || urlHome.includes(k));
+  const awayOk = aKeys.some(k => urlAway.startsWith(k) || urlAway.includes(k));
+
+  return homeOk && awayOk;
+}
+
+/**
+ * Gera link para a casa de apostas com data/hora do jogo.
+ * Retorna null se a URL não for específica ao jogo — caller deve verificar antes de push.
+ *
+ * @param {string} house       - Nome da casa (ex: 'Superbet')
+ * @param {string} [_comp]     - Competição (mantido por compatibilidade, não usado)
+ * @param {string} [directUrl] - URL direta resolvida via Playwright (obrigatória)
+ * @param {string} [dateStr]   - ISO string do horário do jogo (opcional)
+ * @returns {string|null}
+ */
+function _houseLink(house, _comp = '', directUrl = null, dateStr = null) {
+  if (!_isValidMatchUrl(directUrl)) return null; // sem URL específica = sem link
+
+  let timeLabel = '';
+  if (dateStr) {
+    try {
+      const hora = new Date(dateStr).toLocaleTimeString('pt-BR', {
+        hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo',
+      });
+      const data = new Date(dateStr).toLocaleDateString('pt-BR', {
+        day: '2-digit', month: '2-digit', timeZone: 'America/Sao_Paulo',
+      });
+      timeLabel = `  ·  📅 ${data}  ⏰ ${hora}`;
+    } catch {}
+  }
+
+  return `<a href="${directUrl}">🔗 Apostar agora → ${house}${timeLabel}</a>`;
 }
 
 // Mapa de legendas por tipo de mercado
@@ -84,16 +166,26 @@ const LEGENDA_MAP = {
 function _buildLegenda(results) {
   const itens = new Set();
   for (const r of results) {
-    const m = (r.mercado ?? r.market ?? '').toUpperCase();
-    if (m.includes('BTTS') || m.includes('AMBAS'))                              itens.add('BTTS');
-    if (m.includes('GOLS') || m.includes('TOTAL') || m.includes('OVER') || m.includes('UNDER')) itens.add('GOLS');
-    if (m.includes('ESCANTEIO') || m.includes('CORNER'))                        itens.add('ESCANTEIOS');
-    if (m.includes('CARTÃO') || m.includes('CARTAO') || m.includes('AMARELO')) itens.add('CARTOES');
-    if (m.includes('DUPLA') || m.includes('CHANCE'))                            itens.add('DUPLA');
-    if (m.includes('PLACAR') || m.includes('EXATO'))                            itens.add('PLACAR');
-    if (m.includes('RESULTADO FINAL') || m.includes('RESULTADO MANTIDO'))       itens.add('RESULTADO');
-    if (m.includes('PRÓXIMO GOL') || m.includes('PROXIMO GOL'))                 itens.add('PROXIMO_GOL');
-    if (m.includes('ACRÉSCIMO') || m.includes('ACRESCIMO'))                     itens.add('GOL_ACRESCIMO');
+    // Usa r.market (campo autoritativo do agente) para categoria e r.mercado para valor
+    const cat  = (r.market  ?? '').toUpperCase(); // autoritativo
+    const val  = (r.mercado ?? '').toUpperCase(); // valor LLM
+    const both = `${cat} ${val}`;
+    if (cat.includes('BTTS') || cat.includes('AMBAS') || val.includes('BTTS') || val.includes('AMBAS'))
+      itens.add('BTTS');
+    if (cat.includes('ESCANTEIO') || cat.includes('CORNER') || val.includes('CORNER') || val.includes('ESCANTEIO'))
+      itens.add('ESCANTEIOS');
+    if (cat.includes('CARTÃO') || cat.includes('CARTAO') || cat.includes('AMARELO') || /^YC\b/i.test(cat))
+      itens.add('CARTOES');
+    // GOLS: só se NÃO for escanteio nem cartão (evita mislabel de Over/Under genérico)
+    if ((cat.includes('GOLS') || cat.includes('TOTAL') ||
+         (!cat && (val.includes('OVER') || val.includes('UNDER')))) &&
+        !itens.has('ESCANTEIOS') && !itens.has('CARTOES'))
+      itens.add('GOLS');
+    if (both.includes('DUPLA') || both.includes('CHANCE'))                      itens.add('DUPLA');
+    if (both.includes('PLACAR') || both.includes('EXATO'))                      itens.add('PLACAR');
+    if (both.includes('RESULTADO FINAL') || both.includes('RESULTADO MANTIDO')) itens.add('RESULTADO');
+    if (both.includes('PRÓXIMO GOL') || both.includes('PROXIMO GOL'))           itens.add('PROXIMO_GOL');
+    if (both.includes('ACRÉSCIMO') || both.includes('ACRESCIMO'))               itens.add('GOL_ACRESCIMO');
   }
   return [
     SEP_LIGHT,
@@ -122,7 +214,7 @@ function isConfigured() {
 // ─────────────────────────────────────────────────────────────
 
 /** Janela de tempo em ms para considerar mensagem como duplicada (padrão: 10 min) */
-const DEDUP_WINDOW_MS      = Number(process.env.TELEGRAM_DEDUP_WINDOW_MS) || 10 * 60 * 1000;
+const DEDUP_WINDOW_MS      = Number(process.env.TELEGRAM_DEDUP_WINDOW_MS) || 2 * 60 * 60 * 1000; // 2h padrão
 /** Janela de dedup estendida para mensagens live — cobre ciclo de monitoramento + folga */
 const DEDUP_WINDOW_LIVE_MS = 90 * 60 * 1000; // 90 min (evita duplicata mesmo se placar mudar)
 
@@ -477,11 +569,16 @@ function _fingerprint(text) {
     .slice(0, 512);
 }
 
-/** Remove do banco entradas fora da janela de deduplicação */
+/**
+ * Remove do banco entradas cuja janela de deduplicação expirou.
+ * Cada entrada pode ter TTL próprio (campo `window`) — não usa janela global.
+ * Bug anterior: usava DEDUP_WINDOW_MS global (10 min), apagando entradas com TTL 24h após 10 min.
+ */
 function _pruneDb(db) {
-  const cutoff = Date.now() - DEDUP_WINDOW_MS;
+  const now = Date.now();
   for (const key of Object.keys(db)) {
-    if (db[key].ts < cutoff) delete db[key];
+    const entryWindow = db[key].window ?? DEDUP_WINDOW_MS;
+    if (now - db[key].ts > entryWindow) delete db[key];
   }
 }
 
@@ -537,7 +634,8 @@ async function send(text, options = {}) {
     const msgId = res.data?.result?.message_id ?? null;
 
     if (msgId) {
-      db[key] = { msgId, ts: Date.now(), protected: isProtected ?? false };
+      // Persiste `window` individual — _pruneDb usa esse valor p/ não apagar entradas 24h após 10 min
+      db[key] = { msgId, ts: Date.now(), protected: isProtected ?? false, window };
       _saveSentDb(db);
     }
 
@@ -783,9 +881,9 @@ export async function notifyMiniGrade(approvedMatches) {
 export async function notifyMarketAnalysis(matchData, approvedResults) {
   if (!isConfigured()) return;
 
-  // Regra obrigatória: análise só enviada com link direto Superbet confirmado
-  if (!matchData.superbetUrl) {
-    console.log(`[Telegram] PRÉ-LIVE bloqueado — sem URL Superbet para: ${matchData.match || '?'}`);
+  // Regra obrigatória: análise só enviada com URL específica ao jogo (padrão /odds/futebol/time-x-time-id)
+  if (!_isValidMatchUrl(matchData.superbetUrl)) {
+    console.log(`[Telegram] PRÉ-LIVE bloqueado — URL inválida/genérica para: ${matchData.match || '?'} (${matchData.superbetUrl || 'null'})`);
     return null;
   }
 
@@ -807,13 +905,23 @@ export async function notifyMarketAnalysis(matchData, approvedResults) {
   ];
 
   for (const r of approvedResults) {
-    const mercado = r.mercado      ?? r.market         ?? '';
-    const rec     = r.recomendacao ?? r.recommendation ?? '';
-    const prob    = r.probabilidade ?? r.probability   ?? 0;
-    const conf    = r.confianca    ?? r.confidence     ?? 0;
+    const mercado     = r.mercado      ?? r.market         ?? '';
+    const agentMktNMA = (r.market || '').toLowerCase();      // campo autoritativo do agente
+    const rec         = r.recomendacao ?? r.recommendation ?? '';
+    const prob        = r.probabilidade ?? r.probability   ?? 0;
+    const conf        = r.confianca    ?? r.confidence     ?? 0;
 
-    const icon   = _marketIcon(mercado);
-    const label  = _marketLabel(mercado);
+    // Usa campo autoritativo (r.market) para categoria e mercado (LLM) para valor numérico
+    const icon   = (agentMktNMA.includes('escanteio') || agentMktNMA.includes('corner'))
+      ? '⛳'
+      : (agentMktNMA.includes('cartão') || agentMktNMA.includes('cartao') || agentMktNMA.includes('amarelo') || /^yc\b/i.test(agentMktNMA))
+        ? '🟨'
+        : _marketIcon(mercado);
+    const label  = (agentMktNMA.includes('escanteio') || agentMktNMA.includes('corner'))
+      ? 'Escanteios'
+      : (agentMktNMA.includes('cartão') || agentMktNMA.includes('cartao') || agentMktNMA.includes('amarelo') || /^yc\b/i.test(agentMktNMA))
+        ? 'Cartões'
+        : _marketLabel(mercado);
     const recFmt = _formatRec(mercado, rec);
     const risco  = _calcRisk(prob, conf);
 
@@ -835,20 +943,15 @@ export async function notifyMarketAnalysis(matchData, approvedResults) {
   // Gera ID único para rastreamento de engajamento
   const signalId = randomUUID();
 
-  // URL resolvida para o botão de link rastreado
-  const _superbetUrl = (() => {
-    if (matchData.superbetUrl) return matchData.superbetUrl;
-    const key = (comp || '').toLowerCase();
-    return Object.entries(SUPERBET_COMPETITION_LINKS)
-      .find(([k]) => key.includes(k))?.[1] ?? SUPERBET_FALLBACK;
-  })();
+  // URL resolvida para o botão de link rastreado — APENAS URL específica ao jogo
+  const _superbetUrl = _isValidMatchUrl(matchData.superbetUrl) ? matchData.superbetUrl : null;
 
-  // Botão inline rastreável — substitui o link de texto simples
-  const replyMarkup = {
+  // Botão inline rastreável — só incluído quando há URL específica ao jogo
+  const replyMarkup = _superbetUrl ? {
     inline_keyboard: [[
       { text: '🔗 Apostar agora → Superbet', callback_data: `link_${signalId}` },
     ]],
-  };
+  } : undefined;
 
   // Chave estável por jogo — bloqueia duplicata da mesma partida por 24h (evita reenvio pelo daily-pipeline)
   const _mNorm = (matchData.match || '').replace(/\s+/g, '_').replace(/[^a-z0-9_]/gi, '').substring(0, 40);
@@ -1024,10 +1127,12 @@ export async function notifySteamAlert(matchName, alert) {
 
 export async function notifyError(context, error) {
   if (!isConfigured()) return;
+  // Dedup 30 min — evita spam do mesmo erro a cada ciclo
+  const _errKey = `error_${context}_${(error.message || '').slice(0, 60)}`.replace(/\s+/g, '_');
   await send([
     `❌  <b>ERRO  —  ${context}</b>`,
     `<code>${(error.message || '').slice(0, 200)}</code>`,
-  ].join('\n'));
+  ].join('\n'), { dedupKey: _errKey, dedupWindowMs: 30 * 60_000 });
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -1036,10 +1141,12 @@ export async function notifyError(context, error) {
 export async function notifyScanSummary({ scanned, opportunities, elapsed }) {
   if (!isConfigured() || opportunities === 0) return;
   const agora = formatDateTime(new Date().toISOString());
+  // Dedup 50 min — scan ocorre a cada ~1h, evita duplicata se ciclo atrasar
+  const _hour = new Date().toISOString().slice(0, 13); // YYYY-MM-DDTHH
   await send([
     `📊  <b>Scan concluído  —  ${agora}</b>`,
     `Analisados :  <b>${scanned}</b>  jogos   Oportunidades :  <b>${opportunities}</b>   Tempo :  <b>${elapsed}s</b>`,
-  ].join('\n'));
+  ].join('\n'), { dedupKey: `scan_summary_${_hour}`, dedupWindowMs: 50 * 60_000 });
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -1067,7 +1174,12 @@ export async function notifyResultReminder(idx, matchName, competition, extraNot
 
   if (extraNote) lines.push(extraNote);
 
-  await send(lines.filter((l) => l !== undefined).join('\n'));
+  // Dedup 4h — impede reenvio do mesmo lembrete a cada 5 min (ciclo do result-checker)
+  const _matchSlug = (matchName || '').replace(/\s+/g, '_').slice(0, 30);
+  await send(lines.filter((l) => l !== undefined).join('\n'), {
+    dedupKey: `result_reminder_${idx}_${_matchSlug}`,
+    dedupWindowMs: 4 * 60 * 60_000,
+  });
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -1160,7 +1272,14 @@ export async function notifyMatchResult(matchData, idx, placar, analyses, reques
   lines.push(BR, SEP_HEAVY);
   lines.push(`<i>Registrado por :  ${requester}</i>`);
 
-  const msgId = await send(lines.join('\n'));
+  // Dedup 24h — impede reenvio do mesmo resultado se /resultado executado 2x
+  const _mSlug = (matchData.match || `jogo${idx}`).replace(/\s+/g, '_').replace(/[^a-z0-9_]/gi, '').slice(0, 30);
+  const _pSlug = (placar || '').replace(/[^0-9x×:-]/gi, '');
+  const msgId = await send(lines.join('\n'), {
+    dedupKey: `match_result_${idx}_${_mSlug}_${_pSlug}`,
+    dedupWindowMs: 24 * 60 * 60_000,
+    protected: true,
+  });
   // Protege a mensagem de resultado por 24h — não será apagada pelo grupo cleanup
   _trackResultMessage(msgId);
   return msgId;
@@ -1237,9 +1356,9 @@ export async function notifyPreLiveAnalysis(analysis, opts = {}) {
 
   const { stakeInfo, risco, pieAccuracy, horasAte, directUrl } = opts;
 
-  // Regra obrigatória: análise só enviada com link direto Superbet confirmado
-  if (!directUrl) {
-    console.log(`[Telegram] PRÉ-LIVE bloqueado — sem URL Superbet para: ${analysis.matchData?.match || analysis.match_name || '?'}`);
+  // Regra obrigatória: URL específica ao jogo (padrão /odds/futebol/time-x-time-id)
+  if (!_isValidMatchUrl(directUrl)) {
+    console.log(`[Telegram] PRÉ-LIVE bloqueado — URL inválida/genérica: ${directUrl || 'null'}`);
     return null;
   }
   const matchData = analysis.matchData || {};
@@ -1296,7 +1415,8 @@ export async function notifyPreLiveAnalysis(analysis, opts = {}) {
 
   lines.push(BR);
   lines.push(SEP_LIGHT);
-  lines.push(_houseLink(topBet.house || 'Superbet', comp, directUrl || null));
+  const _link1299 = _houseLink(topBet.house || 'Superbet', comp, directUrl || null);
+  if (_link1299) lines.push(_link1299);
   lines.push(`🤖  <i>Betting Analysis Squad</i>`);
 
   // Chave estável por jogo+mercado — bloqueia reenvio por 24h de qualquer rota
@@ -1338,9 +1458,9 @@ export async function notifyPreLiveAnalysis(analysis, opts = {}) {
 export async function notifyLiveSecondHalf(liveData, opportunities, opts = {}) {
   if (!isConfigured() || !opportunities?.length) return;
 
-  // Regra obrigatória: análise LIVE só enviada com link direto Superbet confirmado
-  if (!opts.directUrl) {
-    console.log(`[Telegram] LIVE bloqueado — sem URL Superbet para: ${liveData.match || '?'}`);
+  // Regra obrigatória: URL específica ao jogo (padrão /odds/futebol/time-x-time-id)
+  if (!_isValidMatchUrl(opts.directUrl)) {
+    console.log(`[Telegram] LIVE bloqueado — URL inválida/genérica: ${opts.directUrl || 'null'}`);
     return null;
   }
 
@@ -1413,7 +1533,8 @@ export async function notifyLiveSecondHalf(liveData, opportunities, opts = {}) {
   lines.push(BR);
   lines.push(SEP_LIGHT);
   lines.push(`<i>⚠️  Confirme as odds antes de apostar</i>`);
-  lines.push(_houseLink('Superbet', comp, opts.directUrl || null));
+  const _link1428 = _houseLink('Superbet', comp, opts.directUrl || null);
+  if (_link1428) lines.push(_link1428);
   lines.push(`🤖  <i>Betting Analysis Squad</i>`);
 
   const msgId = await send(lines.join('\n'), {
@@ -1447,9 +1568,9 @@ export async function notifyLiveSecondHalf(liveData, opportunities, opts = {}) {
  */
 function _superbetCompUrl(comp = '') {
   const key = (comp || '').toLowerCase();
+  // Retorna URL da liga se conhecida, null caso contrário (sem fallback genérico)
   return Object.entries(SUPERBET_COMPETITION_LINKS)
-    .find(([k]) => key.includes(k))?.[1]
-    ?? SUPERBET_FALLBACK;
+    .find(([k]) => key.includes(k))?.[1] ?? null;
 }
 
 // ═════════════════════════════════════════════════════════════════
@@ -1502,8 +1623,9 @@ export async function notifySuperOddsParlay(parlayOptions, bankroll = 1000, { ma
 
     const megaHeader = isMega ? `\n💥  <b>MEGA RETORNO — ODDS ${topCombo.combined_odds}×</b>` : '';
 
+    const bucketTag = parlayOptions._meta?.bucket ? ` [${parlayOptions._meta.bucket}]` : '';
     const lines = [
-      `<b>${emoji}  SUPER ODDS  ·  ${tierName.toUpperCase()}</b>`,
+      `<b>${emoji}  SUPER ODDS${bucketTag}  ·  ${tierName.toUpperCase()}</b>`,
       megaHeader,
       `<b>💎  Odds combinadas:  ${topCombo.combined_odds}×</b>`,
       `<b>📈  Probabilidade de acerto:  ${confComb}%</b>`,
@@ -1549,9 +1671,20 @@ export async function notifySuperOddsParlay(parlayOptions, bankroll = 1000, { ma
       if (legDateTime) lines.push(`   ${legDateTime}`);
       lines.push(`   ${confIcon}  ${_marketIcon(leg.market_type || leg.market)}  <b>${betLabel}</b>`);
       lines.push(`   📈  Prob: ${legProb}%  ·  🎯  Conf: ${legConf}%`);
-      // Link Superbet: URL direta da partida se disponível, senão URL da competição
-      const superbetUrl = leg.superbet_url || _superbetCompUrl(leg.competition);
-      lines.push(`   <a href="${superbetUrl}">🎯  Apostar → Superbet</a>`);
+      // Link Superbet: SOMENTE URL específica ao jogo verificada (sem fallback de competição)
+      // Regra: link apenas quando aponta para o jogo exato (slug home-x-away-id)
+      const [legHome, legAway] = (leg.match || '').split(' vs ').map(s => s?.trim());
+      if (_isMatchSpecificUrl(leg.superbet_url, legHome, legAway)) {
+        const legTime = leg.match_date || leg.match_time || null;
+        const legTimeLabel = legTime ? (() => {
+          try {
+            const h = new Date(legTime).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' });
+            const d = new Date(legTime).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', timeZone: 'America/Sao_Paulo' });
+            return `  ·  📅 ${d}  ⏰ ${h}`;
+          } catch { return ''; }
+        })() : '';
+        lines.push(`   <a href="${leg.superbet_url}">🎯  Apostar → Superbet${legTimeLabel}</a>`);
+      }
     }
 
     const roiPct = Math.round((topCombo.combined_odds - 1) * 100);
@@ -1574,7 +1707,15 @@ export async function notifySuperOddsParlay(parlayOptions, bankroll = 1000, { ma
     lines.push(`<i>⚠️  Apostas combinadas são de alto risco — gerencie bem sua banca</i>`);
     lines.push(`🤖  <i>Betting Analysis Squad  ·  ${tierName}</i>`);
 
-    const msgId = await send(lines.join('\n'));
+    // Dedup 4h por tier — impede reenvio do mesmo parlay se script rodar 2x no dia
+    const _legSlugs = topCombo.legs.map(l =>
+      (l.match || '').replace(/\s+/g,'_').replace(/[^a-z0-9_]/gi,'').slice(0,15)
+    ).join('-');
+    const _parlayKey = `parlay_${tierName.replace(/\s+/g,'_')}_${_legSlugs}`.slice(0, 120);
+    const msgId = await send(lines.join('\n'), {
+      dedupKey: _parlayKey,
+      dedupWindowMs: 4 * 60 * 60_000,
+    });
     if (msgId) sentIds.push(msgId);
     tiersSent++;
 
@@ -1795,29 +1936,38 @@ export async function notifyAgentMiniUpdate(report, matchName) {
 export async function notifyPreLiveOpportunity(matchData, markets) {
   if (!isConfigured() || !markets?.length) return;
 
-  // Regra obrigatória: análise só enviada com link direto Superbet confirmado
-  if (!matchData.superbet_url) {
-    console.log(`[Telegram] PRÉ-LIVE bloqueado — sem URL Superbet para: ${matchData.match || '?'}`);
+  // Regra obrigatória: URL específica ao jogo E verificação de que os times batem com a URL
+  const [_home, _away] = (matchData.match || '').split(' vs ').map(s => s?.trim());
+  if (!_isMatchSpecificUrl(matchData.superbet_url, _home, _away)) {
+    console.log(`[Telegram] PRÉ-LIVE bloqueado — URL não identificada para o jogo: ${matchData.match || '?'} (${matchData.superbet_url || 'null'})`);
     return null;
   }
 
+  // REGRA OBRIGATÓRIA: data e hora devem constar em TODOS os sinais enviados
   const hora = matchData.date
     ? new Date(matchData.date).toLocaleTimeString('pt-BR', {
         hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo',
       })
-    : '—';
+    : 'A confirmar';
 
   const data = matchData.date
     ? new Date(matchData.date).toLocaleDateString('pt-BR', {
-        weekday: 'short', day: '2-digit', month: '2-digit', timeZone: 'America/Sao_Paulo',
+        weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'America/Sao_Paulo',
       })
-    : '';
+    : 'A confirmar';
+
+  // Linha de data/hora — SEMPRE exibida com data e hora (regra obrigatória)
+  const dataHoraLine = `📅  <b>${data}</b>  ·  ⏰  <b>${hora}</b>`;
+
+  // Bucket de proximidade — ex: "[+3h] Flamengo × Palmeiras"
+  const bucketTag = matchData._bucket ? `[${matchData._bucket}] ` : '';
 
   const lines = [
     `🟢  <b>PRÉ-LIVE</b>`,
     SEP_HEAVY,
-    `⚽  <b>${_esc(matchData.match)}</b>`,
-    `🏆  ${_esc(matchData.competition || '—')}  ·  📅  ${data}  ·  ⏰  ${hora}`,
+    `⚽  <b>${bucketTag}${_esc(matchData.match)}</b>`,
+    `🏆  ${_esc(matchData.competition || '—')}`,
+    dataHoraLine,
     BR,
     SEP_LIGHT,
     `<b>🎯  OPORTUNIDADES PRÉ-JOGO</b>`,
@@ -1828,29 +1978,35 @@ export async function notifyPreLiveOpportunity(matchData, markets) {
     const risk = _calcRisk(m.probabilidade, m.confianca);
 
     // ── Nome do mercado com direção clara ─────────────────────────────────
-    // Prioriza m.mercado (ex: "Over 2.5") sobre m.market (ex: "Total de Gols")
-    const rawMarket = m.mercado || m.market || '—';
-    const rec       = String(m.recomendacao || '').toUpperCase();
+    // REGRA: m.market = campo autoritativo do agente (NUNCA sobrescrito pelo LLM após fix BaseMarketAgent).
+    //        m.mercado = valor específico retornado pelo LLM ("Over 2.5", "Under 8.5", etc.)
+    // A CATEGORIA (ícone + label) vem de m.market. O VALOR numérico vem de m.mercado.
+    const agentMarket = (m.market || '').toLowerCase();  // campo autoritativo do agente
+    const rawMarket   = m.mercado || m.market || '—';    // valor específico (LLM output)
+    const rec         = String(m.recomendacao || '').toUpperCase();
 
     let marketLabel;
-    if (rawMarket === 'Ambas Marcam' || rawMarket === 'BTTS') {
+    if (agentMarket.includes('btts') || agentMarket.includes('ambas') ||
+        rawMarket === 'Ambas Marcam' || rawMarket === 'BTTS') {
       // BTTS: sempre mostrar SIM/NÃO explicitamente
       const dir = (rec === 'SIM' || rec === 'APOSTAR') ? 'SIM ✔' : rec === 'NÃO' ? 'NÃO ✘' : rec;
       marketLabel = `Ambas Marcam: <b>${dir}</b>`;
-    } else if (/^YC\s*([\d.]+)$/i.test(rawMarket)) {
-      // Cartões Amarelos: "YC 2.5" → "🟨 Cartões Amarelos  Over 2.5"
-      const linha = rawMarket.match(/[\d.]+/)?.[0] || '';
-      const dir   = (rec === 'UNDER' || rec === 'NÃO') ? 'Under' : 'Over';
-      marketLabel = `🟨 Cartões Amarelos:  <b>${dir} ${linha}</b>`;
-    } else if (/^(over|under)\s*[\d.]+\s*(corners?|escanteios?)/i.test(rawMarket) ||
-               /corners?\s*(over|under)/i.test(rawMarket) ||
-               /^over corners\s*[\d.]+$/i.test(rawMarket)) {
-      // Escanteios
+    } else if (agentMarket.includes('escanteio') || agentMarket.includes('corner') ||
+               /corners?/i.test(rawMarket)        || /escanteios?/i.test(rawMarket)) {
+      // Escanteios — categoria detectada pelo campo do agente (authoritativo)
       const linha = rawMarket.match(/[\d.]+/)?.[0] || '';
       const dir   = /under/i.test(rawMarket) ? 'Under' : 'Over';
       marketLabel = `⛳ Escanteios:  <b>${dir} ${linha}</b>`;
-    } else if (/^(over|under)\s*[\d.]+/i.test(rawMarket)) {
-      // Over/Under de gols — inclui direção explícita
+    } else if (agentMarket.includes('cartão') || agentMarket.includes('cartao') ||
+               agentMarket.includes('amarelo')  || /^yc\b/i.test(agentMarket)   ||
+               /^YC\s*[\d.]+$/i.test(rawMarket) || /^over yc/i.test(rawMarket)) {
+      // Cartões Amarelos — categoria detectada pelo campo do agente
+      const linha = rawMarket.match(/[\d.]+/)?.[0] || '';
+      const dir   = (/^under/i.test(rawMarket) || rec === 'UNDER') ? 'Under' : 'Over';
+      marketLabel = `🟨 Cartões Amarelos:  <b>${dir} ${linha}</b>`;
+    } else if (/^(over|under)\s*[\d.]+/i.test(rawMarket) ||
+               agentMarket.includes('gols') || agentMarket.includes('total')) {
+      // Gols — Over/Under
       const linha = rawMarket.match(/[\d.]+/)?.[0] || '';
       const dir   = /^under/i.test(rawMarket) ? 'Under' : 'Over';
       marketLabel = `🥅 Gols:  <b>${dir} ${linha}</b>`;
@@ -1871,7 +2027,8 @@ export async function notifyPreLiveOpportunity(matchData, markets) {
 
   lines.push(_buildLegenda(markets));
   lines.push(SEP_LIGHT);
-  lines.push(_houseLink('Superbet', '', matchData.superbet_url));
+  const _link1874 = _houseLink('Superbet', '', matchData.superbet_url, matchData.date || null);
+  if (_link1874) lines.push(_link1874);
   lines.push(`🤖  <i>Betting Analysis Squad</i>`);
 
   // Chave estável: match + mercados + recomendações (ignora horário dinâmico do rodapé)
@@ -1898,6 +2055,8 @@ export async function notifyPreLiveOpportunity(matchData, markets) {
       });
     }
   }
+
+  return msgIdPreLive ?? null;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -1948,7 +2107,8 @@ export async function notifyLive2TOpportunity(liveData, markets) {
 
   lines.push(_buildLegenda(markets));
   lines.push(SEP_LIGHT);
-  lines.push(_houseLink('Superbet', liveData.competition || '', liveData.superbet_url || null));
+  const _link1951 = _houseLink('Superbet', liveData.competition || '', liveData.superbet_url || null);
+  if (_link1951) lines.push(_link1951);
   lines.push(`🤖  <i>Betting Analysis Squad</i>`);
 
   // Chave estável: match + placar — se o placar mudar, deleta antiga e envia nova
@@ -2029,7 +2189,8 @@ export async function notifyLiveOpportunity(liveData, markets) {
 
   lines.push(_buildLegenda(markets));
   lines.push(SEP_LIGHT);
-  lines.push(_houseLink('Superbet', liveData.competition || '', liveData.superbet_url || null));
+  const _link2047 = _houseLink('Superbet', liveData.competition || '', liveData.superbet_url || null);
+  if (_link2047) lines.push(_link2047);
   lines.push(`🤖  <i>Betting Analysis Squad</i>`);
 
   // Chave no nível do jogo: qualquer funil que notifique esse match+placar será bloqueado como duplicata
@@ -2257,7 +2418,8 @@ export async function notifyScorePredictions(scoreData, matchData = {}, opts = {
   }
 
   lines.push(BR, SEP_HEAVY);
-  lines.push(_houseLink('Superbet', comp, opts.directUrl || null));
+  const _link2260 = _houseLink('Superbet', comp, opts.directUrl || null);
+  if (_link2260) lines.push(_link2260);
   lines.push(`🤖  <i>Ariel · Betting Analysis Squad</i>`);
 
   return await send(lines.join('\n'));

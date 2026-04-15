@@ -154,8 +154,12 @@ const analyses = [];
 let totH = 0;
 
 // ── Histórico em lote (1 leitura + 1 gravação para todas as partidas) ─────────
-const histData = JSON.parse(readFileSync(HIST, 'utf-8'));
-if (!histData.matches) histData.matches = [];
+let _rawHist;
+try { _rawHist = JSON.parse(readFileSync(HIST, 'utf-8')); } catch { _rawHist = null; }
+const histData = (_rawHist && typeof _rawHist === 'object' && !Array.isArray(_rawHist))
+  ? _rawHist
+  : { matches: [] };
+if (!Array.isArray(histData.matches)) histData.matches = [];
 for (const match of qualified) {
   const analysis = analyzeMatch(match);
   analyses.push(analysis);

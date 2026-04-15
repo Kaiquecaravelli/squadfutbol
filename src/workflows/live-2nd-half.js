@@ -19,11 +19,13 @@ import chalk from 'chalk';
 import { readFileSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { getLiveMatches, collectLiveMatchData } from '../scrapers/sofascore-live.js';
-import { Live2TAgent } from '../../squads/betting-analysis/market-agents/Live2TAgent.js';
+import { getLiveMatches, collectLiveMatchData } from '../scrapers/sofascore.js';
+import { GoalsAgent } from '../../squads/betting-analysis/market-agents/GoalsAgent.js';
+import { BTTSAgent }  from '../../squads/betting-analysis/market-agents/BTTSAgent.js';
 import { notifyLiveSecondHalf } from '../utils/telegram.js';
 import { calcRiscoDisplay } from './prelive-analysis.js';
 import { getSuperbetLiveEventMap, findUrlInLiveMap } from '../scrapers/superbet.js';
+import { bttsKillSwitch, bttsMinProbability, trackBttsDecision, BTTS_MIN_CONFIDENCE } from '../utils/btts-sniper.js';
 
 const __dir = dirname(fileURLToPath(import.meta.url));
 const PIE_PATH = join(__dir, '../../data/pie.json');
@@ -65,7 +67,8 @@ const MAX_MATCHES      = parseInt(process.env.LIVE_MAX_MATCHES       || '5');
 const DELAY_BETWEEN_MS = 10_000;  // 10s entre análises
 const DEFAULT_BANKROLL = parseFloat(process.env.USER_BANKROLL || '1000');
 
-const agent = new Live2TAgent();
+// Usa GoalsAgent + BTTSAgent como agentes principais para análise 2T (Live2TAgent removido)
+const agents2T = [new GoalsAgent(), new BTTSAgent()];
 
 // ── Stake sugerida ao vivo (mais conservadora que pré-live) ───────────────────
 const LIVE_STAKE_PCT = {
@@ -83,12 +86,12 @@ const LIVE_BLOCKED_MARKETS = new Set([
 ]);
 
 // Mínimo de acurácia PIE exigido por mercado ao vivo (amostras >= 30)
-// Valores abaixo disso bloqueiam o mercado mesmo que o agente confie
+// BTTS: Sniper v3 usa Kill Switches próprios — PIE gate é camada adicional
 const PIE_MIN_ACC_BY_MARKET = {
   'Over 1.5':    70,
   'Over 2.5':    65,   // PIE real=51% — exige 65% de confiança calibrada
-  'BTTS':        65,   // PIE real=52%
-  'BTTS Sim':    65,   // mesma calibração que BTTS
+  'BTTS':        62,   // Sniper v3 aplica Kill Switches antes deste gate (62% = calibração real)
+  'BTTS Sim':    62,   // mesma calibração que BTTS
   'Over 2.5 Gols': 65,
   '1X':          65,   // PIE real=71.5% — permite com 65%
   'X2':          65,   // PIE real=53.9% — exige calibração
@@ -141,6 +144,33 @@ function applyPieGate(opportunities, rawMatch) {
   for (const o of opportunities) {
     const mkt     = o.mercado || '';
     const normMkt = _normMarket(mkt);
+
+    // BTTS Sniper v3 — Kill Switches (executa ANTES de qualquer outra regra)
+    if (normMkt === 'BTTS' || mkt === 'Ambas Marcam') {
+      const killReason = bttsKillSwitch(o, rawMatch);
+      if (killReason) {
+        blocked.push({ ...o, bloqueio: killReason });
+        trackBttsDecision('blocked', o, rawMatch, killReason, 'live-2h');
+        continue;
+      }
+      const minProb = bttsMinProbability(rawMatch.competition);
+      const prob    = o.probabilidade ?? 0;
+      const conf    = o.confianca     ?? 0;
+      if (prob < minProb) {
+        const reason = `Threshold Sniper — prob ${prob}% < ${minProb}%`;
+        blocked.push({ ...o, bloqueio: reason });
+        trackBttsDecision('blocked', o, rawMatch, reason, 'live-2h');
+        continue;
+      }
+      if (conf < BTTS_MIN_CONFIDENCE) {
+        const reason = `Threshold Sniper — confiança ${conf}% < ${BTTS_MIN_CONFIDENCE}%`;
+        blocked.push({ ...o, bloqueio: reason });
+        trackBttsDecision('blocked', o, rawMatch, reason, 'live-2h');
+        continue;
+      }
+      // Aprovado pelo Sniper — registra disparo
+      trackBttsDecision('fired', o, rawMatch, null, 'live-2h');
+    }
 
     // Regra 1 — mercados estruturalmente bloqueados ao vivo
     if (LIVE_BLOCKED_MARKETS.has(mkt) || LIVE_BLOCKED_MARKETS.has(normMkt)) {
@@ -196,8 +226,9 @@ async function analyzeSecondHalf(rawMatch, bankroll, notifiedKeys) {
     return [];
   }
 
-  // Analisa com Live2TAgent (Gemini)
-  const opportunities = await agent.analyze(liveData);
+  // Analisa com agentes Groq (GoalsAgent + BTTSAgent) — Live2TAgent removido
+  const rawResults = await Promise.all(agents2T.map((a) => a.analyze(liveData).catch(() => null)));
+  const opportunities = rawResults.filter(Boolean).flat();
 
   if (!opportunities.length) {
     console.log(chalk.gray(`    ⏭  ${label} [${min}'] ${score} — sem oportunidades no 2T`));

@@ -15,6 +15,7 @@
 
 import { chromium } from 'playwright';
 import chalk from 'chalk';
+import { lookupMatchUrl } from './superbet-cache.js';
 
 const BASE_URL    = 'https://superbet.bet.br';
 const SPORT_URL   = `${BASE_URL}/apostas-esportivas/futebol`;
@@ -536,21 +537,34 @@ export async function getSuperbetOdds(homeTeam, awayTeam, matchDate = null) {
     const page = await context.newPage();
     page.setDefaultTimeout(TIMEOUT);
 
-    await page.goto(SPORT_URL, { waitUntil: 'domcontentloaded', timeout: NAV_TIMEOUT });
+    // Tenta URL direta do cache primeiro (evita busca DOM na página principal)
+    const cachedUrl = lookupMatchUrl(homeTeam, awayTeam, 'prelive')
+                   || lookupMatchUrl(homeTeam, awayTeam, 'live');
 
-    await page.locator('button:has-text("Aceitar"), button:has-text("Concordo"), [id*="accept"], [class*="accept-cookie"]')
-      .first().click({ timeout: 4_000 }).catch(() => {});
+    let matchUrl = cachedUrl;
 
-    await page.waitForTimeout(2_000);
+    if (cachedUrl) {
+      console.log(chalk.gray(`  [Superbet] URL do cache: ${cachedUrl}`));
+      await page.goto(cachedUrl, { waitUntil: 'domcontentloaded', timeout: NAV_TIMEOUT });
+      await page.locator('button:has-text("Aceitar"), button:has-text("Concordo"), [id*="accept"], [class*="accept-cookie"]')
+        .first().click({ timeout: 4_000 }).catch(() => {});
+      await page.waitForTimeout(2_500);
+    } else {
+      // Fallback: busca DOM na página principal
+      await page.goto(SPORT_URL, { waitUntil: 'domcontentloaded', timeout: NAV_TIMEOUT });
+      await page.locator('button:has-text("Aceitar"), button:has-text("Concordo"), [id*="accept"], [class*="accept-cookie"]')
+        .first().click({ timeout: 4_000 }).catch(() => {});
+      await page.waitForTimeout(2_000);
 
-    const matchUrl = await _findMatchUrl(page, homeTeam, awayTeam);
-    if (!matchUrl) {
-      console.log(chalk.gray(`  [Superbet] Partida não encontrada: ${label}`));
-      return {};
+      matchUrl = await _findMatchUrl(page, homeTeam, awayTeam);
+      if (!matchUrl) {
+        console.log(chalk.gray(`  [Superbet] Partida não encontrada: ${label}`));
+        return {};
+      }
+
+      await page.goto(matchUrl, { waitUntil: 'domcontentloaded', timeout: NAV_TIMEOUT });
+      await page.waitForTimeout(2_500);
     }
-
-    await page.goto(matchUrl, { waitUntil: 'domcontentloaded', timeout: NAV_TIMEOUT });
-    await page.waitForTimeout(2_500);
 
     const odds = await _collectOdds(page);
 

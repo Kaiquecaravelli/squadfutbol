@@ -41,9 +41,8 @@ const HEADERS            = {
   'Referer':    'https://www.sofascore.com/',
 };
 
-// ── Avalia se a predição acertou ─────────────────────────────────────────────
-// entry é opcional — usado para "Resultado Final {time}" que precisa saber qual time
-function determineOutcome(market, prediction, score, entry = {}) {
+// ── Avalia se a predição acertou (score + stats opcionais + entry para context) ──
+function determineOutcome(market, prediction, score, entry = {}, stats = null) {
   if (score.home == null || score.away == null) return null;
 
   // Usa placar do tempo normal (90min) — ignora prorrogação/pênaltis
@@ -53,7 +52,7 @@ function determineOutcome(market, prediction, score, entry = {}) {
   const rec   = String(prediction || '').toUpperCase().trim();
   const mkt   = (market || '').toUpperCase();
 
-  // ── Gols Over/Under ──────────────────────────────────────────────────────────
+  // ── Gols Over/Under (pelo nome do mercado com limiar embutido) ───────────────
   if (market.includes('Over 0.5'))  return total > 0;
   if (market.includes('Over 1.5'))  return total > 1;
   if (market.includes('Over 2.5'))  return total > 2;
@@ -66,11 +65,40 @@ function determineOutcome(market, prediction, score, entry = {}) {
   if (market.includes('Under 3.5')) return total < 4;
   if (market.includes('Under 4.5')) return total < 5;
 
+  // ── Gols Over/Under — mercado genérico "Gols" → limiar extraído do messageText ──
+  if (mkt === 'GOLS' || mkt === 'TOTAL GOLS') {
+    const thresh = _extractThresholdFromText(entry.messageText, 'Gols');
+    if (!thresh?.threshold) return null;
+    const isOver = thresh.direction === 'OVER';
+    return isOver ? total > thresh.threshold : total < thresh.threshold;
+  }
+
   // ── BTTS / Ambas Marcam ──────────────────────────────────────────────────────
   if (mkt.includes('BTTS') || mkt.includes('AMBAS')) {
     const bttsOk = homeGoals > 0 && awayGoals > 0;
     if (rec === 'NÃO' || rec === 'NAO' || rec === 'NO' || rec === 'NÃO MARCAM') return !bttsOk;
     return bttsOk;
+  }
+
+  // ── Escanteios — limiar extraído do messageText + stats do SofaScore ─────────
+  if (mkt.includes('ESCANTEIO') || mkt.includes('CORNER')) {
+    const thresh = _extractThresholdFromText(entry.messageText, 'Escanteios');
+    if (!thresh?.threshold || !stats) return null;
+    // SofaScore nomeia: 'corner_kicks', 'corners', 'corner kicks'
+    const ck = stats['corner_kicks'] || stats['corners'] || stats['corner_kicks_h1'];
+    if (!ck) return null;
+    const totalCorners = (ck.home || 0) + (ck.away || 0);
+    return thresh.direction === 'OVER' ? totalCorners > thresh.threshold : totalCorners < thresh.threshold;
+  }
+
+  // ── Cartões Amarelos — limiar extraído do messageText + stats SofaScore ──────
+  if (mkt.includes('CARTÃO') || mkt.includes('CARTAO') || mkt.includes('AMARELO') || mkt.includes('YC')) {
+    const thresh = _extractThresholdFromText(entry.messageText, 'Cartões Amarelos');
+    if (!thresh?.threshold || !stats) return null;
+    const yc = stats['yellow_cards'] || stats['yellow card'] || stats['yellow_card'];
+    if (!yc) return null;
+    const totalYC = (yc.home || 0) + (yc.away || 0);
+    return thresh.direction === 'OVER' ? totalYC > thresh.threshold : totalYC < thresh.threshold;
   }
 
   // ── Resultado — genéricos home/away verificados ANTES de "Resultado Final {time}" ──
@@ -91,7 +119,13 @@ function determineOutcome(market, prediction, score, entry = {}) {
       if (isHomeTeam) return homeGoals > awayGoals;
       if (isAwayTeam) return awayGoals > homeGoals;
     }
-    // Time não identificado no mercado — não verificável
+    // Tenta extrair do messageText
+    const thresh = _extractThresholdFromText(entry.messageText, 'Resultado Final');
+    if (thresh?.variant) {
+      if (thresh.variant === '1' || thresh.variant === 'CASA') return homeGoals > awayGoals;
+      if (thresh.variant === 'X' || thresh.variant === 'EMPATE') return homeGoals === awayGoals;
+      if (thresh.variant === '2' || thresh.variant === 'FORA') return awayGoals > homeGoals;
+    }
     return null;
   }
 
@@ -100,10 +134,85 @@ function determineOutcome(market, prediction, score, entry = {}) {
   if (market === 'X2' || mkt.includes('DUPLA CHANCE X2')) return awayGoals >= homeGoals;
   if (market === '12' || mkt.includes('DUPLA CHANCE 12')) return homeGoals !== awayGoals;
 
+  // "Dupla Chance" genérico — extrai variante do messageText
+  if (mkt.includes('DUPLA CHANCE') || mkt === 'DUPLA') {
+    const thresh = _extractThresholdFromText(entry.messageText, 'Dupla Chance');
+    if (thresh?.variant === '1X') return homeGoals >= awayGoals;
+    if (thresh?.variant === 'X2') return awayGoals >= homeGoals;
+    if (thresh?.variant === '12') return homeGoals !== awayGoals;
+    return null;
+  }
+
   return null;
 }
 
-// ── Busca resultado no SofaScore por ID do evento ────────────────────────────
+// ── Extrai limiar e direção do messageText para mercados Escanteios/Cartões/Gols ──
+// Suporta mensagens antigas onde "Escanteios" era exibido como "Gols" (bug corrigido).
+function _extractThresholdFromText(messageText, marketCategory) {
+  if (!messageText) return null;
+  const catUpper = (marketCategory || '').toUpperCase();
+
+  // Dupla Chance — extrai variante (1X/X2/12)
+  if (catUpper.includes('DUPLA') || catUpper.includes('CHANCE')) {
+    const dupla = messageText.match(/dupla chance[^<]*<b>(1x|x2|12)<\/b>/i);
+    return dupla ? { variant: dupla[1].toUpperCase() } : null;
+  }
+
+  // Resultado Final — extrai resultado (1/X/2/Casa/Fora/Empate)
+  if (catUpper.includes('RESULTADO FINAL')) {
+    const res = messageText.match(/resultado final[^<]*<b>(1|x|2|casa|fora|empate)[^<]*<\/b>/i);
+    return res ? { variant: res[1].toUpperCase() } : null;
+  }
+
+  // Para Escanteios/Cartões/Gols: tenta padrão específico da categoria primeiro,
+  // depois fallback em qualquer Over/Under no texto (cobre mensagens antigas com label errado)
+  let specificPattern;
+  if (catUpper.includes('ESCANTEIO') || catUpper.includes('CORNER')) {
+    specificPattern = /escanteio[^<]*<b>(over|under)\s*([\d.]+)<\/b>/i;
+  } else if (catUpper.includes('CARTÃO') || catUpper.includes('CARTAO') || catUpper.includes('AMARELO') || catUpper.includes('YC')) {
+    specificPattern = /cart[oõãa][eõ]?s?[^<]*<b>(over|under)\s*([\d.]+)<\/b>/i;
+  } else if (catUpper.includes('GOL') || catUpper.includes('TOTAL')) {
+    specificPattern = /gols?[^<]*<b>(over|under)\s*([\d.]+)<\/b>/i;
+  }
+
+  // Tenta padrão específico
+  if (specificPattern) {
+    const m = messageText.match(specificPattern);
+    if (m) return { direction: m[1].toUpperCase(), threshold: parseFloat(m[2]) };
+  }
+
+  // Fallback: extrai qualquer Over/Under de uma linha de mercado do messageText
+  // Cobre casos onde o label estava errado (ex: Escanteios exibido como "Gols")
+  const fallback = messageText.match(/<b>(over|under)\s*([\d.]+)<\/b>/i);
+  if (fallback) return { direction: fallback[1].toUpperCase(), threshold: parseFloat(fallback[2]), fallback: true };
+
+  return null;
+}
+
+// ── Busca stats de escanteios e cartões via SofaScore ────────────────────────
+async function fetchEventStats(sofascoreId) {
+  try {
+    const { data } = await axios.get(`${SOFASCORE_BASE}/event/${sofascoreId}/statistics`, {
+      headers: HEADERS, timeout: 8000,
+    });
+    const periods = data?.statistics || [];
+    const allPeriod = periods.find(p => p.period === 'ALL') || periods[periods.length - 1];
+    if (!allPeriod?.groups) return null;
+
+    const stats = {};
+    for (const group of allPeriod.groups) {
+      for (const item of group.statisticsItems || []) {
+        const key = (item.name || '').toLowerCase().replace(/\s+/g, '_');
+        if (key) stats[key] = { home: parseFloat(item.home) || 0, away: parseFloat(item.away) || 0 };
+      }
+    }
+    return stats;
+  } catch {
+    return null;
+  }
+}
+
+// ── Busca resultado no SofaScore por ID do evento (placar + stats) ───────────
 async function fetchByEventId(sofascoreId) {
   try {
     const { data } = await axios.get(`${SOFASCORE_BASE}/event/${sofascoreId}`, {
@@ -120,9 +229,13 @@ async function fetchByEventId(sofascoreId) {
     const away = event.awayScore?.normaltime ?? event.awayScore?.current;
     if (home == null || away == null) return { status, score: null };
 
+    // Busca stats: escanteios e cartões (independente do mercado, custo ~1 req extra)
+    const stats = await fetchEventStats(sofascoreId);
+
     return {
       status: 'finished',
       score:  { home: Number(home), away: Number(away) },
+      stats,
       label:  `${event.homeTeam?.name} ${home}-${away} ${event.awayTeam?.name}`,
     };
   } catch (err) {
@@ -177,9 +290,11 @@ async function fetchByMatchName(matchName, dateStr) {
       const away = found.awayScore?.normaltime ?? found.awayScore?.current;
       if (home == null || away == null) continue;
 
+      const foundStats = await fetchEventStats(String(found.id));
       return {
         status:      'finished',
         score:       { home: Number(home), away: Number(away) },
+        stats:       foundStats,
         label:       `${found.homeTeam?.name} ${home}-${away} ${found.awayTeam?.name}`,
         sofascoreId: String(found.id),
       };
@@ -372,8 +487,8 @@ export async function runResultChecker() {
         continue;
       }
 
-      // 2. Avaliar resultado
-      const acertou = determineOutcome(entry.market, entry.prediction, result.score, entry);
+      // 2. Avaliar resultado (passa stats do SofaScore para mercados de escanteios/cartões)
+      const acertou = determineOutcome(entry.market, entry.prediction, result.score, entry, result.stats);
 
       if (acertou === null) {
         console.log(chalk.yellow('Resultado não verificável para este mercado'));

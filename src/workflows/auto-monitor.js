@@ -61,12 +61,10 @@ import { checkPreLiveEligible } from '../utils/match-status-guard.js';
 import { BTTSAgent }         from '../../squads/betting-analysis/market-agents/BTTSAgent.js';
 import { GoalsAgent }        from '../../squads/betting-analysis/market-agents/GoalsAgent.js';
 import { CornersAgent }      from '../../squads/betting-analysis/market-agents/CornersAgent.js';
-import { YellowCardsAgent }  from '../../squads/betting-analysis/market-agents/YellowCardsAgent.js';
 import { DoubleChanceAgent } from '../../squads/betting-analysis/market-agents/DoubleChanceAgent.js';
-import { ExactScoreAgent }   from '../../squads/betting-analysis/market-agents/ExactScoreAgent.js';
 
-const SCAN_INTERVAL_MINUTES  = parseInt(process.env.SCAN_INTERVAL_MINUTES  || '60');
-const LIVE_INTERVAL_MINUTES  = parseInt(process.env.LIVE_SCAN_INTERVAL_MINUTES || '15');
+const SCAN_INTERVAL_MINUTES      = parseInt(process.env.SCAN_INTERVAL_MINUTES          || '60');
+const SUPERODDS_INTERVAL_MINUTES = parseInt(process.env.SUPERODDS_SCAN_INTERVAL_MINUTES || '15');
 const REEVAL_INTERVAL_H      = parseInt(process.env.REEVAL_INTERVAL_H      || '12');
 const MIN_PROBABILITY        = parseInt(process.env.MIN_CONFIDENCE_SCORE   || '83');
 const MIN_CONFIDENCE         = 78; // confiança mínima fixa
@@ -83,9 +81,9 @@ const resultReminders = new Set(); // idx — já enviou lembrete de resultado
 let lastScanFoundNothing = false; // suprime mensagem repetida de "0 oportunidades"
 let lastScanTime = 0;             // timestamp do último scan enviado ao Telegram
 
-// Map compartilhado entre live-scan e funnel-live-2t — chave única live_*
-// garante que nenhuma oportunidade seja enviada duas vezes por funnels diferentes
-const liveNotifiedKeys = new Map();
+// Map compartilhado em memória entre live-scan (SUPERODDS) e funnel-live-2t (SUPERODDS 2T)
+// Garante dedup intra-sessão sem persistência em disco
+const superoddNotifiedKeys = new Map();
 
 function _loadNotifiedKeys() {
   try {
@@ -107,37 +105,34 @@ function _saveNotifiedKeys() {
   } catch { /* ignora */ }
 }
 
+// Agentes PRÉ-LIVE: 4 mercados core
 const MARKET_AGENTS = [
   new BTTSAgent(),
   new GoalsAgent(),
   new CornersAgent(),
-  new YellowCardsAgent(),
   new DoubleChanceAgent(),
-  new ExactScoreAgent(),
 ];
 
-// ── Funil Live 2T — wrapper com notificações Telegram ─────────────────────────
-async function runLive2TScan() {
+// ── Funil SUPERODDS 2T — wrapper com notificações Telegram ────────────────────
+async function runSuperoddsScan() {
   const ts = timestamp();
-  console.log(chalk.bold.yellow(`\n[${ts}] 🟡 Funil LIVE 2T — scan iniciado`));
+  console.log(chalk.bold.yellow(`\n[${ts}] 🔮 Funil SUPERODDS 2T — scan iniciado`));
 
   try {
-    const opportunities = await runLive2TFunnel(liveNotifiedKeys);
+    const opportunities = await runLive2TFunnel(superoddNotifiedKeys);
 
     if (!opportunities.length) {
-      console.log(chalk.gray(`  [LIVE-2T] Scan concluído — sem oportunidades`));
+      console.log(chalk.gray('  [SUPERODDS 2T] Scan concluído — sem oportunidades'));
       return;
     }
 
     // Agrupa por jogo para enviar UMA notificação por jogo
-    // Normaliza a chave para evitar duplicatas por espaço/capitalização
     const _normalizeMatchKey = (s) => (s || 'unknown').toLowerCase().replace(/\s+/g, ' ').trim();
     const byMatch = new Map();
     for (const opp of opportunities) {
       const liveData = opp._liveData;
       const key      = _normalizeMatchKey(liveData?.match);
       if (!byMatch.has(key)) byMatch.set(key, { liveData, markets: [] });
-      // Remove _liveData do objeto de mercado antes de enviar
       const { _liveData, ...market } = opp;
       byMatch.get(key).markets.push(market);
     }
@@ -147,9 +142,9 @@ async function runLive2TScan() {
       _saveNotifiedKeys();
     }
 
-    console.log(chalk.bold.yellow(`  [LIVE-2T] ✅ ${opportunities.length} oportunidade(s) enviadas`));
+    console.log(chalk.bold.yellow(`  [SUPERODDS 2T] ✅ ${opportunities.length} oportunidade(s) enviadas`));
   } catch (err) {
-    console.error(chalk.red(`[LIVE-2T] Erro no scan: ${err.message}`));
+    console.error(chalk.red(`[SUPERODDS 2T] Erro no scan: ${err.message}`));
   }
 }
 
@@ -164,7 +159,7 @@ async function _learnFromComparison(matchData, placar, analyses) {
 
     const AGENT_MAP = {
       BTTS: 'BTTSAgent', Gols: 'GoalsAgent', Escanteios: 'CornersAgent',
-      Cartões: 'YellowCardsAgent', DuplaChance: 'DoubleChanceAgent', PlacarExato: 'ExactScoreAgent',
+      DuplaChance: 'DoubleChanceAgent',
     };
 
     for (const a of analyses) {
@@ -243,10 +238,10 @@ async function _seedValidatedPatterns() {
     await kgAdd(s, p, o, { confidence: 1.0 }).catch(() => {});
   }
 
-  // Diário dos agentes live
+  // Injeta padrão validado nos agentes SUPERODDS 2T ativos
   const entry = 'Padrão PERDEDOR DOMINANTE validado: Famalicão 0-1 Moreirense 74\' — Over 1.5 ✅. Condições: xG_perdedor>xG_vencedor + posse>=54% + 1 gol + >=10min → prob>=82%.';
-  await diaryWrite('LiveInPlayAgent', entry).catch(() => {});
-  await diaryWrite('Live2TAgent', entry).catch(() => {});
+  await diaryWrite('GoalsAgent', entry).catch(() => {});
+  await diaryWrite('BTTSAgent',  entry).catch(() => {});
 }
 
 // ── Entrada principal ─────────────────────────────────────────────────────────
@@ -255,10 +250,10 @@ export async function startAutoMonitor() {
 
   console.log(chalk.bold.green(`
 ╔══════════════════════════════════════════════════════╗
-║  🤖 BET ANALYSIS SQUAD — MODO AUTOMÁTICO v5          ║
-║  Análise completa · 24h · Sem intervenção manual     ║
-║  Mercados: BTTS · Gols · Escanteios · Cartões        ║
-║            Dupla Chance · Placar Exato                ║
+║  🤖 BET ANALYSIS SQUAD — MODO AUTOMÁTICO v6          ║
+║  PRÉ-LIVE (−6h a −24h) · SUPERODDS (ao vivo)        ║
+║  Mercados: BTTS · Gols · Escanteios · Dupla Chance   ║
+║  Provider: Groq (llama-3.1-8b-instant)               ║
 ║  Gate: Prob ≥ ${MIN_PROBABILITY}% · Confiança ≥ ${MIN_CONFIDENCE}%                ║
 ╚══════════════════════════════════════════════════════╝
   `));
@@ -310,30 +305,27 @@ export async function startAutoMonitor() {
   // Re-avaliação completa a cada 12h — reanálisa jogos futuros com dados atualizados
   setInterval(() => reevalMarkets().catch(() => {}), REEVAL_INTERVAL_H * 3_600_000);
 
-  // ── FUNIL LIVE GERAL: scan in-play a cada 15 min ─────────────────────────────
-  // Usa liveNotifiedKeys compartilhado para evitar duplicatas com o funil 2T
+  // ── SUPERODDS SCAN: in-play a cada 15 min ────────────────────────────────────
+  // Usa superoddNotifiedKeys em memória para dedup intra-sessão
   setTimeout(() => {
-    startLiveScan({ loop: false, sharedNotifiedKeys: liveNotifiedKeys }).catch(() => {});
+    startLiveScan({ loop: false, sharedNotifiedKeys: superoddNotifiedKeys }).catch(() => {});
     setInterval(() => {
-      startLiveScan({ loop: false, sharedNotifiedKeys: liveNotifiedKeys }).catch((err) => {
-        console.error(chalk.red(`[Live Scan] Erro no loop: ${err.message}`));
-      });
-    }, LIVE_INTERVAL_MINUTES * 60_000);
+      startLiveScan({ loop: false, sharedNotifiedKeys: superoddNotifiedKeys })
+        .catch((err) => { console.error(chalk.red(`[SUPERODDS Scan] Erro: ${err.message}`)); });
+    }, SUPERODDS_INTERVAL_MINUTES * 60_000);
   }, 5 * 60_000);
 
-  // ── FUNIL LIVE 2T: scan exclusivo do 2° Tempo a cada 10 min ──────────────────
-  // Usa o mesmo liveNotifiedKeys — bloqueia duplicatas entre os dois funnels
-  const LIVE2T_INTERVAL_MINUTES = parseInt(process.env.LIVE2T_SCAN_INTERVAL_MINUTES || '10');
+  // ── SUPERODDS 2T: scan exclusivo do 2° Tempo (min>=55) a cada 10 min ─────────
+  const SUPERODDS2T_INTERVAL_MINUTES = parseInt(process.env.SUPERODDS2T_SCAN_INTERVAL_MINUTES || '10');
   setTimeout(() => {
-    runLive2TScan().catch(() => {});
+    runSuperoddsScan().catch(() => {});
     setInterval(() => {
-      runLive2TScan().catch((err) => {
-        console.error(chalk.red(`[Live 2T] Erro no loop: ${err.message}`));
+      runSuperoddsScan().catch((err) => {
+        console.error(chalk.red(`[SUPERODDS 2T] Erro: ${err.message}`));
       });
-    }, LIVE2T_INTERVAL_MINUTES * 60_000);
+    }, SUPERODDS2T_INTERVAL_MINUTES * 60_000);
   }, 8 * 60_000);
 
-  // Bot com todos os comandos, incluindo /live2t
   const bot = new TelegramBot({
     token:                process.env.TELEGRAM_BOT_TOKEN,
     groupId:              process.env.TELEGRAM_GROUP_ID || process.env.TELEGRAM_CHAT_ID,
@@ -343,8 +335,8 @@ export async function startAutoMonitor() {
     onLicoesRequest:      handleLicoesCommand,
     onPerformanceRequest: handlePerformanceCommand,
     onScanRequest:        handleScanCommand,
-    onLiveScanRequest:    handleLiveScanCommand,
-    onLive2TRequest:      handleLive2TCommand,
+    onLiveScanRequest:    handleSuperoddsCommand,
+    onLive2TRequest:      handleSuperodds2TCommand,
   });
   await bot.start();
 
@@ -696,27 +688,27 @@ async function handleScanCommand(requester) {
   });
 }
 
-async function handleLiveScanCommand(requester) {
-  console.log(chalk.bold.red(`\n[${timestamp()}] 🔴 Live scan solicitado por ${requester}`));
+async function handleSuperoddsCommand(requester) {
+  console.log(chalk.bold.magenta(`\n[${timestamp()}] 🔮 SUPERODDS scan solicitado por ${requester}`));
   await sendText(
-    `🔴 <b>Análise Live iniciada</b>\n` +
+    `🔮 <b>SUPERODDS — Análise In-Play iniciada</b>\n` +
     `<i>Solicitado por ${requester} — buscando jogos em andamento...</i>`
   );
-  await startLiveScan({ loop: false }).catch((err) => {
-    console.error(chalk.red(`[Live Scan] Erro: ${err.message}`));
-    notifyError('Live Scan', err).catch(() => {});
+  await startLiveScan({ loop: false, sharedNotifiedKeys: superoddNotifiedKeys }).catch((err) => {
+    console.error(chalk.red(`[SUPERODDS] Erro: ${err.message}`));
+    notifyError('SUPERODDS Scan', err).catch(() => {});
   });
 }
 
-async function handleLive2TCommand(requester) {
-  console.log(chalk.bold.yellow(`\n[${timestamp()}] 🟡 Live 2T scan solicitado por ${requester}`));
+async function handleSuperodds2TCommand(requester) {
+  console.log(chalk.bold.yellow(`\n[${timestamp()}] 🔮 SUPERODDS 2T scan solicitado por ${requester}`));
   await sendText(
-    `🟡 <b>Análise Live 2° Tempo iniciada</b>\n` +
-    `<i>Solicitado por ${requester} — buscando jogos no 2° Tempo...</i>`
+    `🔮 <b>SUPERODDS 2T — Análise 2° Tempo iniciada</b>\n` +
+    `<i>Solicitado por ${requester} — buscando jogos no 2° Tempo (≥55min)...</i>`
   );
-  await runLive2TScan().catch((err) => {
-    console.error(chalk.red(`[Live 2T] Erro: ${err.message}`));
-    notifyError('Live 2T Scan', err).catch(() => {});
+  await runSuperoddsScan().catch((err) => {
+    console.error(chalk.red(`[SUPERODDS 2T] Erro: ${err.message}`));
+    notifyError('SUPERODDS 2T Scan', err).catch(() => {});
   });
 }
 
@@ -793,7 +785,7 @@ async function runMarketAgents(matchData) {
   // Se quota esgotada e ainda dentro do período de pausa, pula análise
   if (Date.now() < _quotaExhaustedUntil) {
     const minRestantes = Math.ceil((_quotaExhaustedUntil - Date.now()) / 60_000);
-    console.log(chalk.yellow(`    ⏸  Quota Gemini esgotada — retomando em ~${minRestantes}min`));
+    console.log(chalk.yellow(`    ⏸  Quota Groq esgotada — retomando em ~${minRestantes}min`));
     return [];
   }
 
@@ -822,7 +814,7 @@ async function runMarketAgents(matchData) {
           // Cota esgotada — circuit-breaker local (notificação Telegram já enviada pelo key-manager)
           if (Date.now() >= _quotaExhaustedUntil) {
             _quotaExhaustedUntil = Date.now() + 20 * 60_000;
-            console.log(chalk.bold.yellow(`\n  ⚠️  Cota Gemini esgotada — análises pausadas por 20min`));
+            console.log(chalk.bold.yellow(`\n  ⚠️  Cota Groq esgotada — análises pausadas por 20min`));
           }
           return []; // abandona análise deste jogo
         }
@@ -878,7 +870,7 @@ function _reindexMemPalace() {
 // ── Validação de variáveis de ambiente essenciais ─────────────────────────────
 function _validateEnv() {
   const warnings = [];
-  if (!process.env.GEMINI_API_KEY)       warnings.push('GEMINI_API_KEY — agentes de mercado não funcionarão sem esta chave');
+  if (!process.env.GROQ_KEYS && !process.env.GROQ_API_KEY) warnings.push('GROQ_KEYS — agentes de mercado não funcionarão sem esta chave');
   if (!process.env.TELEGRAM_BOT_TOKEN)   warnings.push('TELEGRAM_BOT_TOKEN — notificações Telegram desativadas');
   if (!process.env.TELEGRAM_GROUP_ID && !process.env.TELEGRAM_CHAT_ID)
                                          warnings.push('TELEGRAM_GROUP_ID — notificações Telegram desativadas');

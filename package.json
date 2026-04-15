@@ -86,7 +86,22 @@
     "radar-dry": "node scripts/games-radar.js --dry",
     "radar-top5": "node scripts/games-radar.js --top=5",
     "radar-json": "node scripts/games-radar.js --json",
-    "fix-signals": "node scripts/fix-resend-signals.js"
+    "fix-signals": "node scripts/fix-resend-signals.js",
+    "btts-report": "node scripts/btts-sniper-report.js --console",
+    "btts-report-tg": "node scripts/btts-sniper-report.js",
+    "btts-backfill": "node scripts/btts-sniper-report.js --backfill --console",
+    "btts-cycle": "node scripts/btts-feedback-cycle.js",
+    "btts-cycle-reset": "node scripts/btts-feedback-cycle.js --reset",
+    "btts-cert": "node scripts/btts-certification.js --compare",
+    "btts-cert-tg": "node scripts/btts-certification.js",
+    "btts-monitor": "node scripts/btts-certification.js --monitor",
+    "goals-report": "node scripts/goals-sniper-report.js",
+    "goals-report-tg": "node scripts/goals-sniper-report.js --telegram",
+    "goals-backfill": "node scripts/goals-feedback-cycle.js",
+    "goals-backfill-reset": "node scripts/goals-feedback-cycle.js --reset",
+    "goals-cert": "node scripts/goals-certification.js",
+    "goals-cert-tg": "node scripts/goals-certification.js --telegram",
+    "goals-monitor": "node scripts/goals-certification.js --monitor"
   },
   "dependencies": {
     "axios": "^1.7.2",

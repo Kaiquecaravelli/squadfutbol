@@ -50,7 +50,7 @@ export class ScanHealthAgent {
       matches_found:   0,
       matches_details: [],
       cache_indexed:   0,
-      gemini_errors:   0,
+      groq_errors:     0,
       gates: {
         odds_blocked:   0,
         sanity_blocked: 0,

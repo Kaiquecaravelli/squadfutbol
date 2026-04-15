@@ -12,13 +12,18 @@
  * Uso:
  *   node scripts/prelive-superodds-now.js
  *   node scripts/prelive-superodds-now.js --dry-run      → sem Telegram
- *   node scripts/prelive-superodds-now.js --hours=12     → próximas 12h
+ *   node scripts/prelive-superodds-now.js --hours=24     → próximas 24h (padrão)
+ *   node scripts/prelive-superodds-now.js --min-hours=6  → mín 6h antes do kickoff (padrão)
  *   node scripts/prelive-superodds-now.js --tier=1       → apenas tier 1
  */
 
 import 'dotenv/config';
 import chalk from 'chalk';
 import axios from 'axios';
+import { readFileSync, writeFileSync, existsSync } from 'fs';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
+const __dirname = dirname(fileURLToPath(import.meta.url));
 import { runPreLiveFunnel }          from '../src/funnels/funnel-pre-live.js';
 import { aggregateMatchData }        from '../src/scrapers/aggregator.js';
 import { analyzeQuantitative }       from '../src/agents/quant.js';
@@ -37,11 +42,26 @@ import { checkPreLiveEligible }      from '../src/utils/match-status-guard.js';
 // ── Configuração ──────────────────────────────────────────────────────────────
 const ARGS      = process.argv.slice(2);
 const DRY_RUN   = ARGS.includes('--dry-run');
-const HOURS     = parseInt(ARGS.find(a => a.startsWith('--hours='))?.split('=')[1]     || '36');
-const MIN_HOURS = parseInt(ARGS.find(a => a.startsWith('--min-hours='))?.split('=')[1] || '3');   // mínimo 3h antes do kickoff
+const HOURS     = parseInt(ARGS.find(a => a.startsWith('--hours='))?.split('=')[1]     || '12');
+const MIN_HOURS = parseInt(ARGS.find(a => a.startsWith('--min-hours='))?.split('=')[1] || '0');   // bucket +1h cobre 0–60min
 const TIER_MAX  = parseInt(ARGS.find(a => a.startsWith('--tier='))?.split('=')[1]      || '3');
-const LIMIT     = parseInt(ARGS.find(a => a.startsWith('--limit='))?.split('=')[1]     || '20');  // máx partidas Gemini
+const LIMIT     = parseInt(ARGS.find(a => a.startsWith('--limit='))?.split('=')[1]     || '20');
 const BANKROLL  = parseFloat(process.env.USER_BANKROLL || '1000');
+
+// ── Classificação por bucket de proximidade ───────────────────────────────────
+// Retorna '+1h' | '+3h' | '+6h' | '+12h' | null (fora do range)
+// Prioridade de envio: +1h > +3h > +6h > +12h
+const BUCKET_ORDER = ['+1h', '+3h', '+6h', '+12h'];
+
+function _getBucket(kickoffMs, nowMs = Date.now()) {
+  const diffMin = (kickoffMs - nowMs) / 60_000;
+  if (diffMin <= 0)   return null;  // já iniciou
+  if (diffMin <= 60)  return '+1h';
+  if (diffMin <= 180) return '+3h';
+  if (diffMin <= 360) return '+6h';
+  if (diffMin <= 720) return '+12h';
+  return null; // além de 12h — fora do escopo dos buckets
+}
 
 // Ligas prioritárias (mesmo conjunto do sofascore-collector)
 const PRIORITY_LEAGUES = {
@@ -191,28 +211,50 @@ async function run() {
     return;
   }
 
-  // Prioriza: tier 1 primeiro, depois tier 2; dentro de cada tier, mais próximos
-  const sorted = [
-    ...matches.filter(m => m.league_tier === 1),
-    ...matches.filter(m => m.league_tier === 2),
-  ].slice(0, LIMIT);
+  // ── Classifica cada jogo no bucket correto e filtra os fora do range ──────
+  const now = Date.now();
+  for (const m of matches) {
+    const kickoffMs = new Date(m.date).getTime();
+    m._bucket = _getBucket(kickoffMs, now);
+  }
+  const withBucket = matches.filter(m => m._bucket !== null);
+
+  if (!withBucket.length) {
+    log('⚠️', 'Nenhuma partida dentro da janela de buckets (0–12h).', 'yellow');
+    await health.finishRun({ sent: 0, opportunities: 0 });
+    return;
+  }
+
+  // Ordena por prioridade de bucket (+1h antes de +12h), depois por tier, depois por kickoff
+  const bucketPrio = (b) => BUCKET_ORDER.indexOf(b);
+  const sorted = withBucket
+    .sort((a, b) => {
+      const bPrio = bucketPrio(a._bucket) - bucketPrio(b._bucket);
+      if (bPrio !== 0) return bPrio;
+      const tierDiff = a.league_tier - b.league_tier;
+      if (tierDiff !== 0) return tierDiff;
+      return new Date(a.date) - new Date(b.date);
+    })
+    .slice(0, LIMIT);
 
   const tier1Count = sorted.filter(m => m.league_tier === 1).length;
   const tier2Count = sorted.filter(m => m.league_tier === 2).length;
-  log('✅', `${matches.length} encontradas → ${sorted.length} selecionadas (limite ${LIMIT})`, 'green');
-  console.log(chalk.gray(`  Tier 1: ${tier1Count} | Tier 2: ${tier2Count}`));
+  const bucketCounts = BUCKET_ORDER.map(b => `${b}:${sorted.filter(m => m._bucket === b).length}`).filter(s => !s.endsWith(':0')).join(' | ');
+  log('✅', `${matches.length} encontradas → ${withBucket.length} com bucket → ${sorted.length} selecionadas (limite ${LIMIT})`, 'green');
+  console.log(chalk.gray(`  Tier 1: ${tier1Count} | Tier 2: ${tier2Count} | Buckets: ${bucketCounts}`));
   health.setMatchesFound(sorted.length);
   console.log('');
 
-  // Lista resumida
+  // Lista resumida — mostra bucket ao lado de cada jogo
   for (const m of sorted.slice(0, 12)) {
     const hora = new Date(m.date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-    console.log(chalk.gray(`  ${hora}  ${m.match.substring(0, 42).padEnd(42)}  [${m.competition}]`));
+    const bucket = m._bucket ? `[${m._bucket}]`.padEnd(6) : '      ';
+    console.log(chalk.gray(`  ${bucket}  ${hora}  ${m.match.substring(0, 40).padEnd(40)}  [${m.competition}]`));
   }
   if (sorted.length > 12) console.log(chalk.gray(`  ... +${sorted.length - 12} partidas`));
   console.log('');
 
-  // Substitui matches pelas partidas selecionadas e ordenadas
+  // Substitui matches pelas partidas classificadas e ordenadas
   matches.length = 0;
   matches.push(...sorted);
 
@@ -254,7 +296,21 @@ async function run() {
   let preLiveSent    = 0;
 
   try {
-    preLiveResults = await runPreLiveFunnel(eligibleMatches, new Map());
+    // Carrega chaves pré-live persistidas no disco (sobrevive a restarts e re-execuções)
+    const _preKeysFile = join(__dirname, '../data/prelive-notified-keys.json');
+    const _preKeys = (() => {
+      try {
+        if (existsSync(_preKeysFile)) {
+          const raw    = JSON.parse(readFileSync(_preKeysFile, 'utf-8'));
+          const cutoff = Date.now() - 24 * 60 * 60_000; // expira após 24h
+          return new Map(Object.entries(raw).filter(([, ts]) => ts > cutoff));
+        }
+      } catch { /* ignora */ }
+      return new Map();
+    })();
+
+    preLiveResults = await runPreLiveFunnel(eligibleMatches, _preKeys);
+
     log('✅', `Pré-Live: ${preLiveResults.length}/${matches.length} com oportunidades`, 'green');
 
     // Registra métricas por partida no health agent
@@ -270,16 +326,20 @@ async function run() {
     if (!DRY_RUN) {
       for (const r of preLiveResults) {
         try {
-          // Enriquece matchData com URL direta do jogo no Superbet (Playwright cache)
-          if (!r.matchData.superbet_url) {
-            r.matchData.superbet_url = lookupMatchUrl(
-              r.matchData.home?.team || r.matchData.home_team,
-              r.matchData.away?.team || r.matchData.away_team,
-              'prelive'
-            );
-          }
+          // Sempre busca URL do cache para garantir que aponta para o jogo correto
+          // (não reutiliza URL pré-existente que pode apontar para jogo errado)
+          const _hTeam = r.matchData.home?.team || r.matchData.home_team;
+          const _aTeam = r.matchData.away?.team || r.matchData.away_team;
+          r.matchData.superbet_url = lookupMatchUrl(_hTeam, _aTeam, 'prelive');
+          // Propaga bucket do match original para o matchData (usado no cabeçalho Telegram)
+          const origMatch = matches.find(m => String(m.sofascore_id) === String(r.matchData.sofascore_id || r.matchData.match_id));
+          if (origMatch?._bucket) r.matchData._bucket = origMatch._bucket;
           const sent = await notifyPreLiveOpportunity(r.matchData, r.enriched);
-          if (sent) preLiveSent++;
+          if (sent) {
+            preLiveSent++;
+            // Persiste atomicamente após cada envio bem-sucedido (evita marcar como enviado se Telegram falhar)
+            try { writeFileSync(_preKeysFile, JSON.stringify(Object.fromEntries(_preKeys)), 'utf-8'); } catch { /* ignora */ }
+          }
           await new Promise(res => setTimeout(res, 1500)); // throttle Telegram
         } catch (e) {
           log('⚠️', `Telegram pré-live falhou: ${e.message}`, 'yellow');
@@ -405,6 +465,11 @@ async function run() {
     try {
       const legs          = buildLegsFromAnalyses(analyses);
       const parlayOptions = buildParlayOptions(legs, BANKROLL);
+
+      // Propaga o bucket mais urgente dos jogos do parlay como metadado
+      const BUCKET_ORDER  = ['+1h', '+3h', '+6h', '+12h'];
+      const urgentBucket  = BUCKET_ORDER.find(b => parlayMatches.some(m => m._bucket === b)) || null;
+      if (urgentBucket) parlayOptions._meta = { bucket: urgentBucket };
 
       const totalOptions = Object.values(parlayOptions.tiers || {})
         .reduce((acc, t) => acc + (t.best?.length || t.combos?.length || 0), 0);

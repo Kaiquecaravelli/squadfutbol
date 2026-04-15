@@ -6,14 +6,16 @@
  *
  * Rotinas agendadas:
  *
- *  ┌─────────────────────────────────────────────────────────────────────┐
- *  │  Horário     │ Rotina                  │ Descrição                  │
- *  ├─────────────────────────────────────────────────────────────────────┤
- *  │  05:45 diário│ morning-message         │ Bom dia + resumo + agenda  │
- *  │  06:00 diário│ daily-pipeline          │ Coleta +24h, backfill, PIE │
- *  │  13:00 diário│ daily-pipeline (extra)  │ Partidas da tarde          │
- *  │  21:00 dom.  │ weekly-report           │ Resumo semanal no Telegram │
- *  └─────────────────────────────────────────────────────────────────────┘
+ *  ┌──────────────────────────────────────────────────────────────────────────┐
+ *  │  Horário        │ Rotina                  │ Descrição                   │
+ *  ├──────────────────────────────────────────────────────────────────────────┤
+ *  │  05:45 diário   │ morning-message         │ Bom dia + resumo + agenda   │
+ *  │  06:00 diário   │ daily-pipeline          │ Coleta +24h, backfill, PIE  │
+ *  │  06-22h /30min  │ prelive-superodds       │ Sinais PRÉ-LIVE (buckets)   │
+ *  │  13:00 diário   │ daily-pipeline (extra)  │ Partidas da tarde           │
+ *  │  */1h           │ superodds-2t            │ Análise 2° Tempo (Superbet) │
+ *  │  21:00 dom.     │ weekly-report           │ Resumo semanal no Telegram  │
+ *  └──────────────────────────────────────────────────────────────────────────┘
  *
  * Uso:
  *   node scripts/scheduler.js              → inicia o scheduler
@@ -87,8 +89,8 @@ console.log('  Rotinas programadas:');
 console.log('  🌅 05:45 diário  → Mensagem de bom dia + resumo do dia anterior');
 console.log('  📡 06:00 diário  → Pipeline histórico (calibração PIE)');
 console.log('  📡 13:00 diário  → Pipeline histórico extra (tarde)');
-console.log('  🔵 07-22h (cada 30min) → PRÉ-LIVE + Super Odds: 32 varreduras/dia');
-console.log('  🟢 */1h          → LIVE: verificação Superbet + análise 2° Tempo');
+console.log('  🔵 06-22h (cada 30min) → PRÉ-LIVE + Super Odds: 34 varreduras/dia (buckets +1h/+3h/+6h/+12h)');
+console.log('  🟢 */1h          → SUPERODDS 2T: verificação Superbet + análise 2° Tempo');
 console.log('  🔍 */5 min       → Verificação de resultados GREEN/RED');
 console.log('  📊 21:00 domingo → Relatório semanal');
 console.log('  💡 Ctrl+C para parar\n');
@@ -168,10 +170,11 @@ async function safePreLive(label) {
   }
 }
 
-// Executa a cada 30min das 07h às 22h — 32 varreduras/dia (janela 3-24h)
-cron.schedule('*/30 7-22 * * *', async () => {
+// Executa a cada 30min das 06h às 22h — 34 varreduras/dia
+// Classifica cada jogo em bucket +1h/+3h/+6h/+12h e envia ao detectar nova transição
+cron.schedule('*/30 6-22 * * *', async () => {
   const h = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-  await safePreLive(`Pipeline PRÉ-LIVE + Super Odds ${h} (janela 3-24h)`);
+  await safePreLive(`Pipeline PRÉ-LIVE + Super Odds ${h} (buckets +1h/+3h/+6h/+12h)`);
 }, { timezone: 'America/Sao_Paulo' });
 
 // ── LIVE — verifica Superbet a cada 1h e analisa jogos em andamento ────────────
@@ -322,5 +325,5 @@ setInterval(async () => {
 // Mantém processo vivo
 console.log(chalk.gray(`[${ts()}] 💓 Scheduler iniciado — aguardando horários agendados...`));
 console.log(chalk.bold.green(`[${ts()}] 🛡️  Group Guardian ativo — polling a cada 10s`));
-console.log(chalk.blue(`[${ts()}] 🔵 PRÉ-LIVE + Super Odds — varredura cada 30min (07-22h) | 32×/dia`));
-console.log(chalk.green(`[${ts()}] 🟢 LIVE ativo — Superbet verificado a cada 1h`));
+console.log(chalk.blue(`[${ts()}] 🔵 PRÉ-LIVE + Super Odds — varredura cada 30min (06-22h) | 34×/dia | buckets +1h/+3h/+6h/+12h`));
+console.log(chalk.green(`[${ts()}] 🟢 SUPERODDS 2T ativo — Superbet verificado a cada 1h`));

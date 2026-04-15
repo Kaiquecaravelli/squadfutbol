@@ -1444,7 +1444,7 @@ ${marketRows}
 
 ## 🔗 Links
 
-- [🎰 Apostar no Superbet](${matchData.superbetUrl || 'https://superbet.bet.br/apostas/futebol/hoje'})
+- [🎰 Apostar no Superbet](${matchData.superbetUrl || '#sem-link-disponivel'})
 - Mensagem Telegram: \`ID ${msgId || '—'}\`
 
 ---

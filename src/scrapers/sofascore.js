@@ -1,7 +1,15 @@
 /**
- * SofaScore Scraper
- * Usa a API pública não oficial do SofaScore (api.sofascore.com)
- * Fornece: xG, ratings de jogadores, posse, estatísticas avançadas
+ * sofascore.js — SofaScore Scraper + Live Data
+ *
+ * Responsabilidade neste projeto:
+ *   • Dados pré-jogo: xG, ratings, posse, forma, H2H (parseTeamForm, getSofascoreMatchDetails)
+ *   • Dados ao vivo:  getLiveMatches, getLiveStats, collectLiveMatchData
+ *
+ * Hierarquia de fontes por agente:
+ *   GoalsAgent / BTTSAgent / DoubleChanceAgent → Academia das Apostas (primária)
+ *   CornersAgent                               → SofaScore (primária)
+ *
+ * SofaScore é sempre usado para validação técnica ao vivo e estatísticas de escanteios.
  */
 
 import axios from 'axios';
@@ -204,4 +212,288 @@ function extractSeasonStats(data) {
     shots_on_target_pct: s.onTargetScoringAttempts,
     xg_total: s.expectedGoals,
   };
+}
+
+// ════════════════════════════════════════════════════════════════════════════════
+// LIVE DATA — funções para coleta de partidas em andamento (SUPERODDS)
+// ════════════════════════════════════════════════════════════════════════════════
+
+// Retry com backoff exponencial para falhas de rede
+async function _withRetryLive(fn, maxRetries = 2, baseDelayMs = 1500) {
+  let lastErr;
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastErr = err;
+      if (err.response?.status >= 400 && err.response?.status < 500) break;
+      if (attempt < maxRetries) {
+        const delay = baseDelayMs * Math.pow(2, attempt);
+        await new Promise((r) => setTimeout(r, delay));
+      }
+    }
+  }
+  throw lastErr;
+}
+
+/**
+ * Busca todos os jogos de futebol em andamento.
+ * Fonte primária para o funil SUPERODDS.
+ * @returns {Array} lista de partidas ao vivo com placar, minuto e xG
+ */
+export async function getLiveMatches() {
+  console.log(chalk.cyan('  [SofaScore] Buscando jogos em andamento (SUPERODDS)...'));
+  try {
+    const res    = await _withRetryLive(() => http.get('/sport/football/events/live'));
+    const events = res.data?.events || [];
+
+    return events
+      .filter((e) => {
+        const type = e.status?.type?.toLowerCase() || '';
+        return ['inprogress', 'halftime', 'extra_time', 'overtime'].includes(type);
+      })
+      .map((e) => ({
+        sofascore_id:  e.id,
+        slug:          e.slug,
+        home_team:     e.homeTeam?.name,
+        home_id:       e.homeTeam?.id,
+        away_team:     e.awayTeam?.name,
+        away_id:       e.awayTeam?.id,
+        competition:   e.tournament?.name,
+        tournament_id: e.tournament?.uniqueTournament?.id ?? null,
+        country:       e.tournament?.category?.country?.name,
+        score_home:    e.homeScore?.current ?? 0,
+        score_away:    e.awayScore?.current ?? 0,
+        minute:        e.time?.played
+          ?? (e.time?.currentPeriodStartTimestamp
+            ? Math.floor((Date.now() / 1000 - e.time.currentPeriodStartTimestamp) / 60)
+            : null),
+        injuryTime:    e.time?.injuryTime ?? null,
+        period:        e.status?.description || e.status?.type,
+        status_type:   e.status?.type,
+        xg_home:       e.homeScore?.expectedGoals ? parseFloat(e.homeScore.expectedGoals) : null,
+        xg_away:       e.awayScore?.expectedGoals ? parseFloat(e.awayScore.expectedGoals) : null,
+        start_timestamp: e.startTimestamp,
+      }));
+  } catch (err) {
+    console.warn(chalk.yellow(`  [SofaScore] Falha ao buscar jogos ao vivo: ${err.message}`));
+    return [];
+  }
+}
+
+/**
+ * Busca estatísticas ao vivo de um evento.
+ * Fonte primária para CornersAgent (escanteios ao vivo).
+ * @param {number|string} eventId
+ * @returns {object|null}
+ */
+export async function getLiveStats(eventId) {
+  try {
+    const res  = await _withRetryLive(() => http.get(`/event/${eventId}/statistics`));
+    const data = res.data?.statistics || [];
+
+    const period = data.find((p) => p.period === 'ALL') || data[0];
+    if (!period) return null;
+
+    const stats = {};
+    for (const group of period.groups || []) {
+      for (const item of group.statisticsItems || []) {
+        const key = item.name?.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+        if (key) {
+          stats[key] = {
+            home: _parseLiveStat(item.home),
+            away: _parseLiveStat(item.away),
+          };
+        }
+      }
+    }
+
+    return {
+      possession_home:       stats.ball_possession?.home ?? null,
+      possession_away:       stats.ball_possession?.away ?? null,
+      shots_total_home:      stats.total_shots?.home ?? stats.shots?.home ?? null,
+      shots_total_away:      stats.total_shots?.away ?? stats.shots?.away ?? null,
+      shots_on_target_home:  stats.shots_on_target?.home ?? null,
+      shots_on_target_away:  stats.shots_on_target?.away ?? null,
+      shots_off_target_home: stats.shots_off_target?.home ?? null,
+      shots_off_target_away: stats.shots_off_target?.away ?? null,
+      corners_home:           stats.corner_kicks?.home ?? null,
+      corners_away:           stats.corner_kicks?.away ?? null,
+      fouls_home:             stats.fouls?.home ?? null,
+      fouls_away:             stats.fouls?.away ?? null,
+      yellow_cards_home:      stats.yellow_cards?.home ?? null,
+      yellow_cards_away:      stats.yellow_cards?.away ?? null,
+      dangerous_attacks_home: stats.dangerous_attacks?.home ?? null,
+      dangerous_attacks_away: stats.dangerous_attacks?.away ?? null,
+      attacks_home:           stats.attacks?.home ?? null,
+      attacks_away:           stats.attacks?.away ?? null,
+      xg_home:                stats.expected_goals?.home ?? null,
+      xg_away:                stats.expected_goals?.away ?? null,
+      goalkeeper_saves_home:  stats.goalkeeper_saves?.home ?? null,
+      goalkeeper_saves_away:  stats.goalkeeper_saves?.away ?? null,
+      _raw: stats,
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Busca forma recente e H2H de uma partida ao vivo.
+ * @param {number|string} eventId
+ * @param {number|string} homeId
+ * @param {number|string} awayId
+ * @returns {object}
+ */
+export async function getLiveMatchDetails(eventId, homeId, awayId) {
+  const [formHomeRes, formAwayRes, h2hRes] = await Promise.allSettled([
+    _withRetryLive(() => http.get(`/team/${homeId}/events/last/0`)),
+    _withRetryLive(() => http.get(`/team/${awayId}/events/last/0`)),
+    _withRetryLive(() => http.get(`/event/${eventId}/h2h`)),
+  ]);
+
+  const homeForm = _parseLiveTeamForm(formHomeRes.value?.data?.events, homeId);
+  const awayForm = _parseLiveTeamForm(formAwayRes.value?.data?.events, awayId);
+  const h2h      = _parseLiveH2H(h2hRes.value?.data, homeId, awayId);
+
+  return { homeForm, awayForm, h2h };
+}
+
+/**
+ * Coleta completa de dados para análise SUPERODDS.
+ * Une stats ao vivo (SofaScore), forma histórica e H2H.
+ *
+ * @param {object} match - objeto retornado por getLiveMatches()
+ * @returns {object} liveData normalizado para os agentes de mercado
+ */
+export async function collectLiveMatchData(match) {
+  const [liveStats, details] = await Promise.allSettled([
+    getLiveStats(match.sofascore_id),
+    getLiveMatchDetails(match.sofascore_id, match.home_id, match.away_id),
+  ]);
+
+  const stats   = liveStats.status === 'fulfilled' ? liveStats.value   : null;
+  const history = details.status   === 'fulfilled' ? details.value     : {};
+
+  // Minuto total do jogo (e.time.played já fornece o valor correto)
+  let minuto = match.minute;
+  const period = (match.period || '').toLowerCase();
+
+  if (minuto == null) {
+    if (period.includes('halftime') || period.includes('half time')) minuto = 45;
+    else if (period.includes('second') || period.includes('2nd'))    minuto = 70;
+    else                                                              minuto = 25;
+  }
+
+  const isSegundoTempo  = period.includes('2nd') || period.includes('second') || (minuto != null && minuto >= 45 && !period.includes('halftime'));
+  const isPrimeiroTempo = period.includes('1st') || period.includes('first')  || (minuto != null && minuto < 45);
+  const isAcrescimo2T   = isSegundoTempo  && minuto >= 90;
+  const isAcrescimo1T   = isPrimeiroTempo && minuto >= 45 && !period.includes('halftime');
+  const acrescimo       = isAcrescimo2T ? (minuto - 90) : isAcrescimo1T ? (minuto - 45) : 0;
+
+  const minutoLabel = isAcrescimo2T
+    ? `90+${acrescimo}`
+    : isAcrescimo1T
+    ? `45+${acrescimo}`
+    : String(minuto ?? '?');
+
+  const acrescimoDeclarado = match.injuryTime ?? (isAcrescimo2T ? 5 : 3);
+  let minutosRestantes;
+  if (isAcrescimo2T)                           minutosRestantes = Math.max(0, (90 + acrescimoDeclarado) - minuto);
+  else if (period.includes('halftime'))        minutosRestantes = 45;
+  else if (isSegundoTempo)                     minutosRestantes = Math.max(0, 90 - minuto);
+  else                                         minutosRestantes = Math.max(0, 45 - minuto);
+
+  const xgHome = stats?.xg_home ?? match.xg_home;
+  const xgAway = stats?.xg_away ?? match.xg_away;
+
+  const totalGols    = (match.score_home || 0) + (match.score_away || 0);
+  const minDecorrido = Math.max(minuto || 1, 1);
+  const ritmoGols    = totalGols / minDecorrido;
+  const golsEsperadosRestantes = Math.round(ritmoGols * minutosRestantes * 10) / 10;
+
+  return {
+    match_id:          match.sofascore_id,
+    match:             `${match.home_team} vs ${match.away_team}`,
+    competition:       match.competition,
+    country:           match.country,
+    minuto:            minuto ?? '?',
+    minuto_label:      minutoLabel,
+    minutos_restantes: minutosRestantes,
+    acrescimo,
+    is_acrescimo:      isAcrescimo2T || isAcrescimo1T,
+    periodo:           period,
+    placar:            `${match.score_home}-${match.score_away}`,
+    gols_casa:         match.score_home,
+    gols_fora:         match.score_away,
+    projecao_total_gols:      Math.round((ritmoGols * 90 + totalGols) / 2 * 10) / 10,
+    gols_esperados_restantes: golsEsperadosRestantes,
+    xg_home: xgHome,
+    xg_away: xgAway,
+    xg_total: xgHome != null && xgAway != null ? Math.round((xgHome + xgAway) * 10) / 10 : null,
+    live_stats: stats ? {
+      posse_casa:          stats.possession_home,
+      posse_fora:          stats.possession_away,
+      chutes_total_casa:   stats.shots_total_home,
+      chutes_total_fora:   stats.shots_total_away,
+      chutes_alvo_casa:    stats.shots_on_target_home,
+      chutes_alvo_fora:    stats.shots_on_target_away,
+      escanteios_casa:     stats.corners_home,
+      escanteios_fora:     stats.corners_away,
+      ataques_perig_casa:  stats.dangerous_attacks_home,
+      ataques_perig_fora:  stats.dangerous_attacks_away,
+      amarelos_casa:       stats.yellow_cards_home,
+      amarelos_fora:       stats.yellow_cards_away,
+      defesas_casa:        stats.goalkeeper_saves_home,
+      defesas_fora:        stats.goalkeeper_saves_away,
+    } : null,
+    home: { team: match.home_team, ...history.homeForm },
+    away: { team: match.away_team, ...history.awayForm },
+    h2h:  history.h2h || [],
+  };
+}
+
+// ── Helpers internos (live) ───────────────────────────────────────────────────
+function _parseLiveStat(val) {
+  if (val == null) return null;
+  const n = parseFloat(String(val).replace('%', '').trim());
+  return isNaN(n) ? null : n;
+}
+
+function _parseLiveTeamForm(events, teamId) {
+  if (!events?.length) return { form: 'N/A', goals_scored_avg: 1.3, goals_conceded_avg: 1.1 };
+  const last6 = events.slice(0, 6);
+  let scored = 0, conceded = 0;
+  const formChars = [];
+  for (const ev of last6) {
+    const isHome   = ev.homeTeam?.id === teamId;
+    const teamScore = isHome ? ev.homeScore?.current : ev.awayScore?.current;
+    const oppScore  = isHome ? ev.awayScore?.current : ev.homeScore?.current;
+    scored   += teamScore || 0;
+    conceded += oppScore  || 0;
+    if (teamScore > oppScore) formChars.push('W');
+    else if (teamScore === oppScore) formChars.push('D');
+    else formChars.push('L');
+  }
+  const n = last6.length || 1;
+  return {
+    form:               formChars.join(''),
+    goals_scored_avg:   Math.round((scored   / n) * 10) / 10,
+    goals_conceded_avg: Math.round((conceded / n) * 10) / 10,
+  };
+}
+
+function _parseLiveH2H(data, homeId, awayId) {
+  if (!data) return [];
+  const matches = [
+    ...(data.teamDuel?.homeEvents || []),
+    ...(data.teamDuel?.awayEvents || []),
+  ].sort((a, b) => b.startTimestamp - a.startTimestamp).slice(0, 5);
+
+  return matches.map((m) => ({
+    date:       new Date(m.startTimestamp * 1000).toISOString().split('T')[0],
+    score:      `${m.homeScore?.current ?? '?'}-${m.awayScore?.current ?? '?'}`,
+    home_goals: m.homeScore?.current ?? 0,
+    away_goals: m.awayScore?.current ?? 0,
+  }));
 }

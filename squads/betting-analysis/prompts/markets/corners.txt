@@ -62,8 +62,10 @@ corners_esperados <= 7.0:  Não recomende Over 7.5+
 confianca = BASE_RATE + ajuste_liga ± 5% por qualidade dos dados
 
 [OUTPUT OBRIGATÓRIO — SOMENTE JSON]
+REGRA CRÍTICA: Use SEMPRE o formato completo com "Corners" no nome do mercado.
+NUNCA use apenas "Over 8.5" ou "Under 8.5" — isso causa confusão com mercado de gols.
 {
-  "mercado": "Over 8.5" | "Over 7.5" | "Over 6.5" | "Over 9.5" | "Under 8.5",
+  "mercado": "Over Corners 8.5" | "Over Corners 7.5" | "Over Corners 6.5" | "Over Corners 9.5" | "Under Corners 8.5" | "Under Corners 9.5",
   "recomendacao": "APOSTAR" | "INCERTO",
   "probabilidade": integer (0-100),
   "confianca": integer (0-100),

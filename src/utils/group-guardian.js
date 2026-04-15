@@ -232,10 +232,15 @@ export async function handleCallbackQuery(update) {
       username:  clicker?.username   ? `@${clicker.username}` : '',
     });
     // Abre a URL no dispositivo do usuário (sem mensagem de alerta)
-    await api('answerCallbackQuery', {
-      callback_query_id: cbId,
-      url:               url || 'https://superbet.bet.br/apostas/futebol/hoje',
-    });
+    if (url) {
+      await api('answerCallbackQuery', { callback_query_id: cbId, url });
+    } else {
+      await api('answerCallbackQuery', {
+        callback_query_id: cbId,
+        text:       '⚠️ Link não disponível para este jogo.',
+        show_alert: true,
+      });
+    }
     return true;
   }
 

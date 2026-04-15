@@ -4,12 +4,12 @@ import { fileURLToPath } from 'url';
 import axios from 'axios';
 import { getExpertiseContext } from '../../../src/pie/pie-trainer.js';
 import { search as memSearch, kgQuery, diaryWrite, isAvailable as memAvailable } from '../../../src/utils/mempalace.js';
-import { callGeminiWithRotation } from '../../../src/utils/gemini-key-manager.js';
+import { callGroqWithRotation } from '../../../src/utils/groq-key-manager.js';
 import {
   cacheGet, cacheSet,
-  shouldSkipGemini,
+  shouldSkipGroq,
   trackCall, trackCacheHit, trackGateSkip,
-} from '../../../src/utils/gemini-token-economy.js';
+} from '../../../src/utils/groq-token-economy.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PROMPTS_DIR = join(__dirname, '../prompts/markets');
@@ -22,12 +22,22 @@ const _memContextCache = new Map(); // key: matchName → { ctx, ts }
 const MEM_CTX_TTL = 10 * 60_000;   // 10 min — cobre ciclo completo de análise de um jogo
 
 export class BaseMarketAgent {
-  constructor({ name, market, promptFile }) {
-    this.name       = name;
-    this.market     = market;
-    this.promptFile = promptFile;
-    this.provider   = (process.env.AI_PROVIDER || 'gemini').toLowerCase();
-    this.systemPrompt = this._loadPrompt();
+  /**
+   * @param {object} config
+   * @param {string} config.name              - identificador do agente
+   * @param {string} config.market            - mercado principal analisado
+   * @param {string} config.promptFile        - nome do arquivo .txt em prompts/markets/
+   * @param {string} [config.primaryDataSource] - 'academia' | 'sofascore'
+   *   'academia'  → Academia das Apostas como fonte primária de probabilidade histórica
+   *   'sofascore' → SofaScore como fonte primária de estatísticas técnicas
+   */
+  constructor({ name, market, promptFile, primaryDataSource = 'academia' }) {
+    this.name              = name;
+    this.market            = market;
+    this.promptFile        = promptFile;
+    this.primaryDataSource = primaryDataSource;
+    this.provider          = 'groq';
+    this.systemPrompt      = this._loadPrompt();
   }
 
   _loadPrompt() {
@@ -65,6 +75,9 @@ export class BaseMarketAgent {
           btts_pct:      matchData.home?.btts_pct,
           over25_pct:    matchData.home?.over_25_pct,
           cs_pct:        matchData.home?.clean_sheet_pct,
+          corners_avg:   matchData.home?.corners_avg,
+          shots_avg:     matchData.home?.shots_avg,
+          possession:    matchData.home?.possession_avg ?? matchData.home?.possession,
         }),
         visitante:  compact({
           time:          matchData.away?.team,
@@ -75,6 +88,9 @@ export class BaseMarketAgent {
           btts_pct:      matchData.away?.btts_pct,
           over25_pct:    matchData.away?.over_25_pct,
           cs_pct:        matchData.away?.clean_sheet_pct,
+          corners_avg:   matchData.away?.corners_avg,
+          shots_avg:     matchData.away?.shots_avg,
+          possession:    matchData.away?.possession_avg ?? matchData.away?.possession,
         }),
         h2h_gols_media: h2hGoalsAvg,
         odds: matchData.odds || {},
@@ -86,8 +102,14 @@ export class BaseMarketAgent {
     const expertiseFull = getExpertiseContext(this.market, matchData.competition);
     const expertise = expertiseFull ? expertiseFull.slice(0, 500) : '';
 
+    // Indicação de fonte primária de dados para orientar o raciocínio do modelo
+    const sourceHint = this.primaryDataSource === 'sofascore'
+      ? `FONTE PRIMÁRIA: SofaScore — priorize estatísticas técnicas ao vivo (corners_avg, xG, chutes, pressão).`
+      : `FONTE PRIMÁRIA: Academia das Apostas — priorize probabilidade histórica de mercado (btts_pct, over25_pct, forma).`;
+
     return [
       `INSTRUÇÃO CRÍTICA: Retorne APENAS o JSON do schema. Sem texto antes ou depois.`,
+      sourceHint,
       expertise,
       memoryContext, // contexto semântico do MemPalace (padrões e fatos históricos)
       `DADOS:`,
@@ -113,7 +135,7 @@ export class BaseMarketAgent {
     throw new Error(`[${this.name}] JSON inválido na resposta`);
   }
 
-  async _callGemini(message, matchName = '') {
+  async _callGroq(message, matchName = '') {
     // 1. Cache — mesmo agente + mesma partida + mesmo mercado na sessão = reusa
     const cached = cacheGet(this.name, matchName, this.market);
     if (cached) {
@@ -125,7 +147,7 @@ export class BaseMarketAgent {
     trackCall();
     const model = process.env.GROQ_MODEL || 'llama-3.1-8b-instant';
 
-    const text = await callGeminiWithRotation(async (apiKey) => {
+    const text = await callGroqWithRotation(async (apiKey) => {
       const res = await axios.post(
         'https://api.groq.com/openai/v1/chat/completions',
         {
@@ -146,7 +168,7 @@ export class BaseMarketAgent {
       const t = res.data?.choices?.[0]?.message?.content;
       if (!t) throw new Error('Resposta vazia');
       return t;
-    }, this.name, 18);
+    }, this.name);
 
     // 3. Armazena no cache
     cacheSet(this.name, matchName, this.market, text);
@@ -205,7 +227,7 @@ export class BaseMarketAgent {
     // Gate de confiança — se Quant já está muito seguro, pula Gemini e economiza tokens
     const quantConf  = matchData._quantConfidence;
     const quantProb  = matchData._quantProbability;
-    if (shouldSkipGemini(this.market, quantConf, quantProb)) {
+    if (shouldSkipGroq(this.market, quantConf, quantProb)) {
       trackGateSkip();
       // Retorna resultado baseado só no Quant (sem chamar Gemini)
       return {
@@ -231,7 +253,7 @@ export class BaseMarketAgent {
     }
 
     const message = this._buildMessage(matchData, memoryContext);
-    const raw     = await this._callGemini(message, matchName);
+    const raw     = await this._callGroq(message, matchName);
     const result  = this._parseResponse(raw);
 
     // Registrar decisão no diário do agente para aprendizado futuro
@@ -240,6 +262,8 @@ export class BaseMarketAgent {
       diaryWrite(this.name, entry).catch(() => {});
     }
 
-    return { agent: this.name, market: this.market, ...result };
+    // IMPORTANTE: market: this.market deve vir APÓS o spread para garantir que o LLM
+    // não possa sobrescrever o campo autoritativo do agente (ex: CornersAgent → "Escanteios").
+    return { agent: this.name, ...result, market: this.market };
   }
 }

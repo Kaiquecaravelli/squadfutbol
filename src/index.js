@@ -12,6 +12,7 @@ import { getRoiStats, getRecentAnalyses, logBet, updateBetResult } from './utils
 import { isObsidianConfigured } from './utils/obsidian.js';
 import { notifyDailySummary, getGroupId, notifyPreLiveOpportunity, notifyLive2TOpportunity } from './utils/telegram.js';
 import { aggregateUpcomingMatches } from './scrapers/aggregator.js';
+import { checkPreLiveEligible }     from './utils/match-status-guard.js';
 import { DEMO_MATCHES } from './utils/mock-data.js';
 
 const [,, command, ...args] = process.argv;
@@ -39,8 +40,8 @@ async function main() {
       break;
     }
 
-    case 'live-scan': {
-      // Análise de jogos em andamento (in-play) em tempo real
+    case 'superodds': {
+      // Modo SUPERODDS — scan in-play em tempo real (Groq, 4 agentes)
       const loop        = args.includes('--loop');
       const intervalArg = args.find((a) => a.startsWith('--interval='));
       const maxArg      = args.find((a) => a.startsWith('--max='));
@@ -50,17 +51,29 @@ async function main() {
       break;
     }
 
+    case 'superodds-2t':
     case 'live-2t': {
-      // Funil exclusivo de 2° Tempo — jogos no min 46+
-      console.log(chalk.bold.yellow('🟡 FUNIL LIVE 2T — Analisando jogos no 2° Tempo...\n'));
+      // Modo SUPERODDS 2T — jogos no 2° Tempo (min >= 55)
+      console.log(chalk.bold.magenta('🔮 SUPERODDS 2T — Analisando jogos no 2° Tempo (min ≥ 55)...\n'));
       const results = await runLive2TFunnel(new Map());
       if (!results.length) {
-        console.log(chalk.gray('  Nenhuma oportunidade encontrada no 2° Tempo.'));
+        console.log(chalk.gray('  Nenhuma oportunidade SUPERODDS encontrada no 2° Tempo.'));
       } else {
         for (const r of results) {
           console.log(chalk.green(`  ✅ ${r._liveData?.match}  →  ${r.mercado}  ${r.probabilidade}%  ${r.recomendacao}`));
         }
       }
+      break;
+    }
+
+    case 'live-scan': {
+      // Alias legado → redireciona para superodds
+      const loop        = args.includes('--loop');
+      const intervalArg = args.find((a) => a.startsWith('--interval='));
+      const maxArg      = args.find((a) => a.startsWith('--max='));
+      const intervalMin = intervalArg ? parseInt(intervalArg.split('=')[1]) : undefined;
+      const maxMatches  = maxArg      ? parseInt(maxArg.split('=')[1])      : undefined;
+      await startLiveScan({ loop, intervalMin, maxMatches });
       break;
     }
 
@@ -87,6 +100,8 @@ async function main() {
       } else {
         for (const r of preLiveResults) {
           console.log(chalk.green(`  ✅ ${r.matchData.match}  →  ${r.enriched.length} mercado(s)`));
+          const eligible = await checkPreLiveEligible(r.matchData).catch(() => true);
+          if (!eligible) { console.log(chalk.yellow(`  🚫 Sinal bloqueado — jogo não está mais pré-live: ${r.matchData.match}`)); continue; }
           await notifyPreLiveOpportunity(r.matchData, r.enriched).catch(() => {});
         }
       }

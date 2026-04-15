@@ -34,8 +34,8 @@ const TTL = {
   live:     5 * 60_000,   //  5 minutos
 };
 
-const NAV_TIMEOUT = 35_000;
-const SPA_WAIT    = 8_000;   // ms para SPA renderizar
+const NAV_TIMEOUT = 45_000;
+const SPA_WAIT    = 14_000;  // ms para SPA renderizar (aumentado: lazy load precisa de mais tempo)
 
 // ── Normalização ───────────────────────────────────────────────────────────────
 function _norm(s) {
@@ -147,8 +147,21 @@ async function _scrapeMatchUrls(pageUrl, label) {
     await page.locator('button:has-text("Aceitar"), button:has-text("Concordo"), [id*="accept"]')
       .first().click({ timeout: 4_000 }).catch(() => {});
 
-    // Aguarda SPA carregar os cards de partidas
-    await new Promise(r => setTimeout(r, SPA_WAIT));
+    // Aguarda SPA carregar primeira parte dos cards
+    await new Promise(r => setTimeout(r, 5_000));
+
+    // Scroll progressivo para forçar lazy-loading dos cards de partida
+    try {
+      for (let i = 0; i < 6; i++) {
+        await page.evaluate(`window.scrollBy(0, ${(i + 1) * 600})`);
+        await new Promise(r => setTimeout(r, 800));
+      }
+      await page.evaluate('window.scrollTo(0, 0)');
+      await new Promise(r => setTimeout(r, 500));
+    } catch { /* silencioso */ }
+
+    // Aguarda renderização final após scroll
+    await new Promise(r => setTimeout(r, SPA_WAIT - 5_000));
 
     // ── DOM: extrai hrefs reais (fonte primária — URL garantidamente correta) ──
     const hrefs = await page.evaluate(() =>
@@ -215,9 +228,11 @@ async function _scrapeMatchUrls(pageUrl, label) {
  * @param {'prelive'|'live'} type
  */
 export async function refreshCache(type = 'prelive') {
+  // /apostas/futebol/hoje — página principal futebol (links no DOM no formato /odds/futebol/time-x-time-id)
+  // /apostas/ao-vivo — página de apostas ao vivo (estrutura diferente, mantida)
   const pageUrl = type === 'live'
     ? 'https://superbet.bet.br/apostas/ao-vivo'
-    : 'https://superbet.bet.br/apostas/futebol';
+    : 'https://superbet.bet.br/apostas/futebol/hoje';
 
   const label   = type === 'live' ? 'AO VIVO' : 'PRÉ-LIVE';
   console.log(chalk.cyan(`  [SuperbetCache] Atualizando cache ${label}...`));

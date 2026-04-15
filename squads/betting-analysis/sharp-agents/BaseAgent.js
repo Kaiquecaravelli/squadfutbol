@@ -2,13 +2,13 @@ import { readFileSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import axios from 'axios';
-import { callGeminiWithRotation } from '../../../src/utils/gemini-key-manager.js';
+import { callGroqWithRotation } from '../../../src/utils/groq-key-manager.js';
 import {
   cacheGet, cacheSet,
   compactMatchData,
   trackCall, trackCacheHit,
   flushStats,
-} from '../../../src/utils/gemini-token-economy.js';
+} from '../../../src/utils/groq-token-economy.js';
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -26,7 +26,7 @@ export class BaseAgent {
     this.name       = name;
     this.promptFile = promptFile;
     this.role       = role;
-    this.provider   = (process.env.AI_PROVIDER || 'gemini').toLowerCase();
+    this.provider   = (process.env.AI_PROVIDER || 'groq').toLowerCase();
     this.systemPrompt = this._loadPrompt();
   }
 
@@ -73,7 +73,7 @@ export class BaseAgent {
   }
 
   // ── Chamada Groq com cache + rotação de chaves ───────────────────────────────
-  async _callGemini(userMessage, matchName = '') {
+  async _callGroq(userMessage, matchName = '') {
     // 1. Verifica cache — mesmo agente + mesma partida na sessão = reusa
     const cached = cacheGet(this.name, matchName);
     if (cached) {
@@ -85,7 +85,7 @@ export class BaseAgent {
     trackCall();
     const model = process.env.GROQ_MODEL || 'llama-3.1-8b-instant';
 
-    const text = await callGeminiWithRotation(async (apiKey) => {
+    const text = await callGroqWithRotation(async (apiKey) => {
       const res = await axios.post(
         'https://api.groq.com/openai/v1/chat/completions',
         {
@@ -150,7 +150,7 @@ export class BaseAgent {
     if (this.provider === 'openai') {
       rawText = await this._callOpenAI(userMessage);
     } else {
-      rawText = await this._callGemini(userMessage, matchName);
+      rawText = await this._callGroq(userMessage, matchName);
     }
 
     const result = this._parseResponse(rawText);

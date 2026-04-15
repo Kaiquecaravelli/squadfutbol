@@ -4,7 +4,7 @@
  * Pipeline 100% SofaScore (sem dependência de API-Football):
  *   1. Limpa o grupo Telegram
  *   2. Pré-live: jogos agendados → SofaScore details + GoalsAgent → Telegram
- *   3. Live 2T: jogos ao vivo em 2T → Live2TAgent → Telegram
+ *   3. SUPERODDS 2T: jogos ao vivo em 2T → GoalsAgent + BTTSAgent → Telegram
  *   4. Super ODD: múltiplos jogos agendados → pernas → parlay → Telegram
  *
  * Uso:
@@ -31,12 +31,11 @@ import {
 } from '../src/utils/telegram.js';
 
 import { getSofascoreMatches, getSofascoreMatchDetails } from '../src/scrapers/sofascore.js';
-import { getLiveMatches, collectLiveMatchData }         from '../src/scrapers/sofascore-live.js';
+import { getLiveMatches, collectLiveMatchData }         from '../src/scrapers/sofascore.js';
 
 import { GoalsAgent }    from '../squads/betting-analysis/market-agents/GoalsAgent.js';
 import { BTTSAgent }     from '../squads/betting-analysis/market-agents/BTTSAgent.js';
 import { CornersAgent }  from '../squads/betting-analysis/market-agents/CornersAgent.js';
-import { Live2TAgent }   from '../squads/betting-analysis/market-agents/Live2TAgent.js';
 
 import { buildParlayOptions } from '../src/agents/parlay-builder.js';
 import { calcRiscoDisplay, calcRetornoPotencial } from '../src/workflows/prelive-analysis.js';
@@ -294,25 +293,25 @@ async function stepPreLive() {
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
-// ETAPA 3: Análise Live 2T (SofaScore Live + Live2TAgent)
+// ETAPA 3: Análise SUPERODDS 2T (SofaScore Live + GoalsAgent + BTTSAgent)
 // ═════════════════════════════════════════════════════════════════════════════
 async function stepLive2T() {
-  log.step(3, 'ANÁLISE AO VIVO — 2° TEMPO (SofaScore Live + Live2TAgent)');
+  log.step(3, 'ANÁLISE AO VIVO — 2° TEMPO (SofaScore Live + GoalsAgent + BTTSAgent)');
 
   log.info('Buscando jogos em andamento...');
   const allLive = await getLiveMatches().catch(() => []);
   log.info(`${allLive.length} jogos ao vivo detectados`);
 
-  // Prioriza: min 50-85 (intervalo ideal para Live2T)
+  // Prioriza: min 55-87 (intervalo ideal para SUPERODDS 2T — gate >= 55)
   const sorted = allLive
-    .filter(m => (m.minute ?? 0) >= 46 && (m.minute ?? 0) <= 87)
+    .filter(m => (m.minute ?? 0) >= 55 && (m.minute ?? 0) <= 87)
     .sort((a, b) => {
-      const aMid = Math.abs((a.minute ?? 60) - 62);
-      const bMid = Math.abs((b.minute ?? 60) - 62);
+      const aMid = Math.abs((a.minute ?? 65) - 65);
+      const bMid = Math.abs((b.minute ?? 65) - 65);
       return aMid - bMid;
     });
 
-  log.info(`${sorted.length} jogos em 2° tempo (min 46-87)`);
+  log.info(`${sorted.length} jogos em 2° tempo (min 55-87)`);
 
   const candidates = sorted.length ? sorted : allLive.filter(m => (m.minute ?? 0) >= 1).slice(0, 12);
   if (!candidates.length) { log.warn('Nenhum jogo ao vivo adequado'); return null; }
@@ -329,9 +328,9 @@ async function stepLive2T() {
   const prematchMap = await getSuperbetEventMap().catch(() => new Map());
   log.info(`Superbet Prematch: ${Math.round(prematchMap.size / 2)} partidas indexadas`);
 
-  const agent = new Live2TAgent();
+  const agent = new GoalsAgent();
   const notifiedKeys = new Map();
-  const LIVE_STAKE_PCT = { 'Baixo': 2.0, 'Médio': 1.5, 'Alto': 0.8 };
+  const SUPERODDS_STAKE_PCT = { 'Baixo': 2.0, 'Médio': 1.5, 'Alto': 0.8 };
 
   for (const rawMatch of candidates.slice(0, 12)) {
     const label = `${rawMatch.home_team} vs ${rawMatch.away_team}`;
@@ -386,7 +385,7 @@ async function stepLive2T() {
       const opportunitiesWithReturn = qualified.map(o => {
         const o_odds   = o.odds_minima ?? 1.5;
         const risco    = calcRiscoDisplay(o.confianca, o_odds, 'live');
-        const stakePct = LIVE_STAKE_PCT[risco.label] ?? 1.5;
+        const stakePct = SUPERODDS_STAKE_PCT[risco.label] ?? 1.5;
         const stake    = Math.round(BANKROLL * (stakePct / 100) * 100) / 100;
         const ganho    = Math.round(stake * o_odds * 100) / 100;
         return {
