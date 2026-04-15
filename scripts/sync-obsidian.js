@@ -11,6 +11,11 @@
 import { readFileSync, existsSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
+import dotenv from 'dotenv';
+
+const __dir0 = dirname(fileURLToPath(import.meta.url));
+dotenv.config({ path: join(__dir0, '..', '.env') });
+
 import { loadDB, getStats, loadPieSnapshots } from '../src/pie/pie-storage.js';
 import {
   isObsidianConfigured,
@@ -24,7 +29,7 @@ import {
 } from '../src/utils/obsidian.js';
 import { getOverallStats } from '../src/utils/engagement-tracker.js';
 
-const __dir = dirname(fileURLToPath(import.meta.url));
+const __dir = __dir0;
 const ROOT  = join(__dir, '..');
 const HIST  = join(ROOT, 'data/historical-patterns.json');
 
