@@ -168,6 +168,13 @@ async function _analyzeMatch(match, idx, notifiedKeys) {
     return true;
   });
 
+  // Módulo 4 — Anti-silence: loga quais agentes serão invocados para este jogo
+  const goalsInvoked = agentsToRun.some((ag) => ag.name === 'Gols');
+  if (goalsInvoked) {
+    const compTag = matchData.competition ? ` [${matchData.competition}]` : '';
+    console.log(chalk.cyan(`    ═══ [GoalsAgent] INVOCADO${compTag} — ${matchData.match || ''} ═══`));
+  }
+
   // Pool Groq com 6 chaves: agentes elegíveis em paralelo com round-robin automático
   const rawResults = await Promise.allSettled(
     agentsToRun.map((agent) => agent.analyze(matchData))
@@ -183,6 +190,19 @@ async function _analyzeMatch(match, idx, notifiedKeys) {
   const allResults = rawResults
     .filter((r) => r.status === 'fulfilled')
     .map((r) => r.value);
+
+  // Módulo 4 — Anti-silence logging: registra o que cada agente retornou
+  // Essencial para diagnosticar falhas silenciosas (ex: GoalsAgent retornando 0%)
+  allResults.forEach((r) => {
+    if (r.agent === 'Gols') {
+      const mkt  = r.mercado || r.market || '?';
+      const prob = r.probabilidade ?? '?';
+      const conf = r.confianca ?? '?';
+      const rec  = r.recomendacao || '?';
+      const extra = r._skippedGemini ? ' [Quant direto]' : '';
+      console.log(chalk.cyan(`    ℹ️  [GoalsAgent] → ${mkt} | prob ${prob}% | conf ${conf}% | ${rec}${extra}`));
+    }
+  });
 
   if (!allResults.length) return null;
 
