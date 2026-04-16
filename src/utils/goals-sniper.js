@@ -44,10 +44,15 @@ const TRACKER = join(__dirSn, '../../data/goals-tracker.json');
 export const GOALS_MIN_CONFIDENCE = 75;
 
 // Threshold de confiança por mercado — Over 2.5/3.5 exigem 80% (fire zone absoluta)
+// Under 1.5/2.5 usam 65% — mercados novos sem calibração histórica suficiente.
+// Critério de revisão: quando n≥50 amostras reais, recalibrar com dados PIE.
 const GOALS_CONFIDENCE_THRESHOLDS = {
   'Over 2.5':  80, // fire zone: 100% histórico com conf >= 80% (113 amostras)
   'Over 3.5':  80, // fire zone: 100% histórico com conf >= 80% (13 amostras)
   'Over 4.5':  80,
+  'Under 1.5': 65, // early-stage: BTTS 15% (Conference League) infere Under alto — calibrar com n≥50
+  'Under 2.5': 65, // early-stage: conservador até calibração real
+  'Under 3.5': 65,
 };
 
 /**
