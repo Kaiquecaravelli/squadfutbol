@@ -32,6 +32,7 @@ import { buildLegsFromAnalyses,
          formatParlayReport }        from '../src/agents/parlay-builder.js';
 import { notifySuperOddsParlay,
          notifyPreLiveOpportunity }  from '../src/utils/telegram.js';
+import { queueSignalWithAlert }      from './alert-protocol.js';
 import { loadDB }                    from '../src/pie/pie-storage.js';
 import { ensureFresh,
          lookupMatchUrl,
@@ -334,13 +335,15 @@ async function run() {
           // Propaga bucket do match original para o matchData (usado no cabeçalho Telegram)
           const origMatch = matches.find(m => String(m.sofascore_id) === String(r.matchData.sofascore_id || r.matchData.match_id));
           if (origMatch?._bucket) r.matchData._bucket = origMatch._bucket;
-          const sent = await notifyPreLiveOpportunity(r.matchData, r.enriched);
+          // Protocolo de alerta: ALERTA → 90s validação → SINAL (fire-and-forget)
+          queueSignalWithAlert(r.matchData, r.enriched, notifyPreLiveOpportunity);
+          const sent = true; // fire-and-forget — sinal enviado assincronamente pelo alert-protocol
           if (sent) {
             preLiveSent++;
-            // Persiste atomicamente após cada envio bem-sucedido (evita marcar como enviado se Telegram falhar)
+            // Persiste atomicamente após enfileirar (evita re-envio em próximo ciclo)
             try { writeFileSync(_preKeysFile, JSON.stringify(Object.fromEntries(_preKeys)), 'utf-8'); } catch { /* ignora */ }
           }
-          await new Promise(res => setTimeout(res, 1500)); // throttle Telegram
+          await new Promise(res => setTimeout(res, 500)); // throttle de enfileiramento
         } catch (e) {
           log('⚠️', `Telegram pré-live falhou: ${e.message}`, 'yellow');
         }
@@ -506,6 +509,43 @@ async function run() {
 
   // ── Health Agent: finaliza métricas e alerta admin se necessário ───────────
   await health.finishRun({ sent: preLiveSent, opportunities: preLiveResults.length }).catch(() => {});
+
+  // ── Módulo 5 — Scanner Report ao Admin ────────────────────────────────────
+  if (!DRY_RUN) {
+    try {
+      const adminId = process.env.TELEGRAM_ADMIN_USER_ID;
+      const token   = process.env.TELEGRAM_BOT_TOKEN;
+      if (adminId && token) {
+        const now5    = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' });
+        const topMatch = preLiveResults[0]?.matchData;
+        const escalFlag = process.env.PRE_LIVE_ESCALATION_FLAG || '';
+
+        const lines = [
+          `🔧 <b>[SCANNER] · Relatório de Varredura · ${now5}</b>`,
+          `Partidas coletadas: <code>${matches?.length ?? '?'}</code>  ·  Selecionadas: <code>${sorted?.length ?? '?'}</code>`,
+          `Oportunidades pré-live: <code>${preLiveResults.length}</code>  ·  Sinais enfileirados: <code>${preLiveSent}</code>`,
+        ];
+        if (topMatch) {
+          const bestEnriched = preLiveResults[0]?.enriched?.[0];
+          lines.push(`Top sinal: <code>${topMatch.match || '?'}</code>  ·  Mercado: <code>${bestEnriched?.mercado || bestEnriched?.market || '--'}</code>  ·  Odd: <code>${bestEnriched?.odds_minima ?? '--'}</code>`);
+        }
+        if (escalFlag) lines.push(`Modo: <code>${escalFlag}</code>`);
+        lines.push(`Próximo ciclo: <code>+15min</code>`);
+
+        const url = `https://api.telegram.org/bot${token}/sendMessage`;
+        await fetch(url, {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({
+            chat_id:                  adminId,
+            text:                     lines.join('\n'),
+            parse_mode:               'HTML',
+            disable_web_page_preview: true,
+          }),
+        }).catch(() => {});
+      }
+    } catch { /* silent — relatório admin é best-effort */ }
+  }
 }
 
 // ── Exporta para uso pelo scheduler ───────────────────────────────────────────

@@ -74,8 +74,15 @@
     "sb-cache-both": "node scripts/test-superbet-cache.js --both",
     "pm2-start": "pm2 start ecosystem.config.cjs --update-env",
     "pm2-stop": "pm2 stop all",
+    "pm2-restart": "pm2 restart squadfutbol --update-env",
+    "pm2-reload": "pm2 reload squadfutbol",
     "pm2-status": "pm2 list",
+    "pm2-show": "pm2 show squadfutbol",
     "pm2-logs": "pm2 logs --lines 50",
+    "pm2-logs-err": "pm2 logs squadfutbol --err --lines 100",
+    "pm2-save": "pm2 save",
+    "telegram-reset": "node scripts/telegram-reset.js",
+    "scan-agora": "node scripts/scan-agora.js",
     "idle-mode": "powershell -ExecutionPolicy Bypass -WindowStyle Hidden -NonInteractive -File scripts/idle-mode.ps1",
     "idle-restore": "powershell -ExecutionPolicy Bypass -WindowStyle Hidden -NonInteractive -File scripts/idle-restore.ps1",
     "morning": "node scripts/morning-message.js",
@@ -109,7 +116,11 @@
     "sniper-hist-full": "node scripts/sniper-historico.js --fetch 30 --save --tg",
     "watchdog": "node scripts/watchdog-agent.js",
     "watchdog-logs": "pm2 logs squadfutbol-watchdog --lines 50",
-    "watchdog-status": "pm2 show squadfutbol-watchdog"
+    "watchdog-status": "pm2 show squadfutbol-watchdog",
+    "coverage": "node scripts/coverage-panel.js",
+    "coverage-json": "node scripts/coverage-panel.js --json",
+    "coverage-corners": "node scripts/coverage-panel.js --market=Corners",
+    "coverage-under": "node scripts/coverage-panel.js --market=Under"
   },
   "dependencies": {
     "axios": "^1.7.2",

@@ -15,15 +15,15 @@
  *  │  05:59              │ pré-op relatório         │ Relatório admin pré-abertura │
  *  │  06:00 diário       │ daily-pipeline           │ Coleta +24h, backfill, PIE   │
  *  │  06:00 · relatório  │ monitor início           │ Início de operação (admin)   │
- *  │  06-09h · /20min    │ monitor pré-live         │ 12 varreduras/período        │
- *  │  10-13h · /15min    │ monitor pré-live         │ 16 varreduras/período        │
+ *  │  06-09h · /30min    │ varredura pré-live IA    │ 6 varreduras/período         │
+ *  │  10-13h · /20min    │ varredura pré-live IA    │ 9 varreduras/período         │
  *  │  12:00 · relatório  │ monitor intermediário    │ Update 12h ao admin          │
  *  │  13:00 diário       │ daily-pipeline (extra)   │ Partidas da tarde            │
- *  │  14-21h · /10min    │ monitor pré-live         │ 48 varreduras/período        │
+ *  │  14-21h · /15min    │ varredura pré-live IA    │ 32 varreduras/período        │
  *  │  18:00 · relatório  │ monitor intermediário    │ Update 18h ao admin          │
  *  │  a cada 1h          │ superodds-2t             │ Análise 2° Tempo (Superbet)  │
  *  │  21:00 dom.         │ weekly-report            │ Resumo semanal no Telegram   │
- *  │  22h · /15min       │ monitor pré-live         │ 4 varreduras/período         │
+ *  │  22h · /30min       │ varredura pré-live IA    │ 2 varreduras/período         │
  *  │  23:30              │ monitor encerramento     │ Último ciclo + relatório     │
  *  └────────────────────────────────────────────────────────────────────────────────┘
  *
@@ -37,7 +37,12 @@ import cron   from 'node-cron';
 import chalk  from 'chalk';
 import { runDailyPipeline }  from './daily-pipeline.js';
 import { runResultChecker }  from './result-checker.js';
-import { runMonitorCycle, runPreOpCycle } from './prelive-monitor.js';
+import { runPreOpCycle } from './prelive-monitor.js';
+import { runPreLiveSuperOdds } from './prelive-superodds-now.js';
+import { checkAndEscalate, runEscalationProtocol } from './escalation-protocol.js';
+import { sendDailyClosingReport } from './educational-analysis.js';
+import { getDailyStatus } from './daily-counter.js';
+import { layerOneCheck, markScanExecutedSync } from './cycle-check.js';
 
 // ── Lock anti-overlap ──────────────────────────────────────────────────────────
 // Evita que duas execuções simultâneas corrompam o PIE
@@ -100,15 +105,17 @@ console.log('  Rotinas programadas:');
 console.log('  🌅 04:00-05:59      → Pré-operacional (aquecimento + score)');
 console.log('  🌅 05:45 diário     → Mensagem de bom dia');
 console.log('  📡 06:00 diário     → Pipeline histórico (calibração PIE)');
-console.log('  🔵 06-09h (20min)   → Monitor PRÉ-LIVE  · 12 ciclos');
-console.log('  🔵 10-13h (15min)   → Monitor PRÉ-LIVE  · 16 ciclos');
-console.log('  🔵 14-21h (10min)   → Monitor PRÉ-LIVE  · 48 ciclos');
-console.log('  🔵 22h   (15min)    → Monitor PRÉ-LIVE  ·  4 ciclos');
+console.log('  🔵 06-09h (30min)   → Varredura PRÉ-LIVE IA  ·  6 ciclos');
+console.log('  🔵 10-13h (20min)   → Varredura PRÉ-LIVE IA  ·  9 ciclos');
+console.log('  🔵 14-21h (15min)   → Varredura PRÉ-LIVE IA  · 32 ciclos');
+console.log('  🔵 22h   (30min)    → Varredura PRÉ-LIVE IA  ·  2 ciclos');
 console.log('  📋 06h/12h/18h/23h  → Relatórios operacionais ao admin');
 console.log('  📡 13:00 diário     → Pipeline histórico extra (tarde)');
 console.log('  🟢 */1h             → SUPERODDS 2T: análise 2° Tempo');
 console.log('  🔍 */5 min          → Verificação de resultados GREEN/RED');
 console.log('  📊 21:00 domingo    → Relatório semanal');
+console.log('  🚨 12h/15h/18h/21h  → Alertas de mínimo diário (Módulo 1.3)');
+console.log('  📝 23:45            → Relatório de fechamento do dia (admin)');
 console.log('  💡 Ctrl+C para parar\n');
 
 // ── Pré-operacional (04:00–05:59) ──────────────────────────────────────────────
@@ -147,81 +154,86 @@ cron.schedule('59 5 * * *', () =>
   safePreOp('Pré-Op 05:59 (relatório)', { sendReport: true }),
   { timezone: 'America/Sao_Paulo' });
 
-// ── Monitor PRÉ-LIVE contínuo (intervalos variáveis por período) ───────────────
-// Detecta: novos jogos · variação de odds · gate 30min · anti-duplicata
-// Relatórios automáticos: inicio(06:00) · intermediário(12:00/18:00) · encerramento(23:30)
+// ── Varredura PRÉ-LIVE com IA (intervalos variáveis por período) ───────────────
+// Executa agentes BTTS · Gols · Escanteios + Parlay Builder em todas as partidas
+// Anti-overlap: ignora disparo se varredura anterior ainda estiver rodando
 
-let _monitorRunning = false;
+let _scanRunning = false;
+const SCAN_TIMEOUT_MS = 8 * 60_000; // 8 min — libera lock se scan travar
 
-/**
- * Executa um ciclo do monitor pré-live com proteção anti-overlap.
- * Auto-detecta horários de relatório (06:00, 12:00, 18:00, 23:30).
- */
-async function safeMonitor(label, opts = {}) {
-  if (_monitorRunning) {
-    console.log(chalk.yellow(`[${ts()}] ⏭  ${label} — monitor já em execução, ignorando`));
+async function safeScan(label, opts = {}) {
+  if (_scanRunning) {
+    console.log(chalk.yellow(`[${ts()}] ⏭  ${label} — varredura em execução, ignorando`));
     return;
   }
-  _monitorRunning = true;
 
-  // Auto-detectar horário de relatório operacional
-  const h = new Date().getHours();
-  const m = new Date().getMinutes();
-  const autoReportTipo =
-    (h === 6  && m === 0)  ? 'inicio'        :
-    (h === 12 && m === 0)  ? 'intermediario' :
-    (h === 18 && m === 0)  ? 'intermediario' :
-    (h === 23 && m === 30) ? 'encerramento'  : null;
+  // ── Camada 1: Check Binário (Módulo 1.1) ───────────────────────────────────
+  // Executa 5 checks ultra-leves (50 tokens) antes de acionar o scan completo.
+  // SE todos negativos: encerra aqui — economiza ~550 tokens/ciclo.
+  // SE forceRun=true (escalada de emergência): pula o check.
+  if (!opts.forceRun) {
+    try {
+      const l1 = layerOneCheck();
+      if (!l1.shouldScan) {
+        console.log(chalk.gray(`[${ts()}] ⏩ ${label} — ${l1.reason}`));
+        return;
+      }
+      console.log(chalk.gray(`[${ts()}] 🟡 Camada 1: ${l1.reason}`));
+    } catch { /* falha no check não bloqueia o scan */ }
+  }
 
-  const finalOpts = {
-    ...opts,
-    sendReport: opts.sendReport || autoReportTipo !== null,
-    reportTipo: opts.reportTipo || autoReportTipo || undefined,
-  };
+  _scanRunning = true;
 
-  const suffix = finalOpts.sendReport ? ` [+relatório ${finalOpts.reportTipo}]` : '';
-  console.log(chalk.bold.blue(`\n[${ts()}] 🔵 ${label}${suffix}`));
+  const watchdog = setTimeout(() => {
+    if (_scanRunning) {
+      console.error(chalk.red(`[${ts()}] ⏰ TIMEOUT — ${label} travou há mais de 8min; liberando lock`));
+      _scanRunning = false;
+    }
+  }, SCAN_TIMEOUT_MS);
 
+  console.log(chalk.bold.blue(`\n[${ts()}] 🔵 ${label}`));
   try {
-    await runMonitorCycle(finalOpts);
+    await runPreLiveSuperOdds();
+    markScanExecutedSync(); // registra timestamp para check C4 nos próximos ciclos
   } catch (e) {
     console.error(chalk.red(`[${ts()}] ❌ ${label} — erro: ${e.message}`));
   } finally {
-    _monitorRunning = false;
+    clearTimeout(watchdog);
+    _scanRunning = false;
     console.log(chalk.blue(`[${ts()}] ✅ ${label} — concluído\n`));
   }
 }
 
-function _monitorLabel() {
+function _scanLabel() {
   const now = new Date();
   const hh  = String(now.getHours()).padStart(2, '0');
   const mm  = String(now.getMinutes()).padStart(2, '0');
-  return `Monitor ${hh}:${mm}`;
+  return `Varredura PRÉ-LIVE ${hh}:${mm}`;
 }
 
-// 06-09h: ciclo a cada 20min — inclui relatório 'inicio' às 06:00
-cron.schedule('*/20 6-9 * * *', () =>
-  safeMonitor(_monitorLabel()),
+// 06-09h: a cada 30min
+cron.schedule('*/30 6-9 * * *', () =>
+  safeScan(_scanLabel()),
   { timezone: 'America/Sao_Paulo' });
 
-// 10-13h: ciclo a cada 15min — inclui relatório 'intermediario' às 12:00
-cron.schedule('*/15 10-13 * * *', () =>
-  safeMonitor(_monitorLabel()),
+// 10-13h: a cada 20min
+cron.schedule('*/20 10-13 * * *', () =>
+  safeScan(_scanLabel()),
   { timezone: 'America/Sao_Paulo' });
 
-// 14-21h: ciclo a cada 10min — inclui relatório 'intermediario' às 18:00
-cron.schedule('*/10 14-21 * * *', () =>
-  safeMonitor(_monitorLabel()),
+// 14-21h: a cada 15min — janela principal de jogos
+cron.schedule('*/15 14-21 * * *', () =>
+  safeScan(_scanLabel()),
   { timezone: 'America/Sao_Paulo' });
 
-// 22h: ciclo a cada 15min
-cron.schedule('*/15 22 * * *', () =>
-  safeMonitor(_monitorLabel()),
+// 22h: a cada 30min
+cron.schedule('*/30 22 * * *', () =>
+  safeScan(_scanLabel()),
   { timezone: 'America/Sao_Paulo' });
 
-// 23:30 — encerramento do dia (último ciclo + relatório)
+// 23:30 — último ciclo do dia
 cron.schedule('30 23 * * *', () =>
-  safeMonitor('Monitor Encerramento 23:30', { sendReport: true, reportTipo: 'encerramento' }),
+  safeScan('Varredura PRÉ-LIVE 23:30 (última do dia)'),
   { timezone: 'America/Sao_Paulo' });
 
 // ── Mensagem de bom dia ────────────────────────────────────────────────────────
@@ -357,6 +369,77 @@ cron.schedule('0 21 * * 0', async () => {
   }
 }, { timezone: 'America/Sao_Paulo' });
 
+// ── Protocolo de Mínimo Diário Garantido — Módulo 1.3 ────────────────────────
+// Verifica contador e escala para o nível adequado se abaixo da meta.
+//   12:00 → SE contador = 0: escala para Nível 2
+//   15:00 → SE contador < 2: escala para Nível 3
+//   18:00 → SE contador < 3: escala para Nível 4 + educacional
+//   21:00 → SE contador < 3: ALERTA CRÍTICO — Nível 5 + 6
+//   23:59 → Registra fechamento (sem escalada)
+
+cron.schedule('0 12 * * *', async () => {
+  const { total } = getDailyStatus();
+  console.log(chalk.bold.red(`\n[${ts()}] 🚨 Verificação 12h — análises hoje: ${total}`));
+  try { await checkAndEscalate('12:00'); }
+  catch (e) { console.error(chalk.red(`[${ts()}] ❌ Alerta 12h falhou: ${e.message}`)); }
+}, { timezone: 'America/Sao_Paulo' });
+
+cron.schedule('0 15 * * *', async () => {
+  const { total } = getDailyStatus();
+  console.log(chalk.bold.red(`\n[${ts()}] 🚨 Verificação 15h — análises hoje: ${total}`));
+  try { await checkAndEscalate('15:00'); }
+  catch (e) { console.error(chalk.red(`[${ts()}] ❌ Alerta 15h falhou: ${e.message}`)); }
+}, { timezone: 'America/Sao_Paulo' });
+
+cron.schedule('0 18 * * *', async () => {
+  const { total } = getDailyStatus();
+  console.log(chalk.bold.red(`\n[${ts()}] 🚨 Verificação 18h — análises hoje: ${total}`));
+  try { await checkAndEscalate('18:00'); }
+  catch (e) { console.error(chalk.red(`[${ts()}] ❌ Alerta 18h falhou: ${e.message}`)); }
+}, { timezone: 'America/Sao_Paulo' });
+
+cron.schedule('0 20 * * *', async () => {
+  const { total } = getDailyStatus();
+  console.log(chalk.bold.red(`\n[${ts()}] 🚨 ALERTA CRÍTICO 20h — análises hoje: ${total}`));
+  try { await checkAndEscalate('20:00'); }
+  catch (e) { console.error(chalk.red(`[${ts()}] ❌ Alerta 20h falhou: ${e.message}`)); }
+}, { timezone: 'America/Sao_Paulo' });
+
+cron.schedule('0 21 * * *', async () => {
+  const { total } = getDailyStatus();
+  console.log(chalk.bold.red(`\n[${ts()}] 🚨 ALERTA CRÍTICO 21h — análises hoje: ${total}`));
+  try { await checkAndEscalate('21:00'); }
+  catch (e) { console.error(chalk.red(`[${ts()}] ❌ Alerta 21h falhou: ${e.message}`)); }
+}, { timezone: 'America/Sao_Paulo' });
+
+cron.schedule('0 22 * * *', async () => {
+  const { total } = getDailyStatus();
+  console.log(chalk.bold.red(`\n[${ts()}] 🆘 EMERGÊNCIA 22h — análises hoje: ${total}`));
+  try { await checkAndEscalate('22:00'); }
+  catch (e) { console.error(chalk.red(`[${ts()}] ❌ Emergência 22h falhou: ${e.message}`)); }
+}, { timezone: 'America/Sao_Paulo' });
+
+cron.schedule('59 23 * * *', async () => {
+  const { total, status } = getDailyStatus();
+  const label = total >= 3 ? '[META ATINGIDA]' : '[DIA INCOMPLETO]';
+  console.log(chalk.bold.yellow(`\n[${ts()}] 📊 Fechamento 23:59 — ${total} análises — ${label} (${status})`));
+  try { await checkAndEscalate('23:59'); }
+  catch { /* apenas log, sem escalada */ }
+}, { timezone: 'America/Sao_Paulo' });
+
+// ── Relatório de fechamento diário (admin DM · 23:45) ─────────────────────────
+// Módulo 6.1 — resume o dia: análises enviadas, resultados, padrão estudado
+// Agendado 15min após a última varredura (23:30) para incluir resultados finais.
+cron.schedule('45 23 * * *', async () => {
+  console.log(chalk.bold.yellow(`\n[${ts()}] 📝 Relatório de fechamento do dia → admin DM`));
+  try {
+    await sendDailyClosingReport();
+    console.log(chalk.green(`[${ts()}] ✅ Fechamento enviado ao admin`));
+  } catch (e) {
+    console.error(chalk.red(`[${ts()}] ❌ Fechamento falhou: ${e.message}`));
+  }
+}, { timezone: 'America/Sao_Paulo' });
+
 // ── Verificação de resultados GREEN/RED ───────────────────────────────────────
 cron.schedule('*/5 * * * *', async () => {
   console.log(chalk.cyan(`\n[${ts()}] 🔍 Verificando resultados pendentes (GREEN/RED)...`));
@@ -408,5 +491,5 @@ setInterval(async () => {
 console.log(chalk.gray(`[${ts()}] 💓 Scheduler iniciado — aguardando horários agendados...`));
 console.log(chalk.bold.green(`[${ts()}] 🛡️  Group Guardian ativo — polling a cada 10s`));
 console.log(chalk.yellow(`[${ts()}] 🌅 Pré-operacional: 04:00/04:30/05:00/05:30/05:59`));
-console.log(chalk.blue(`[${ts()}] 🔵 Monitor PRÉ-LIVE: 06-09h(20min) · 10-13h(15min) · 14-21h(10min) · 22h(15min) · 23:30`));
+console.log(chalk.blue(`[${ts()}] 🔵 Varredura PRÉ-LIVE IA: 06-09h(30min) · 10-13h(20min) · 14-21h(15min) · 22h(30min) · 23:30`));
 console.log(chalk.green(`[${ts()}] 🟢 SUPERODDS 2T ativo — Superbet verificado a cada 1h`));
