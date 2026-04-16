@@ -65,7 +65,8 @@ const INITIAL_STATE = {
 // ── Configurações ──────────────────────────────────────────────────────────────
 const CFG = {
   MAX_ALERTAS_DIA:      3,             // máximo de mensagens ao grupo por dia (exceto relatório semanal)
-  ALERT_COOLDOWN_MS:    15 * 60_000,   // 15 min de cooldown entre o mesmo tipo de alerta
+  ALERT_COOLDOWN_MS:    15 * 60_000,   // 15 min de cooldown entre o mesmo tipo de alerta (padrão)
+  UNRESOLVED_COOLDOWN_MS: 2 * 3_600_000, // 2h de cooldown para alertas de "sinal sem resultado" (evita spam)
   PIE_MAX_SILENCE_H:    48,            // PIE sem atualização → anomalia
   PRECISION_DROP_PP:    3,             // queda de precisão em pp que dispara auditoria
   UNRESOLVED_HOURS:     3,             // sinal sem resultado após X horas → atenção
@@ -76,6 +77,8 @@ const CFG = {
 };
 
 // ── Controle de cooldown por tipo de alerta ────────────────────────────────────
+// Persistido em watchdog-state.json — sobrevive a restarts do PM2.
+// Sem persistência, cada restart envia o mesmo alerta imediatamente (bug de duplicata).
 const alertCooldowns = new Map();
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -98,10 +101,28 @@ function _readJson(path) {
 // ── Estado ─────────────────────────────────────────────────────────────────────
 function loadState() {
   const saved = _readJson(PATHS.state);
-  return saved ? { ...INITIAL_STATE, ...saved } : { ...INITIAL_STATE };
+  const state = saved ? { ...INITIAL_STATE, ...saved } : { ...INITIAL_STATE };
+
+  // Restaura cooldowns persistidos → evita duplicatas após restart do PM2
+  if (saved?.alert_cooldowns && typeof saved.alert_cooldowns === 'object') {
+    for (const [key, ts] of Object.entries(saved.alert_cooldowns)) {
+      alertCooldowns.set(key, ts);
+    }
+    log('🔄', `Cooldowns restaurados: ${Object.keys(saved.alert_cooldowns).length} entradas`, 'gray');
+  }
+
+  return state;
 }
 
 function saveState(state) {
+  // Persiste cooldowns ativos (expira entradas velhas > 2× cooldown para não inflar o arquivo)
+  const cutoff = Date.now() - (CFG.ALERT_COOLDOWN_MS * 2);
+  const cooldownsToSave = {};
+  for (const [key, ts] of alertCooldowns.entries()) {
+    if (ts > cutoff) cooldownsToSave[key] = ts;
+  }
+  state.alert_cooldowns = cooldownsToSave;
+
   try { writeFileSync(PATHS.state, JSON.stringify(state, null, 2), 'utf8'); }
   catch (err) { log('⚠️', `Falha ao salvar estado: ${err.message}`, 'yellow'); }
 }
@@ -118,7 +139,13 @@ function saveState(state) {
 async function sendGroup(key, msg, state, { bypassLimit = false } = {}) {
   const now = Date.now();
   const last = alertCooldowns.get(key) || 0;
-  if (now - last < CFG.ALERT_COOLDOWN_MS) return; // cooldown ativo — silêncio
+  // Alertas de "sinal sem resultado" usam cooldown de 2h — ficam pendentes por horas
+  // e gerariam spam a cada ciclo de 30-60min sem esse cooldown estendido.
+  const cooldown = key.startsWith('unresolved_') ? CFG.UNRESOLVED_COOLDOWN_MS : CFG.ALERT_COOLDOWN_MS;
+  if (now - last < cooldown) {
+    log('⏭', `Cooldown ativo (${Math.round((cooldown - (now - last)) / 60_000)}min restantes): ${key}`, 'gray');
+    return; // cooldown ativo — silêncio
+  }
 
   const today = new Date().toDateString();
   if (!bypassLimit) {
