@@ -1,0 +1,35 @@
+wing: squadfutbol
+rooms:
+- name: data
+  description: Files from data/
+  keywords:
+  - data
+  - data
+- name: logs
+  description: Files from logs/
+  keywords:
+  - logs
+  - logs
+- name: reports
+  description: Files from reports/
+  keywords:
+  - reports
+  - reports
+- name: squads
+  description: Files from squads/
+  keywords:
+  - squads
+  - squads
+- name: src
+  description: Files from src/
+  keywords:
+  - src
+  - src
+- name: scripts
+  description: Files from utils/
+  keywords:
+  - scripts
+  - utils
+- name: general
+  description: Files that don't fit other rooms
+  keywords: []
