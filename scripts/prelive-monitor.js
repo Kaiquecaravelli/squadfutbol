@@ -350,7 +350,7 @@ export async function runMonitorCycle(opts = {}) {
     // ── Passo 1: Atualizar cache Superbet ──────────────────────────────────────
     const { ensureFresh, listCachedMatches } = await import('../src/scrapers/superbet-cache.js');
     await ensureFresh('prelive');
-    const cached = listCachedMatches('prelive');
+    const { entries: cached } = listCachedMatches('prelive');
 
     // ── Passo 2: Classificar jogos nas janelas ─────────────────────────────────
     const byWindow = { PROXIMO: [], P1H: [], P3H: [], P6H: [], P12H: [] };

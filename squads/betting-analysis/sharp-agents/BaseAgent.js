@@ -95,7 +95,7 @@ export class BaseAgent {
           response_format: { type: 'json_object' },
           messages: [
             { role: 'system', content: this.systemPrompt },
-            { role: 'user',   content: userMessage },
+            { role: 'user',   content: userMessage + '\n\nResponda com JSON válido.' },
           ],
         },
         {
@@ -128,7 +128,7 @@ export class BaseAgent {
       response_format: { type: 'json_object' },
       messages: [
         { role: 'system', content: this.systemPrompt },
-        { role: 'user',   content: userMessage },
+        { role: 'user',   content: userMessage + '\n\nResponda com JSON válido.' },
       ],
     };
 

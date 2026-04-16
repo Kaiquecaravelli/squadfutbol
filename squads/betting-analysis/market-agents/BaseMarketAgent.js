@@ -174,7 +174,7 @@ export class BaseMarketAgent {
           response_format: { type: 'json_object' },
           messages: [
             { role: 'system', content: this.systemPrompt },
-            { role: 'user',   content: message },
+            { role: 'user',   content: message + '\n\nResponda com JSON válido.' },
           ],
         },
         {
