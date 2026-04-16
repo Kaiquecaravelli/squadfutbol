@@ -25,9 +25,13 @@ import { goalsKillSwitch, goalsMinProbability, goalsMinConfidence, trackGoalsDec
 import { cornersKillSwitch, cornersMinConfidence, trackCornersDecision, CORNERS_MIN_CONFIDENCE, cornersIsDeadLeague } from '../utils/corners-sniper.js';
 import { KILL_ZONE_THRESHOLD, isKillZone, trackKillZone } from '../utils/kill-zone.js';
 
-const MIN_PROBABILITY = parseInt(process.env.PRE_LIVE_MIN_PROBABILITY || '80');
-const MIN_CONFIDENCE  = parseInt(process.env.PRE_LIVE_MIN_CONFIDENCE  || '75');
-const MIN_ODDS        = parseFloat(process.env.PRE_LIVE_MIN_ODDS      || '1.50');
+// Lazy getters — lidos em tempo de execução (não em tempo de importação do módulo)
+// Permite que o protocolo de escalada (escalation-protocol.js) ajuste os gates
+// via process.env antes de chamar runPreLiveSuperOdds() sem precisar reimportar.
+// Kill Zone (70%) nunca é desativado — gate mínimo absoluto: 71%.
+const _getMinProbability = () => Math.max(71, parseInt(process.env.PRE_LIVE_MIN_PROBABILITY || '80'));
+const _getMinConfidence  = () => parseInt(process.env.PRE_LIVE_MIN_CONFIDENCE  || '75');
+const _getMinOdds        = () => parseFloat(process.env.PRE_LIVE_MIN_ODDS      || '1.50');
 
 // ── Gate dinâmico de odds baseado na calibração PIE ──────────────────────────
 // Quanto maior a precisão histórica do mercado, menor a odd mínima exigida.
@@ -64,7 +68,7 @@ function _getCalibCached(market) {
 function _getDynamicMinOdds(market, probability) {
   try {
     const calib = _getCalibCached(market);
-    if (!calib) return MIN_ODDS;
+    if (!calib) return _getMinOdds();
 
     const accuracy = parseFloat(calib.overall);
     const samples  = calib.samples ?? 0;
@@ -75,7 +79,7 @@ function _getDynamicMinOdds(market, probability) {
       }
     }
   } catch { /* PIE indisponível → usa padrão */ }
-  return MIN_ODDS;
+  return _getMinOdds();
 }
 // Delay entre jogos — calculado para 6 chaves Groq em pool:
 // 3 agentes × ~1800 tokens = ~5400 tokens/jogo | pool 6 chaves × 20k TPM = 120k TPM
@@ -187,7 +191,7 @@ async function _analyzeMatch(match, idx, notifiedKeys) {
 
   // Salva TODOS os resultados no Obsidian (antes do filtro de gate)
   const approvedForObsidian = allResults.filter((r) =>
-    (r?.probabilidade ?? 0) >= MIN_PROBABILITY && (r?.confianca ?? 0) >= MIN_CONFIDENCE
+    (r?.probabilidade ?? 0) >= _getMinProbability() && (r?.confianca ?? 0) >= _getMinConfidence()
   );
   saveMatchScan(matchData, allResults, approvedForObsidian);
 
@@ -216,17 +220,31 @@ async function _analyzeMatch(match, idx, notifiedKeys) {
       if (!r || typeof r.probabilidade !== 'number') return false;
 
       // ── KILL ZONE GATE UNIVERSAL ────────────────────────────────────────────
-      // Prob 60-70%: 0% de precisão em 880+ amostras (8 mercados simultâneos).
-      // Gate explícito com tracking antes de qualquer outro filtro.
-      if (isKillZone(r.probabilidade)) {
-        const mktKZ = r.mercado || r.market || '';
-        console.log(chalk.red(`    ⛔ [Kill Zone] ${mktKZ} — prob ${r.probabilidade}% < ${KILL_ZONE_THRESHOLD}% (0% precisão · 880+ amostras)`));
+      // Prob < floor: 0% de precisão histórica (880+ amostras para Over/BTTS/Corners).
+      // Floor padrão: 70% | Floor Under 1.5/2.5/3.5: 62% (lógica inversa de Over).
+      // Bug fix (2026-04-16): Under usa floor calibrado por mercado, não o 70% de Over.
+      const mktKZ = r.mercado || r.market || '';
+      if (isKillZone(r.probabilidade, mktKZ, matchData.competition || '')) {
+        const floorKZ = (mktKZ && /^under\s*[\d.]+$/i.test(mktKZ.trim())) ? 62 : KILL_ZONE_THRESHOLD;
+        console.log(chalk.red(`    ⛔ [Kill Zone] ${mktKZ} — prob ${r.probabilidade}% < ${floorKZ}% (floor calibrado)`));
         trackKillZone(r, matchData, 'prelive');
         return false;
       }
 
-      if (r.probabilidade < MIN_PROBABILITY) return false;
-      if ((r.confianca ?? 0) < MIN_CONFIDENCE) return false;
+      // ── THRESHOLD MÍNIMO GLOBAL ──────────────────────────────────────────────
+      // Goals markets (Over/Under X.X) têm thresholds calibrados por tier e liga
+      // na Goals Sniper Gate (abaixo). Aplicar o threshold genérico 71-80% aqui
+      // bloquearia Under 1.5/2.5 antes que a gate especializada possa avaliá-los.
+      // → Para goals markets: skip threshold global (Goals Sniper Gate cuida).
+      // → Para outros mercados (BTTS, Corners, YC): aplicar threshold global.
+      const _mktGlobal = (r.mercado || r.market || '').trim();
+      const _isGoalsMktGlobal = /^(over|under)\s*[\d.]+$/i.test(_mktGlobal) &&
+                                !/corner|escanteio/i.test(_mktGlobal) &&
+                                !/yc/i.test(_mktGlobal);
+      if (!_isGoalsMktGlobal) {
+        if (r.probabilidade < _getMinProbability()) return false;
+        if ((r.confianca ?? 0) < _getMinConfidence()) return false;
+      }
       // Normaliza campo de mercado: alguns agentes retornam 'market', outros 'mercado'
       if (!r.mercado && r.market) r.mercado = r.market;
       if (!r.market && r.mercado) r.market  = r.mercado;
@@ -351,7 +369,7 @@ async function _analyzeMatch(match, idx, notifiedKeys) {
       }
       const minOdds  = _getDynamicMinOdds(r.mercado || r.market, r.probabilidade ?? 0);
       if (odds > 0 && odds < minOdds) {
-        const pieTag = minOdds < MIN_ODDS ? ` [PIE gate: ${minOdds}]` : '';
+        const pieTag = minOdds < _getMinOdds() ? ` [PIE gate: ${minOdds}]` : '';
         console.log(chalk.gray(`    🚫 [Odds Gate] ${r.mercado || r.market} bloqueado — odd ${odds} < ${minOdds}${pieTag}`));
         return false;
       }
@@ -399,9 +417,9 @@ async function _analyzeMatch(match, idx, notifiedKeys) {
   // Dedup por jogo + bucket (não por mercado) — um envio por jogo por bucket
   // Quando o jogo transita para o próximo bucket (ex: +6h → +3h), nova análise disparada.
   // Chave retroativa sem bucket: pre_{id} (compatibilidade com execuções anteriores)
-  const sfId    = matchData.sofascore_id || matchData.match_id || matchKey;
-  const bucket  = matchData._bucket || '';
-  const gameKey = bucket ? `dedup:${sfId}:${bucket}` : `pre_${sfId}`;
+  const sfId      = matchData.sofascore_id || matchData.match_id || matchKey;
+  const bucketKey = matchData._bucket || '';
+  const gameKey   = bucketKey ? `dedup:${sfId}:${bucketKey}` : `pre_${sfId}`;
 
   if (notifiedKeys.has(gameKey)) return null;
 

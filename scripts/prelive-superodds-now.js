@@ -310,7 +310,97 @@ async function run() {
       return new Map();
     })();
 
-    preLiveResults = await runPreLiveFunnel(eligibleMatches, _preKeys);
+    // ── MÓDULO 1 — Varredura Paralela por Bucket ──────────────────────────────
+    // Todas as janelas (+1h/+3h/+6h/+12h) são analisadas simultaneamente.
+    // Cada bucket gera stats independentes para o diagnóstico por janela.
+    // Falha em um bucket não bloqueia os outros (Promise.allSettled).
+    //
+    // NOTA: os trackers de decisão (goals/btts/corners) usam writeFileSync atômico.
+    // Race conditions são toleradas — dados de tracking são diagnóstico, não decisão.
+    const _bucketGroups = {};
+    for (const m of eligibleMatches) {
+      const b = m._bucket || '+12h';
+      if (!_bucketGroups[b]) _bucketGroups[b] = [];
+      _bucketGroups[b].push(m);
+    }
+
+    const _bucketStart = Date.now();
+    log('', chalk.gray(`  Varredura paralela: ${Object.keys(_bucketGroups).filter(b => _bucketGroups[b].length).map(b => `${b}(${_bucketGroups[b].length})`).join(' · ')}`), 'gray');
+
+    const _bucketOutcomes = await Promise.allSettled(
+      BUCKET_ORDER.map(async (bucket) => {
+        const group = _bucketGroups[bucket] || [];
+        if (!group.length) return { bucket, results: [], total: 0 };
+        const results = await runPreLiveFunnel(group, _preKeys);
+        return { bucket, results, total: group.length };
+      })
+    );
+
+    const _durParallel = ((Date.now() - _bucketStart) / 1000).toFixed(1);
+    const _bucketStats = {};
+
+    for (const [i, outcome] of _bucketOutcomes.entries()) {
+      const bucket = BUCKET_ORDER[i];
+      if (outcome.status === 'fulfilled') {
+        const { results, total } = outcome.value;
+        preLiveResults.push(...results);
+        _bucketStats[bucket] = {
+          total,
+          aprovados: results.length,
+          under: results.filter(r => r.enriched?.some(e => /^under/i.test(e.mercado || e.market || ''))).length,
+          status: 'ok',
+        };
+      } else {
+        _bucketStats[bucket] = {
+          total:     _bucketGroups[bucket]?.length || 0,
+          aprovados: 0, under: 0,
+          status:    'error',
+          err:       outcome.reason?.message || 'erro desconhecido',
+        };
+        log('⚠️', `Bucket ${bucket} falhou: ${outcome.reason?.message}`, 'yellow');
+      }
+    }
+
+    // Diagnóstico paralelo — log local
+    console.log(chalk.gray(`\n  ⚡ Varredura paralela concluída em ${_durParallel}s`));
+    for (const b of BUCKET_ORDER) {
+      const s = _bucketStats[b];
+      if (!s || !s.total) continue;
+      const tag = s.status === 'error' ? '❌' : s.aprovados > 0 ? '✅' : '⬜';
+      const underTag = s.under > 0 ? ` · Under: ${s.under}` : '';
+      console.log(chalk.gray(`    ${b.padEnd(5)} ${tag} ${s.aprovados}/${s.total} aprovados${underTag}`));
+    }
+    console.log('');
+
+    // Envia diagnóstico paralelo ao admin se configurado (não bloqueia pipeline)
+    const _adminToken  = process.env.TELEGRAM_BOT_TOKEN;
+    const _adminId     = process.env.TELEGRAM_ADMIN_USER_ID;
+    if (!DRY_RUN && _adminToken && _adminId) {
+      const _diagLines = [
+        `🔧 <b>[DIAGNÓSTICO PARALELO] · ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' })}</b>`,
+        `⚡ Varredura: <code>${_durParallel}s</code> · Jogos: <code>${eligibleMatches.length}</code>`,
+        ``,
+      ];
+      for (const b of BUCKET_ORDER) {
+        const s = _bucketStats[b];
+        if (!s || !s.total) continue;
+        const tag = s.status === 'error' ? '❌' : s.aprovados > 0 ? '✅' : '⬜';
+        const underNote = s.under > 0 ? ` · Under: <code>${s.under}</code>` : '';
+        _diagLines.push(`<b>${b}</b> · <code>${s.total}</code> jogos · ${tag} <code>${s.aprovados}</code> aprovados${underNote}`);
+        if (s.status === 'error') _diagLines.push(`  ⚠️ <code>${s.err}</code>`);
+      }
+      _diagLines.push(``, `Total aprovados: <code>${preLiveResults.length}</code>`);
+      fetch(`https://api.telegram.org/bot${_adminToken}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: _adminId,
+          text: _diagLines.join('\n'),
+          parse_mode: 'HTML',
+          disable_web_page_preview: true,
+        }),
+      }).catch(() => {}); // fire-and-forget, não bloqueia
+    }
 
     log('✅', `Pré-Live: ${preLiveResults.length}/${matches.length} com oportunidades`, 'green');
 

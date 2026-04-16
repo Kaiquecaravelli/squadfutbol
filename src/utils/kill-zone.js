@@ -50,14 +50,27 @@ const CALIBRATED_KZ_FLOORS = {
 
 /**
  * Retorna o floor Kill Zone para um mercado/liga específicos.
- * Usa calibração por liga se disponível (n≥50, aprovado), senão retorna padrão 70%.
- * Floor mínimo absoluto: 65% (proteção contra falsos negativos extremos).
  *
- * @param {string} market      — mercado ('Over 2.5', 'Over Corners 6.5', etc.)
+ * Under markets têm floor REDUZIDO (62%) porque a lógica é invertida:
+ *   Uma liga com Over 1.5 = 35% implica Under 1.5 ≈ 65% — fora da Kill Zone de Over.
+ *   A Kill Zone de 70% se baseia em dados de Over/Corners/YC, NÃO em Under.
+ *   Aplicar 70% a Under bloquearia mercados que são naturalmente corretos.
+ *
+ * Floor mínimo absoluto: 62% para Under (proteção conservadora até n≥30).
+ * Floor padrão para Over/BTTS/Corners: 70% (calibrado em 880+ amostras).
+ *
+ * @param {string} market      — mercado ('Over 2.5', 'Under 1.5', 'Over Corners 6.5', etc.)
  * @param {string} competition — nome da competição (case-insensitive)
- * @returns {number}           — floor em % (65–70)
+ * @returns {number}           — floor em % (62–70)
  */
 export function getKillZoneFloor(market = '', competition = '') {
+  const mkt = (market || '').trim();
+
+  // Under markets: Kill Zone começa mais abaixo — lógica inversa de Over
+  // Under 1.5/2.5/3.5: floor 62% (conservador até calibração real com n≥30)
+  if (/^under\s*[\d.]+$/i.test(mkt)) return 62;
+
+  // Calibração per-liga (Over/Corners — aguarda n≥50 na faixa 65-70%)
   const key  = `${competition.toLowerCase()}:${market}`;
   const floor = CALIBRATED_KZ_FLOORS[key];
   if (typeof floor === 'number') {

@@ -84,6 +84,10 @@ const LEAGUE_LAMBDA_MULTIPLIERS = {
   'Liga Portugal Betclic': { home: 0.95, away: 0.92 },
   'UEFA Champions League, Knockout stage': { home: 0.95, away: 0.90 },  // mais cauteloso
   'UEFA Europa League, Knockout stage':    { home: 0.97, away: 0.92 },
+  // Torneios defensivos (BTTS 15% → Under forte — reduz lambda para aumentar pUnder)
+  'Copa Sudamericana':                     { home: 0.88, away: 0.85 }, // ~2.1 gols/jogo histórico
+  'Conference League':                     { home: 0.85, away: 0.83 }, // baixa pontuação confirmada
+  'Copa Libertadores':                     { home: 0.92, away: 0.88 }, // fase grupos defensiva
 };
 
 export function analyzeQuantitative(matchData) {
@@ -128,6 +132,20 @@ export function analyzeQuantitative(matchData) {
   // (nenhum time médio marca mais de 4 gols/jogo esperados em condições normais)
   lambdaHome = Math.min(lambdaHome, 4.0);
   lambdaAway = Math.min(lambdaAway, 3.5);
+
+  // Floor de lambda: times com dados insuficientes (SofaScore retorna stats próximas de 0)
+  // produzem lambda → 0, o que resulta em pOver15 = 0% e pUnder15 = 100% — valores degenerados.
+  // Mínimo realista: mesmo o time mais fraco marca ~0.3 gols esperados por jogo.
+  // Efeito: pOver15 fica em ~15-20% (razoável para times muito fracos) em vez de 0%.
+  // Bug fix (2026-04-16): raiz do "Kill Zone — prob 0%" para Conference League.
+  if (lambdaHome < 0.35) {
+    console.log(`  ⚠️  [Lambda Floor] ${competition}: λH ${lambdaHome.toFixed(3)} → 0.350 (floor aplicado)`);
+    lambdaHome = 0.35;
+  }
+  if (lambdaAway < 0.28) {
+    console.log(`  ⚠️  [Lambda Floor] ${competition}: λA ${lambdaAway.toFixed(3)} → 0.280 (floor aplicado)`);
+    lambdaAway = 0.28;
+  }
 
   const scoreMatrix     = buildScoreMatrix(lambdaHome, lambdaAway, 7);
   const correctedMatrix = dixonColesCorrection(scoreMatrix, lambdaHome, lambdaAway);
@@ -517,6 +535,7 @@ function calculateValueBets(probs, odds, matchData = null) {
     { key: 'over_2_5',  label: 'Over 2.5',  prob: probs.over_2_5  },
     { key: 'over_3_5',  label: 'Over 3.5',  prob: probs.over_3_5  },
     { key: 'over_4_5',  label: 'Over 4.5',  prob: probs.over_4_5  },
+    { key: 'under_1_5', label: 'Under 1.5', prob: probs.under_1_5 }, // Module 3: habilitado para ligas defensivas
     { key: 'under_2_5', label: 'Under 2.5', prob: probs.under_2_5 },
     { key: 'under_3_5', label: 'Under 3.5', prob: probs.under_3_5 },
     // BTTS
