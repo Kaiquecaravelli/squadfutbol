@@ -101,7 +101,15 @@
     "goals-backfill-reset": "node scripts/goals-feedback-cycle.js --reset",
     "goals-cert": "node scripts/goals-certification.js",
     "goals-cert-tg": "node scripts/goals-certification.js --telegram",
-    "goals-monitor": "node scripts/goals-certification.js --monitor"
+    "goals-monitor": "node scripts/goals-certification.js --monitor",
+    "sniper-hist": "node scripts/sniper-historico.js",
+    "sniper-hist-save": "node scripts/sniper-historico.js --save",
+    "sniper-hist-fetch": "node scripts/sniper-historico.js --fetch 30 --save",
+    "sniper-hist-tg": "node scripts/sniper-historico.js --tg",
+    "sniper-hist-full": "node scripts/sniper-historico.js --fetch 30 --save --tg",
+    "watchdog": "node scripts/watchdog-agent.js",
+    "watchdog-logs": "pm2 logs squadfutbol-watchdog --lines 50",
+    "watchdog-status": "pm2 show squadfutbol-watchdog"
   },
   "dependencies": {
     "axios": "^1.7.2",

@@ -28,7 +28,9 @@
  *   0 8 * * *  → Executa todo dia às 08h (após partidas da madrugada fecharem)
  */
 
-import { execSync }           from 'child_process';
+import { execFile }           from 'child_process';
+import { promisify }          from 'util';
+const execFileAsync = promisify(execFile);
 import { existsSync, readFileSync, writeFileSync } from 'fs';
 import { join, dirname }      from 'path';
 import { fileURLToPath }      from 'url';
@@ -154,29 +156,34 @@ function passesGate(opportunity, db) {
 async function etapa1_coletar(dates, dryRun) {
   log('📡', 'ETAPA 1 — Coleta SofaScore', 'bold');
 
+  // Filtra datas que precisam ser coletadas
+  const pending = dates.filter(date => !existsSync(join(ROOT, 'data/daily-matches', `${date}.json`)));
+  const already = dates.filter(date =>  existsSync(join(ROOT, 'data/daily-matches', `${date}.json`)));
+  already.forEach(d => log('  ✅', `${d} — já coletado, ignorando`, 'gray'));
+
+  if (!pending.length) {
+    log('📡', 'Coleta concluída: todas as datas já existem', 'green');
+    return 0;
+  }
+
+  // Paralleliza coleta de todas as datas pendentes simultaneamente
+  log('  🔄', `Coletando em paralelo: ${pending.join(', ')}`, 'cyan');
   let totalColetadas = 0;
-  for (const date of dates) {
-    const filePath = join(ROOT, 'data/daily-matches', `${date}.json`);
 
-    if (existsSync(filePath)) {
-      log('  ✅', `${date} — já coletado, ignorando`, 'gray');
-      continue;
-    }
+  const collectResults = await Promise.allSettled(
+    pending.map(date =>
+      dryRun
+        ? Promise.resolve({ date, ok: true })
+        : execFileAsync('node', ['scripts/sofascore-collector.js', date], {
+            cwd: ROOT, timeout: 90_000,
+          }).then(() => ({ date, ok: true })).catch(e => ({ date, ok: false, err: e }))
+    )
+  );
 
-    log('  🔄', `Coletando ${date}...`, 'cyan');
-    try {
-      if (!dryRun) {
-        execSync(`node scripts/sofascore-collector.js ${date}`, {
-          stdio: 'pipe', cwd: ROOT, windowsHide: true,
-          timeout: 60_000, maxBuffer: 10_000_000,  // FIX: evita travamento por retry infinito
-        });
-      }
-      log('  ✅', `${date} — coletado`, 'green');
-      totalColetadas++;
-    } catch (e) {
-      log('  ❌', `${date} — falhou: ${e.message.split('\n')[0]}`, 'red');
-    }
-    await sleep(2000);
+  for (const r of collectResults) {
+    const { date, ok, err } = r.status === 'fulfilled' ? r.value : { date: '?', ok: false, err: r.reason };
+    if (ok) { log('  ✅', `${date} — coletado`, 'green'); totalColetadas++; }
+    else    { log('  ❌', `${date} — falhou: ${(err?.message || '').split('\n')[0]}`, 'red'); }
   }
 
   log('📡', `Coleta concluída: ${totalColetadas} novas datas`, 'green');
@@ -275,34 +282,36 @@ async function etapa2_backfill(dryRun) {
 async function etapa3_injetar(dates, dryRun) {
   log('🧠', 'ETAPA 3 — Injeção de Padrões no PIE', 'bold');
 
+  const injectDates = dates.filter(d => existsSync(join(ROOT, 'data/daily-matches', `${d}.json`)));
+  dates.filter(d => !existsSync(join(ROOT, 'data/daily-matches', `${d}.json`)))
+       .forEach(d => log('  ⏭', `${d} — sem arquivo, pulando`, 'gray'));
+
+  if (!injectDates.length) {
+    log('🧠', 'Injeção concluída: nenhum arquivo disponível', 'gray');
+    return 0;
+  }
+
+  // Paralleliza injeção PIE de todas as datas simultaneamente
+  log('  🔄', `Injetando em paralelo: ${injectDates.join(', ')}`, 'cyan');
   let totalInjetados = 0;
-  for (const date of dates) {
-    const filePath = join(ROOT, 'data/daily-matches', `${date}.json`);
-    if (!existsSync(filePath)) {
-      log('  ⏭', `${date} — sem arquivo, pulando`, 'gray');
-      continue;
-    }
 
-    log('  🔄', `Injetando ${date}...`, 'cyan');
-    try {
-      if (!dryRun) {
-        const out = execSync(`node scripts/daily-pie-update.js ${date}`, {
-          stdio: 'pipe', cwd: ROOT, windowsHide: true,
-          timeout: 90_000, maxBuffer: 10_000_000,  // FIX: PIE update pode ser lento com muitos jogos
-        }).toString();
+  const injectResults = await Promise.allSettled(
+    injectDates.map(date =>
+      dryRun
+        ? Promise.resolve({ date, count: 1 })
+        : execFileAsync('node', ['scripts/daily-pie-update.js', date], {
+            cwd: ROOT, timeout: 120_000,
+          }).then(({ stdout }) => {
+            const m = (stdout || '').match(/(\d+) jogos processados/);
+            return { date, count: m ? parseInt(m[1]) : 0 };
+          }).catch(e => ({ date, count: 0, err: e }))
+    )
+  );
 
-        // Extrai número de jogos processados do output
-        const match = out.match(/(\d+) jogos processados/);
-        const count = match ? parseInt(match[1]) : 0;
-        totalInjetados += count;
-        log('  ✅', `${date} — ${count} jogos injetados`, 'green');
-      } else {
-        totalInjetados++;
-      }
-    } catch (e) {
-      log('  ❌', `${date} — falhou: ${e.message.split('\n')[0]}`, 'red');
-    }
-    await sleep(500);
+  for (const r of injectResults) {
+    const { date, count, err } = r.status === 'fulfilled' ? r.value : { date: '?', count: 0, err: r.reason };
+    if (!err) { log('  ✅', `${date} — ${count} jogos injetados`, 'green'); totalInjetados += count; }
+    else      { log('  ❌', `${date} — falhou: ${(err?.message || '').split('\n')[0]}`, 'red'); }
   }
 
   log('🧠', `Injeção concluída: ~${totalInjetados} partidas adicionadas`, 'green');

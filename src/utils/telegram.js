@@ -5,6 +5,7 @@ import { fileURLToPath } from 'url';
 import { randomUUID } from 'crypto';
 import { trackSignalSent } from './engagement-tracker.js';
 import { isObsidianConfigured, saveAnaliseNote } from './obsidian.js';
+import { formatPreLiveSignal, validarMensagem } from './signal-formatter.js';
 
 const BASE = 'https://api.telegram.org';
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -876,113 +877,91 @@ export async function notifyMiniGrade(approvedMatches) {
 }
 
 // ─────────────────────────────────────────────────────────────
-// ANÁLISE DE MERCADOS — modelo padrão unificado por partida
+// ANÁLISE DE MERCADOS — Protocolo de Identidade Visual v1.0.0
+// Um sinal = um mercado = uma mensagem (template M3)
 // ─────────────────────────────────────────────────────────────
 export async function notifyMarketAnalysis(matchData, approvedResults) {
-  if (!isConfigured()) return;
+  if (!isConfigured()) return null;
 
-  // Regra obrigatória: análise só enviada com URL específica ao jogo (padrão /odds/futebol/time-x-time-id)
+  // Gate Superbet: sinal só vai ao grupo se tiver URL específica do jogo na Superbet
+  // (requisito de negócio — independente do link exibido na mensagem)
   if (!_isValidMatchUrl(matchData.superbetUrl)) {
-    console.log(`[Telegram] PRÉ-LIVE bloqueado — URL inválida/genérica para: ${matchData.match || '?'} (${matchData.superbetUrl || 'null'})`);
+    console.log(`[Telegram] PRÉ-LIVE bloqueado — URL Superbet inválida/genérica: ${matchData.match || '?'} (${matchData.superbetUrl || 'null'})`);
     return null;
   }
 
-  const hora = matchData.date ? formatTime(matchData.date) : (matchData.match_time || '—');
-  const data = matchData.date ? formatDate(matchData.date) : '';
-  const comp = matchData.competition || '';
+  const comp    = matchData.competition || '';
+  const _mNorm  = (matchData.match || '').replace(/\s+/g, '_').replace(/[^a-z0-9_]/gi, '').substring(0, 40);
 
-  const [homeRaw, awayRaw] = (matchData.match || '').split(' vs ');
-  const matchLabel = homeRaw && awayRaw
-    ? `<b>${homeRaw.trim()} vs ${awayRaw.trim()}</b>`
-    : `<b>${matchData.match}</b>`;
+  // Link de exibição na mensagem: SofaScore (M7.1) → Flashscore → Superbet como fallback
+  const linkExibicao =
+    matchData.sofascore_url   ||
+    matchData.sofascoreUrl    ||
+    (matchData.slug && matchData.sofascore_id
+      ? `https://www.sofascore.com/${matchData.slug}/${matchData.sofascore_id}`
+      : null)                 ||
+    matchData.flashscore_url  ||
+    matchData.flashscoreUrl   ||
+    matchData.superbetUrl;    // fallback final: link Superbet do jogo
 
-  const lines = [
-    `🟢  <b>PRÉ-LIVE</b>`,
-    SEP_HEAVY,
-    `⚽  ${matchLabel}`,
-    comp ? `🏆  <b>${_esc(comp)}</b>  ·  📅  ${data}  ·  ⏰  ${hora}` : `📅  ${data}  ·  ⏰  ${hora}`,
-    BR,
-  ];
+  const msgIds = [];
 
   for (const r of approvedResults) {
-    const mercado     = r.mercado      ?? r.market         ?? '';
-    const agentMktNMA = (r.market || '').toLowerCase();      // campo autoritativo do agente
-    const rec         = r.recomendacao ?? r.recommendation ?? '';
-    const prob        = r.probabilidade ?? r.probability   ?? 0;
-    const conf        = r.confianca    ?? r.confidence     ?? 0;
+    // ── Formatar sinal conforme template M3 ────────────────────────────────────
+    const html = formatPreLiveSignal(matchData, r, { linkOverride: linkExibicao });
 
-    // Usa campo autoritativo (r.market) para categoria e mercado (LLM) para valor numérico
-    const icon   = (agentMktNMA.includes('escanteio') || agentMktNMA.includes('corner'))
-      ? '⛳'
-      : (agentMktNMA.includes('cartão') || agentMktNMA.includes('cartao') || agentMktNMA.includes('amarelo') || /^yc\b/i.test(agentMktNMA))
-        ? '🟨'
-        : _marketIcon(mercado);
-    const label  = (agentMktNMA.includes('escanteio') || agentMktNMA.includes('corner'))
-      ? 'Escanteios'
-      : (agentMktNMA.includes('cartão') || agentMktNMA.includes('cartao') || agentMktNMA.includes('amarelo') || /^yc\b/i.test(agentMktNMA))
-        ? 'Cartões'
-        : _marketLabel(mercado);
-    const recFmt = _formatRec(mercado, rec);
-    const risco  = _calcRisk(prob, conf);
-
-    lines.push(`${icon} <b>${label} → ${recFmt}</b>  📊 ${prob}%  🔒 ${conf}%  ${risco.icon}`);
-
-    if (r.top_placares?.length) {
-      const tops = r.top_placares.slice(0, 2)
-        .map((p) => `${p.placar}(${p.probabilidade}%)`)
-        .join(' · ');
-      lines.push(`  🎯 ${tops}`);
+    if (!html) {
+      console.warn(`[Telegram] Sinal retido (formatPreLiveSignal retornou null): ${matchData.match || '?'} · ${r.mercado || r.market || '?'}`);
+      continue;
     }
-  }
 
-  lines.push(BR);
-  lines.push(`<i>📊 Prob  🔒 Conf  🟢 Baixo  🟡 Médio  🔴 Alto</i>`);
-  lines.push(SEP_LIGHT);
-  lines.push(`🤖  <i>Betting Analysis Squad</i>`);
+    // ── Validar padrão M8 ──────────────────────────────────────────────────────
+    const validacao = validarMensagem(html, 'PRELIVE');
+    if (!validacao.ok) {
+      console.error(`[Telegram] Sinal retido — validação falhou: ${validacao.erros.join(' · ')}`);
+      continue;
+    }
 
-  // Gera ID único para rastreamento de engajamento
-  const signalId = randomUUID();
+    // ── Dedup por jogo+mercado (24h) ───────────────────────────────────────────
+    const mktNorm         = (r.mercado || r.market || '').replace(/\s+/g, '_').replace(/[^a-z0-9_.]/gi, '').substring(0, 20);
+    const dedupKey        = `signal_${_mNorm}_${mktNorm}`;
+    const signalId        = randomUUID();
 
-  // URL resolvida para o botão de link rastreado — APENAS URL específica ao jogo
-  const _superbetUrl = _isValidMatchUrl(matchData.superbetUrl) ? matchData.superbetUrl : null;
+    // Botão inline para Superbet (rastreável) — fora do corpo da mensagem (M10)
+    const superbetUrlBtn  = _isValidMatchUrl(matchData.superbetUrl) ? matchData.superbetUrl : null;
+    const replyMarkup     = superbetUrlBtn ? {
+      inline_keyboard: [[
+        { text: '🎰 Apostar na Superbet', callback_data: `link_${signalId}` },
+      ]],
+    } : undefined;
 
-  // Botão inline rastreável — só incluído quando há URL específica ao jogo
-  const replyMarkup = _superbetUrl ? {
-    inline_keyboard: [[
-      { text: '🔗 Apostar agora → Superbet', callback_data: `link_${signalId}` },
-    ]],
-  } : undefined;
-
-  // Chave estável por jogo — bloqueia duplicata da mesma partida por 24h (evita reenvio pelo daily-pipeline)
-  const _mNorm = (matchData.match || '').replace(/\s+/g, '_').replace(/[^a-z0-9_]/gi, '').substring(0, 40);
-  const monitorDedupKey = `monitor_${_mNorm}`;
-
-  // protected: true — impede deleção automática por dedup até o resultado ser registrado
-  const msgId = await send(lines.join('\n'), {
-    protected:     true,
-    dedupKey:      monitorDedupKey,
-    dedupWindowMs: 24 * 60 * 60 * 1000,  // 24h
-    reply_markup:  replyMarkup,
-  });
-
-  // Registra sinal para rastreamento de engajamento + nota Obsidian
-  if (msgId) {
-    const primaryMarket = approvedResults[0]?.mercado ?? approvedResults[0]?.market ?? '';
-    trackSignalSent({
-      signalId,
-      match:       matchData.match || '',
-      market:      primaryMarket,
-      competition: comp,
-      msgId,
-      linkUrl:     _superbetUrl,
+    // protected: true — impede deleção por dedup até resultado ser registrado
+    const msgId = await send(html, {
+      protected:     true,
+      dedupKey,
+      dedupWindowMs: 24 * 60 * 60 * 1000,
+      reply_markup:  replyMarkup,
     });
-    // Cria nota individual no Obsidian para esta análise
-    if (isObsidianConfigured()) {
-      try { saveAnaliseNote(matchData, approvedResults, msgId, signalId); } catch { /* não bloqueia */ }
+
+    if (msgId) {
+      msgIds.push(msgId);
+      trackSignalSent({
+        signalId,
+        match:       matchData.match || '',
+        market:      r.mercado ?? r.market ?? '',
+        competition: comp,
+        msgId,
+        linkUrl:     superbetUrlBtn,
+      });
+      // Nota Obsidian — apenas para o primeiro mercado (evita duplicar nota por jogo)
+      if (msgIds.length === 1 && isObsidianConfigured()) {
+        try { saveAnaliseNote(matchData, approvedResults, msgId, signalId); } catch { /* não bloqueia */ }
+      }
     }
   }
 
-  return msgId;
+  // Retorna array de msgIds (um por mercado) ou o primeiro para compatibilidade
+  return msgIds.length === 1 ? msgIds[0] : (msgIds.length > 1 ? msgIds : null);
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -1364,6 +1343,14 @@ export async function notifyPreLiveAnalysis(analysis, opts = {}) {
   const matchData = analysis.matchData || {};
   const topBet    = analysis.top_bet   || {};
   const score     = analysis.confidence_score ?? 0;
+
+  // Gate obrigatório: odds mínima 1.50 — abaixo disso a margem é insuficiente
+  const oddsNum = parseFloat(topBet.odds) || 0;
+  if (oddsNum > 0 && oddsNum < 1.50) {
+    console.log(`[Telegram] PRÉ-LIVE bloqueado — odds ${oddsNum} < 1.50 (${matchData.match || '?'})`);
+    return null;
+  }
+
   // FIX: probabilidade e confiança são métricas distintas — usar campos separados
   const prob      = analysis.probabilidade ?? score;
   const comp      = matchData.competition || 'N/A';
@@ -1605,6 +1592,17 @@ export async function notifySuperOddsParlay(parlayOptions, bankroll = 1000, { ma
     const emoji    = TIER_EMOJIS[tierName] || '🎰';
     const topCombo = tierData.best[0];
     if (!topCombo?.legs?.length) continue;
+
+    // Gate obrigatório: odds combinadas ≥ 10x e pelo menos 2 jogos distintos
+    if (topCombo.combined_odds < 10.0) {
+      console.log(`[Telegram] SuperOdds bloqueado — odds combinadas ${topCombo.combined_odds}x < 10x (${tierName})`);
+      continue;
+    }
+    const distinctGames = new Set(topCombo.legs.map(l => l.match_id || l.match)).size;
+    if (distinctGames < 2) {
+      console.log(`[Telegram] SuperOdds bloqueado — apenas ${distinctGames} jogo distinto (mínimo 2) (${tierName})`);
+      continue;
+    }
 
     // Gate por tier: confiança combinada mínima proporcional ao número de pernas
     const confComb = topCombo.confidence ?? 0;
@@ -1945,6 +1943,26 @@ export async function notifyPreLiveOpportunity(matchData, markets) {
     return null;
   }
 
+  // Gate obrigatório: jogo não pode ter já iniciado
+  if (matchData.date) {
+    const kickoff = new Date(matchData.date).getTime();
+    if (!isNaN(kickoff) && kickoff < Date.now()) {
+      console.log(`[Telegram] PRÉ-LIVE bloqueado — kickoff já passou: ${matchData.match || '?'}`);
+      return null;
+    }
+  }
+
+  // Gate obrigatório: filtra mercados com odds < 1.50
+  const validMarkets = markets.filter(m => {
+    const odds = parseFloat(m.odds_minima || m.odds || 0);
+    if (odds > 0 && odds < 1.50) {
+      console.log(`[Telegram] PRÉ-LIVE market bloqueado — odds ${odds} < 1.50 (${m.mercado || m.market || '?'})`);
+      return false;
+    }
+    return true;
+  });
+  if (!validMarkets.length) return null;
+
   // REGRA OBRIGATÓRIA: data e hora devem constar em TODOS os sinais enviados
   const hora = matchData.date
     ? new Date(matchData.date).toLocaleTimeString('pt-BR', {
@@ -1976,7 +1994,7 @@ export async function notifyPreLiveOpportunity(matchData, markets) {
     BR,
   ];
 
-  for (const m of markets) {
+  for (const m of validMarkets) {
     const risk = _calcRisk(m.probabilidade, m.confianca);
 
     // ── Nome do mercado com direção clara ─────────────────────────────────
@@ -2006,6 +2024,13 @@ export async function notifyPreLiveOpportunity(matchData, markets) {
       const linha = rawMarket.match(/[\d.]+/)?.[0] || '';
       const dir   = (/^under/i.test(rawMarket) || rec === 'UNDER') ? 'Under' : 'Over';
       marketLabel = `🟨 Cartões Amarelos:  <b>${dir} ${linha}</b>`;
+    } else if (/^(over|under)\s*[\d.]+/i.test(rawMarket) &&
+               parseFloat(rawMarket.match(/[\d.]+/)?.[0] || 0) >= 5.5 &&
+               !agentMarket.includes('gols') && !agentMarket.includes('total')) {
+      // Linha ≥ 5.5 sem "gols" explícito no market → escanteio (gols nunca chegam a 5.5+)
+      const linha = rawMarket.match(/[\d.]+/)?.[0] || '';
+      const dir   = /^under/i.test(rawMarket) ? 'Under' : 'Over';
+      marketLabel = `⛳ Escanteios:  <b>${dir} ${linha}</b>`;
     } else if (/^(over|under)\s*[\d.]+/i.test(rawMarket) ||
                agentMarket.includes('gols') || agentMarket.includes('total')) {
       // Gols — Over/Under

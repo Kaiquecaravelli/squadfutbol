@@ -176,7 +176,7 @@ function mergeMatchData(baseMatch, sources) {
   return {
     match_id:    baseMatch.match_id    || baseMatch.sofascore_id,
     match:       base.match            || `${baseMatch.home_team} vs ${baseMatch.away_team}`,
-    date:        base.date             || baseMatch.match_date,
+    date:        base.date             || baseMatch.match_date || baseMatch.date,
     match_time:  baseMatch.match_time  || base.match_time,
     competition: base.competition      || baseMatch.competition,
     venue:       base.venue,

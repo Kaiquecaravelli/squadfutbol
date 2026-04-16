@@ -356,6 +356,13 @@ export function buildParlayOptions(legs, bankroll = 1000, topN = 5) {
         // Para Mega Retorno e Super Odds: aceita EV ligeiramente negativo se odds ≥ 20x
         if (metrics.ev <= -0.05 && metrics.combined_odds < 20.0) continue;
 
+        // Gate obrigatório: SuperOdds exige odds combinadas ≥ 10x
+        if (metrics.combined_odds < 10.0) continue;
+
+        // Gate obrigatório: pelo menos 2 jogos distintos na combinação
+        const distinctMatches = new Set(combo.map(l => l.match_id || l.match)).size;
+        if (distinctMatches < 2) continue;
+
         bestCombos.push({ legs: combo, ...metrics });
       }
     }

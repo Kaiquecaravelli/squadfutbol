@@ -638,11 +638,28 @@ export function savePieSnapshot() {
 
   try {
     appendFileSync(SNAPSHOT_PATH, JSON.stringify(snap) + '\n', 'utf-8');
+    // Rotação: mantém apenas snapshots dos últimos 7 dias (evita crescimento infinito em disco)
+    _rotateSnapshots();
   } catch (e) {
     console.warn('[PIE] Falha ao gravar snapshot:', e.message);
   }
 
   return snap;
+}
+
+function _rotateSnapshots() {
+  try {
+    if (!existsSync(SNAPSHOT_PATH)) return;
+    const cutoff = Date.now() - 7 * 86_400_000;
+    const raw    = readFileSync(SNAPSHOT_PATH, 'utf-8');
+    const lines  = raw.split('\n').filter(Boolean);
+    if (lines.length < 200) return; // não rotaciona se ainda pequeno
+    const kept   = lines.filter(l => { try { return JSON.parse(l).ts > new Date(cutoff).toISOString(); } catch { return false; } });
+    if (kept.length < lines.length) {
+      writeFileSync(SNAPSHOT_PATH, kept.join('\n') + '\n', 'utf-8');
+      console.log(`[PIE] Rotação de snapshots: ${lines.length - kept.length} entradas antigas removidas`);
+    }
+  } catch { /* silencioso — rotação é melhoramento não crítico */ }
 }
 
 /**

@@ -14,12 +14,16 @@ import chalk from 'chalk';
 import { BTTSAgent }         from '../../squads/betting-analysis/market-agents/BTTSAgent.js';
 import { GoalsAgent }        from '../../squads/betting-analysis/market-agents/GoalsAgent.js';
 import { CornersAgent }      from '../../squads/betting-analysis/market-agents/CornersAgent.js';
-import { DoubleChanceAgent } from '../../squads/betting-analysis/market-agents/DoubleChanceAgent.js';
+// DoubleChanceAgent DESATIVADO em 2026-04-15 — precisão global 45,4% · Away Win 29% · Draw 25% · CAINDO
+// Reativação: min 50 amostras em shadow mode com precisão ≥ 80%
+// import { DoubleChanceAgent } from '../../squads/betting-analysis/market-agents/DoubleChanceAgent.js';
 import { aggregateMatchData } from '../scrapers/aggregator.js';
 import { saveMatchScan } from '../utils/obsidian.js';
 import { getAgentCalibration } from '../pie/pie-storage.js';
-import { bttsKillSwitch, bttsMinProbability, trackBttsDecision, BTTS_MIN_CONFIDENCE } from '../utils/btts-sniper.js';
-import { goalsKillSwitch, goalsMinProbability, trackGoalsDecision, GOALS_MIN_CONFIDENCE } from '../utils/goals-sniper.js';
+import { bttsKillSwitch, bttsMinProbability, trackBttsDecision, BTTS_MIN_CONFIDENCE, bttsIsDeadLeague } from '../utils/btts-sniper.js';
+import { goalsKillSwitch, goalsMinProbability, goalsMinConfidence, trackGoalsDecision, GOALS_MIN_CONFIDENCE } from '../utils/goals-sniper.js';
+import { cornersKillSwitch, cornersMinConfidence, trackCornersDecision, CORNERS_MIN_CONFIDENCE, cornersIsDeadLeague } from '../utils/corners-sniper.js';
+import { KILL_ZONE_THRESHOLD, isKillZone, trackKillZone } from '../utils/kill-zone.js';
 
 const MIN_PROBABILITY = parseInt(process.env.PRE_LIVE_MIN_PROBABILITY || '80');
 const MIN_CONFIDENCE  = parseInt(process.env.PRE_LIVE_MIN_CONFIDENCE  || '75');
@@ -39,6 +43,11 @@ const PIE_ODDS_TIERS = [
 let _calibCache = null; // Map<market, calib>
 let _calibCacheTs = 0;
 const CALIB_CACHE_TTL = 5 * 60_000; // 5 min
+
+// Cache de análises por jogo+bucket — evita repetir chamadas Groq para o mesmo jogo
+// em runs consecutivos do scheduler (funil roda a cada 30min; mesmo jogo aparece 4-6x)
+const _analysisCache = new Map(); // key → { result, ts }
+const ANALYSIS_CACHE_TTL = 25 * 60_000; // 25 min (< intervalo do scheduler de 30min)
 
 function _getCalibCached(market) {
   if (!_calibCache || Date.now() - _calibCacheTs >= CALIB_CACHE_TTL) {
@@ -68,13 +77,18 @@ function _getDynamicMinOdds(market, probability) {
   } catch { /* PIE indisponível → usa padrão */ }
   return MIN_ODDS;
 }
-const MATCH_DELAY_MS  = 10_000; // 10s entre jogos — respeita 20k TPM/min por chave Groq
+// Delay entre jogos — calculado para 6 chaves Groq em pool:
+// 3 agentes × ~1800 tokens = ~5400 tokens/jogo | pool 6 chaves × 20k TPM = 120k TPM
+// Consumo em 2.5s: 5400 tokens / 2.5s = 2160 tokens/s < 2000 tokens/s/chave mas pool distribui
+// Reduzido de 10s → 2.5s em 2026-04-16 (Auditoria M5 · pool de 6 chaves torna 10s obsoleto)
+const MATCH_DELAY_MS  = 2_500;
 
+// AGENTES ATIVOS (3 de elite) — corte cirúrgico 2026-04-15
+// Cortado: DoubleChanceAgent (45,4% global · CAINDO · sem Fire Zone viável)
 const AGENTS = [
   new BTTSAgent(),
   new GoalsAgent(),
   new CornersAgent(),
-  new DoubleChanceAgent(),
 ];
 
 
@@ -86,6 +100,10 @@ const AGENTS = [
  */
 export async function runPreLiveFunnel(matches, notifiedKeys = new Map()) {
   if (!matches.length) return [];
+
+  // Invalida cache PIE a cada run do funil — garante calibração fresca
+  _calibCache = null;
+  _calibCacheTs = 0;
 
   const approved = [];
   let consecutiveErrors = 0;
@@ -116,14 +134,47 @@ export async function runPreLiveFunnel(matches, notifiedKeys = new Map()) {
 
 // ── Análise individual ─────────────────────────────────────────────────────────
 async function _analyzeMatch(match, idx, notifiedKeys) {
+  // Cache de análise: se o mesmo jogo+bucket foi analisado há < 25min, reutiliza resultado
+  const matchId   = match.sofascore_id || match.match_id || `${match.home_team}_${match.away_team}`;
+  const bucket    = match._bucket || 'default';
+  const cacheKey  = `${matchId}:${bucket}`;
+  const cached    = _analysisCache.get(cacheKey);
+  if (cached && Date.now() - cached.ts < ANALYSIS_CACHE_TTL) {
+    console.log(chalk.gray(`  ♻️  [Cache] ${match.home_team} vs ${match.away_team} [${bucket}] — reutilizando análise (${Math.round((Date.now() - cached.ts) / 60_000)}min atrás)`));
+    return cached.result;
+  }
+
   const matchData = await aggregateMatchData(match);
   // Propaga campos de orquestração que aggregateMatchData não copia automaticamente
   if (match._bucket) matchData._bucket = match._bucket;
 
-  // Pool Groq com 6 chaves: todos os 7 agentes em paralelo com round-robin automático
+  // Pré-filtro por liga morta: elimina agentes cujos Kill Switches KS1/KS2 depende
+  // apenas do nome da competição — evita ~1.390 tokens por chamada bloqueada.
+  // O Kill Switch continua ativo em _applyGates() como segunda linha de defesa.
+  const comp = matchData.competition || match.competition || '';
+  const agentsToRun = AGENTS.filter((agent) => {
+    if (agent.name === 'BTTS' && bttsIsDeadLeague(comp)) {
+      console.log(chalk.gray(`    ⏭ [Pre-filter BTTS] ${comp} — liga morta`));
+      return false;
+    }
+    if (agent.name === 'Escanteios' && cornersIsDeadLeague(comp)) {
+      console.log(chalk.gray(`    ⏭ [Pre-filter Corners] ${comp} — liga morta`));
+      return false;
+    }
+    return true;
+  });
+
+  // Pool Groq com 6 chaves: agentes elegíveis em paralelo com round-robin automático
   const rawResults = await Promise.allSettled(
-    AGENTS.map((agent) => agent.analyze(matchData))
+    agentsToRun.map((agent) => agent.analyze(matchData))
   );
+
+  // Alerta explícito para agentes que falharam (silêncio anterior mascarava falhas de rede/rate limit)
+  rawResults.forEach((r, i) => {
+    if (r.status === 'rejected') {
+      console.warn(chalk.yellow(`  ⚠️  [Agente falhou] ${agentsToRun[i]?.name || `agente[${i}]`}: ${r.reason?.message || r.reason}`));
+    }
+  });
 
   const allResults = rawResults
     .filter((r) => r.status === 'fulfilled')
@@ -163,22 +214,43 @@ async function _analyzeMatch(match, idx, notifiedKeys) {
   const enriched = allResults
     .filter((r) => {
       if (!r || typeof r.probabilidade !== 'number') return false;
+
+      // ── KILL ZONE GATE UNIVERSAL ────────────────────────────────────────────
+      // Prob 60-70%: 0% de precisão em 880+ amostras (8 mercados simultâneos).
+      // Gate explícito com tracking antes de qualquer outro filtro.
+      if (isKillZone(r.probabilidade)) {
+        const mktKZ = r.mercado || r.market || '';
+        console.log(chalk.red(`    ⛔ [Kill Zone] ${mktKZ} — prob ${r.probabilidade}% < ${KILL_ZONE_THRESHOLD}% (0% precisão · 880+ amostras)`));
+        trackKillZone(r, matchData, 'prelive');
+        return false;
+      }
+
       if (r.probabilidade < MIN_PROBABILITY) return false;
       if ((r.confianca ?? 0) < MIN_CONFIDENCE) return false;
       // Normaliza campo de mercado: alguns agentes retornam 'market', outros 'mercado'
       if (!r.mercado && r.market) r.mercado = r.market;
       if (!r.market && r.mercado) r.market  = r.mercado;
-      // Corrige hallucination do LLM: CornersAgent retornou "Under 8.5" sem "Corners"
-      // → normaliza para "Under Corners 8.5" usando r.market (campo autoritativo do agente)
-      if (r.mercado && r.market && /escanteio|corner/i.test(r.market)) {
-        if (/^(over|under)\s*[\d.]+$/i.test(r.mercado.trim())) {
-          const dir = /^under/i.test(r.mercado) ? 'Under' : 'Over';
-          const num = r.mercado.match(/[\d.]+/)?.[0] || '';
+      // Corrige hallucination do LLM: agente retornou "Under/Over X.5" sem "Corners"
+      // Condição 1: r.market já indica escanteio (campo autoritativo)
+      // Condição 2: mercado genérico com linha ≥ 5.5 (gols nunca chegam a 5.5+)
+      if (r.mercado) {
+        const _merc = r.mercado.trim();
+        const _mkt  = (r.market || '').toLowerCase();
+        const _isGenericOverUnder = /^(over|under)\s*[\d.]+$/i.test(_merc);
+        const _linha = parseFloat(_merc.match(/[\d.]+/)?.[0] || '0');
+        const _isEscanteioByMarket = /escanteio|corner/i.test(_mkt);
+        const _isEscanteioByLinha  = _isGenericOverUnder && _linha >= 5.5; // gols não chegam a 5.5+
+        if ((_isEscanteioByMarket || _isEscanteioByLinha) && _isGenericOverUnder) {
+          const dir = /^under/i.test(_merc) ? 'Under' : 'Over';
+          const num = _merc.match(/[\d.]+/)?.[0] || '';
           r.mercado = `${dir} Corners ${num}`;
+          if (!_isEscanteioByMarket) r.market = 'Escanteios'; // corrige market ausente/errado
         }
       }
-      if (r.recomendacao === 'AGUARDAR' || r.recomendacao === 'NÃO') return false;
-      if (r.recommendation === 'AGUARDAR' || r.recommendation === 'NÃO') return false;
+      // Whitelist positiva — apenas recomendações explícitas de aposta passam
+      // Bug anterior: apenas bloqueava 'NÃO'/'AGUARDAR' → 'INCERTO' com prob 82%/conf 76% disparava
+      const recom = r.recomendacao || r.recommendation || '';
+      if (!['APOSTAR', 'SIM', 'CONSIDERAR'].includes(recom)) return false;
       // BTTS Sniper Gate — Kill Switches v3 (módulo btts-sniper.js compartilhado)
       const mktForBtts = (r.mercado || r.market || '').trim();
       if (mktForBtts === 'BTTS' || mktForBtts === 'Ambas Marcam') {
@@ -204,11 +276,15 @@ async function _analyzeMatch(match, idx, notifiedKeys) {
         trackBttsDecision('fired', r, matchData, null, 'prelive');
         console.log(chalk.cyan(`    🎯 [BTTS Sniper] DISPARO aprovado — ${r.probabilidade}%/conf ${r.confianca}% (${matchData.competition || ''})`));
       }
-      // Goals Sniper Gate — Kill Switches v1 (mercados Over/Under de gols)
+      // Goals Sniper Gate — Kill Switches v2 (mercados Over/Under de gols)
+      // Fix: regex original não capturava "Total de Gols" (nome genérico do GoalsAgent)
       const mktForGoals = (r.mercado || r.market || '').trim();
-      const isGoalsMarket = /^(over|under)\s*[\d.]+$/.test(mktForGoals) &&
-                            !/corner|escanteio/i.test(mktForGoals) &&
-                            !/yc/i.test(mktForGoals);
+      const isGoalsMarket = (
+        /^(over|under)\s*[\d.]+$/i.test(mktForGoals) ||  // "Over 1.5", "Under 2.5" (flag i — LLM retorna maiúsculo)
+        /total.*gols/i.test(mktForGoals)                  // "Total de Gols" — nome genérico
+      ) &&
+      !/corner|escanteio/i.test(mktForGoals) &&
+      !/yc/i.test(mktForGoals);
       if (isGoalsMarket) {
         const goalsBlock = goalsKillSwitch(r, matchData);
         if (goalsBlock) {
@@ -223,14 +299,37 @@ async function _analyzeMatch(match, idx, notifiedKeys) {
           trackGoalsDecision('blocked', r, matchData, reason, 'prelive');
           return false;
         }
-        if ((r.confianca ?? 0) < GOALS_MIN_CONFIDENCE) {
-          const reason = `Threshold — confiança ${r.confianca}% < ${GOALS_MIN_CONFIDENCE}%`;
+        // AÇÃO 2 — Fire Zone: confiança mínima por mercado (Over 2.5/3.5 exigem 80%)
+        const minConfGoals = goalsMinConfidence(mktForGoals);
+        if ((r.confianca ?? 0) < minConfGoals) {
+          const fzTag = minConfGoals > GOALS_MIN_CONFIDENCE ? ' [Fire Zone gate]' : '';
+          const reason = `Threshold — confiança ${r.confianca}% < ${minConfGoals}%${fzTag}`;
           console.log(chalk.gray(`    🚫 [Goals Sniper] ${reason}`));
           trackGoalsDecision('blocked', r, matchData, reason, 'prelive');
           return false;
         }
         trackGoalsDecision('fired', r, matchData, null, 'prelive');
         console.log(chalk.cyan(`    🎯 [Goals Sniper] DISPARO aprovado — ${mktForGoals} ${r.probabilidade}%/conf ${r.confianca}%`));
+      }
+      // Corners Sniper Gate — Liga Whitelist + Fire Zone (conf ≥ 80%) + KS1-3
+      const mktForCorners = (r.mercado || r.market || '').trim();
+      const isCornersMarket = /corner|escanteio/i.test(r.market || r.mercado || '');
+      if (isCornersMarket) {
+        const cornersBlock = cornersKillSwitch(r, matchData);
+        if (cornersBlock) {
+          console.log(chalk.gray(`    🚫 [Corners Sniper] ${cornersBlock}`));
+          trackCornersDecision('blocked', r, matchData, cornersBlock, 'prelive');
+          return false;
+        }
+        const minConfCorners = cornersMinConfidence(mktForCorners);
+        if ((r.confianca ?? 0) < minConfCorners) {
+          const reason = `Fire Zone gate — confiança ${r.confianca}% < ${minConfCorners}% [Fire Zone gate]`;
+          console.log(chalk.gray(`    🚫 [Corners Sniper] ${reason}`));
+          trackCornersDecision('blocked', r, matchData, reason, 'prelive');
+          return false;
+        }
+        trackCornersDecision('fired', r, matchData, null, 'prelive');
+        console.log(chalk.cyan(`    🎯 [Corners Sniper] DISPARO aprovado — ${mktForCorners} ${r.probabilidade}%/conf ${r.confianca}%`));
       }
       // Whitelist gate — bloqueia mercados inventados pelo LLM
       const mkt = (r.mercado || r.market || '').trim();
@@ -313,7 +412,7 @@ async function _analyzeMatch(match, idx, notifiedKeys) {
   // Marca o jogo como enviado neste bucket — bloqueia reenvio em varreduras futuras
   notifiedKeys.set(gameKey, Date.now());
 
-  return {
+  const result = {
     idx,
     matchData,
     enriched: novos,
@@ -321,6 +420,11 @@ async function _analyzeMatch(match, idx, notifiedKeys) {
     matchId:     matchKey,
     kickoffTime: matchData.date ? new Date(matchData.date).getTime() : null,
   };
+
+  // Salva no cache para reutilização nos próximos runs do scheduler
+  _analysisCache.set(cacheKey, { result, ts: Date.now() });
+
+  return result;
 }
 
 function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }

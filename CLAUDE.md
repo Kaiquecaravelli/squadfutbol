@@ -12,7 +12,7 @@
 | Mercado | Amostras | Precisão |
 |---------|---------|----------|
 | Over 1.5 | 212 | 92% ✅ |
-| BTTS | 173 | 86% ✅ |
+| BTTS | 1628 | 62% ⚠️ (LaLiga 72% ✅ · Eredivisie 73% ✅ · Conference League 13% 🔴 bloqueada) |
 | Over 2.5 | 130 | 78% ✅ |
 | Over 3.5 | 112 | 40% ✅ |
 | Over Corners 6.5/7.5/8.5 | 112 | 78/69/62% ✅ |

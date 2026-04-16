@@ -21,6 +21,55 @@ import { loadDB } from '../pie/pie-storage.js';
 
 const HOME_ADVANTAGE = 1.15;
 
+// ── Coeficiente lambda_corners por liga (calibrado com dados reais) ───────────
+// Fonte: data/daily-matches/*.json — média real de (corners_total / goals_total) por liga
+// Drill C3 executado em 2026-04-16 com 12 arquivos / 400+ partidas
+// Atualização Módulo 3 CornersAgent (2026-04-16): MLS adicionado com estimativa PIE
+//
+// Divergência > 10% do padrão 3.6 → coeficiente específico obrigatório
+// Liga            n    avgC   avgG   coef   Δvs3.6   fonte
+// Série B        41   10.54   2.07   5.082  +41% ⚠️  daily-matches (12 arquivos)
+// Brasileirão    44   10.20   2.27   4.490  +25% ⚠️  daily-matches
+// LaLiga         40   11.00   2.55   4.314  +20% ⚠️  daily-matches
+// Liga Prof.     55    8.69   2.25   3.855   +7%     daily-matches
+// Premier Leag.  21   10.33   2.71   3.807   +6%     daily-matches
+// Eredivisie     37   10.62   2.84   3.743   +4%     daily-matches
+// Liga Portugal  36   10.94   2.94   3.717   +3%     daily-matches
+// MLS             –   ~10.5    ~2.9  ~3.75   +4%  ⚠️ estimativa PIE (sem data local)
+//   Justificativa: Over 6.5 = 84% (n=103) · Over 7.5 = 76% (n=103) sugere liga
+//   ofensiva com padrão similar à Eredivisie → coef 3.75 conservador
+//   Recalibrar quando dados de daily-matches de temporada MLS estiverem disponíveis
+// Serie A        41    8.29   2.39   3.469   -4%     daily-matches
+// Ligue 1        32    9.38   2.81   3.333   -7%     daily-matches
+// Bundesliga     36    9.61   3.39   2.836  -21% ⚠️  daily-matches
+const LEAGUE_CORNERS_COEF = [
+  // padrões normalizados (lowercase includes) → coef real
+  { pattern: 'brasileirão série b',  coef: 5.082 },
+  { pattern: 'brasileirao serie b',  coef: 5.082 },
+  { pattern: 'brasileirão betano',   coef: 4.490 },
+  { pattern: 'brasileirao betano',   coef: 4.490 },
+  { pattern: 'laliga',               coef: 4.314 },
+  { pattern: 'la liga',              coef: 4.314 },
+  { pattern: 'liga profesional',     coef: 3.855 },
+  { pattern: 'premier league',       coef: 3.807 },
+  { pattern: 'eredivisie',           coef: 3.743 },
+  { pattern: 'liga portugal',        coef: 3.717 },
+  { pattern: 'mls',                  coef: 3.750 }, // estimativa PIE — recalibrar com daily-matches
+  { pattern: 'serie a',              coef: 3.469 },
+  { pattern: 'ligue 1',              coef: 3.333 },
+  { pattern: 'bundesliga',           coef: 2.836 },
+];
+
+/**
+ * Retorna o coeficiente corners/goals para a liga especificada.
+ * Fallback para 3.6 se a liga não estiver mapeada.
+ */
+function getCornersCoef(competition) {
+  const comp = (competition || '').toLowerCase();
+  const entry = LEAGUE_CORNERS_COEF.find(e => comp.includes(e.pattern));
+  return entry ? entry.coef : 3.6;
+}
+
 // ── Multiplicadores de lambda por liga (derivados de dados reais PIE v2) ──────
 // Calibrados para refletir padrão histórico de gols por liga vs. média global
 const LEAGUE_LAMBDA_MULTIPLIERS = {
@@ -130,9 +179,12 @@ export function analyzeQuantitative(matchData) {
   // ── Escanteios e Cartões (via lambdas auxiliares) ──────────
   const totalGoalsExp = lambdaHome + lambdaAway;
 
-  // cornersPerGoal calibrado para ~9 escanteios/jogo com 2.5 gols/jogo → 3.6
-  // (valor anterior 4.2 superestimava sistematicamente lambdaCorners)
-  const cornersPerGoal  = 3.6;
+  // Drill C3 — coeficiente corners/goals calibrado por liga (2026-04-16)
+  // Substitui o valor fixo 3.6 que subestimava Brasileirão (+25%) e superestimava Bundesliga (-21%)
+  const cornersPerGoal = getCornersCoef(competition);
+  if (cornersPerGoal !== 3.6) {
+    console.log(`  🎯 [Corners Coef] ${competition}: ${cornersPerGoal.toFixed(3)} (padrão 3.6)`);
+  }
   const lambdaCorners   = totalGoalsExp * cornersPerGoal;
   const pOverCorners85 = round(1 - poissonCDF(8, lambdaCorners));
   const pOverCorners75 = round(1 - poissonCDF(7, lambdaCorners));

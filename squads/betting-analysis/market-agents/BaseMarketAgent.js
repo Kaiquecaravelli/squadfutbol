@@ -16,9 +16,12 @@ const PROMPTS_DIR = join(__dirname, '../prompts/markets');
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const round = (n) => Math.round(n * 100) / 100;
 
-// Cache de contexto MemPalace por partida — compartilhado entre todos os agentes do mesmo jogo
-// Evita 7x buscas semânticas redundantes para a mesma partida (1 busca → 7 agentes reutilizam)
-const _memContextCache = new Map(); // key: matchName → { ctx, ts }
+// Cache de contexto MemPalace por partida — compartilhado entre todos os agentes do mesmo jogo.
+// Armazena Promises (não valores) para evitar race condition: quando 3 agentes rodam em paralelo
+// via Promise.allSettled, todos chegam ao cache antes de qualquer um escrever o resultado.
+// Ao armazenar a Promise diretamente, os agentes 2 e 3 aguardam a mesma Promise do agente 1
+// → 3 RPCs MemPalace por partida, não 9.
+const _memContextCache = new Map(); // key: matchName → { promise, ts }
 const MEM_CTX_TTL = 10 * 60_000;   // 10 min — cobre ciclo completo de análise de um jogo
 
 export class BaseMarketAgent {
@@ -98,6 +101,10 @@ export class BaseMarketAgent {
       h2h: h2hCompact, // sempre presente — lista vazia sinaliza "sem histórico direto"
     };
 
+    // Hook de enriquecimento por agente — dados específicos do mercado (Módulo 4 · 2026-04-16)
+    const agentExtras = this._buildAgentExtras(matchData);
+    if (agentExtras) payload.analise_extra = agentExtras;
+
     // Injetar contexto de expertise do PIE Trainer — comprimido ao máximo para economizar tokens
     const expertiseFull = getExpertiseContext(this.market, matchData.competition);
     const expertise = expertiseFull ? expertiseFull.slice(0, 500) : '';
@@ -108,13 +115,23 @@ export class BaseMarketAgent {
       : `FONTE PRIMÁRIA: Academia das Apostas — priorize probabilidade histórica de mercado (btts_pct, over25_pct, forma).`;
 
     return [
-      `INSTRUÇÃO CRÍTICA: Retorne APENAS o JSON do schema. Sem texto antes ou depois.`,
       sourceHint,
       expertise,
       memoryContext, // contexto semântico do MemPalace (padrões e fatos históricos)
       `DADOS:`,
       JSON.stringify(payload), // sem indentação — economiza ~25% de tokens
     ].filter(Boolean).join('\n');
+  }
+
+  /**
+   * Hook de enriquecimento por agente.
+   * Retorna objeto { campo: valor } adicionado como analise_extra no payload.
+   * Override em BTTSAgent, GoalsAgent, CornersAgent para injetar dados específicos.
+   * @param {object} _matchData
+   * @returns {object|null}
+   */
+  _buildAgentExtras(/* _matchData */) {
+    return null;
   }
 
   _parseResponse(text) {
@@ -152,7 +169,7 @@ export class BaseMarketAgent {
         'https://api.groq.com/openai/v1/chat/completions',
         {
           model,
-          temperature:     0.1,
+          temperature:     0.0,
           max_tokens:      400,
           response_format: { type: 'json_object' },
           messages: [
@@ -188,16 +205,12 @@ export class BaseMarketAgent {
         matchData.away?.team  || '',
       ].filter(Boolean).join(' ');
 
-      // Busca semântica no palace — limitado a 2 resultados para economizar tokens
-      const memories = await memSearch(query, { nResults: 2 });
-
-      // Consulta knowledge graph para os times envolvidos
-      const homeKg = matchData.home?.team
-        ? await kgQuery(matchData.home.team)
-        : [];
-      const awayKg = matchData.away?.team
-        ? await kgQuery(matchData.away.team)
-        : [];
+      // Busca semântica + knowledge graph em paralelo (−160ms vs chamadas em série)
+      const [memories, homeKg, awayKg] = await Promise.all([
+        memSearch(query, { nResults: 2 }),
+        matchData.home?.team ? kgQuery(matchData.home.team) : Promise.resolve([]),
+        matchData.away?.team ? kgQuery(matchData.away.team) : Promise.resolve([]),
+      ]);
 
       const parts = [];
 
@@ -244,12 +257,14 @@ export class BaseMarketAgent {
 
     // Enriquecer contexto com memórias semânticas do MemPalace (compartilhado entre agentes do mesmo jogo)
     let memoryContext = '';
-    const cached = _memContextCache.get(matchName);
-    if (cached && Date.now() - cached.ts < MEM_CTX_TTL) {
-      memoryContext = cached.ctx;
+    const entry = _memContextCache.get(matchName);
+    if (entry && Date.now() - entry.ts < MEM_CTX_TTL) {
+      // Agentes 2 e 3 (paralelos) aguardam a mesma Promise do agente 1 — sem fetch duplo
+      memoryContext = await entry.promise;
     } else {
-      memoryContext = await this._fetchMemoryContext(matchData).catch(() => '');
-      _memContextCache.set(matchName, { ctx: memoryContext, ts: Date.now() });
+      const promise = this._fetchMemoryContext(matchData).catch(() => '');
+      _memContextCache.set(matchName, { promise, ts: Date.now() });
+      memoryContext = await promise;
     }
 
     const message = this._buildMessage(matchData, memoryContext);

@@ -21,25 +21,31 @@ import { getLiveMatches, collectLiveMatchData } from '../scrapers/sofascore.js';
 import { BTTSAgent }         from '../../squads/betting-analysis/market-agents/BTTSAgent.js';
 import { GoalsAgent }        from '../../squads/betting-analysis/market-agents/GoalsAgent.js';
 import { CornersAgent }      from '../../squads/betting-analysis/market-agents/CornersAgent.js';
-import { DoubleChanceAgent } from '../../squads/betting-analysis/market-agents/DoubleChanceAgent.js';
+// DoubleChanceAgent DESATIVADO em 2026-04-15 — precisão global 45,4% · Away Win 29% · Draw 25% · CAINDO
+// Reativação: min 50 amostras em shadow mode com precisão ≥ 80%
+// import { DoubleChanceAgent } from '../../squads/betting-analysis/market-agents/DoubleChanceAgent.js';
 import { saveLiveOpportunity } from '../utils/obsidian.js';
 import { checkSuperbetLiveEligibility } from '../scrapers/superbet.js';
 import { lookupMatchUrl } from '../scrapers/superbet-cache.js';
-import { bttsKillSwitch, bttsMinProbability, trackBttsDecision, BTTS_MIN_CONFIDENCE } from '../utils/btts-sniper.js';
-import { goalsKillSwitch, goalsMinProbability, trackGoalsDecision, GOALS_MIN_CONFIDENCE } from '../utils/goals-sniper.js';
+import { bttsKillSwitch, bttsMinProbability, trackBttsDecision, BTTS_MIN_CONFIDENCE, bttsIsDeadLeague } from '../utils/btts-sniper.js';
+import { goalsKillSwitch, goalsMinProbability, goalsMinConfidence, trackGoalsDecision, GOALS_MIN_CONFIDENCE } from '../utils/goals-sniper.js';
+import { cornersKillSwitch, cornersMinConfidence, trackCornersDecision, CORNERS_MIN_CONFIDENCE, cornersIsDeadLeague } from '../utils/corners-sniper.js';
+import { KILL_ZONE_THRESHOLD, isKillZone, trackKillZone } from '../utils/kill-zone.js';
 
 const MIN_PROBABILITY = parseInt(process.env.SUPERODDS_MIN_PROBABILITY || '80');
 const MIN_CONFIDENCE  = parseInt(process.env.SUPERODDS_MIN_CONFIDENCE  || '80');
 const MIN_COMBINED    = parseInt(process.env.SUPERODDS_MIN_COMBINED    || '64');
 const MAX_MATCHES     = parseInt(process.env.SUPERODDS_MAX_MATCHES     || '5');
-const MATCH_DELAY_MS  = 10_000; // 10s entre análises — respeita 30 RPM Groq
+// Pool de 6 keys Groq: 3 agentes × ~1800 tokens = ~5400/jogo, 6 keys × 20k TPM = 120k TPM
+// → 2.500ms entre jogos é suficiente (antes: 10s era para single key)
+const MATCH_DELAY_MS  = 2_500;
 
-// ── Agentes de mercado (4 especializados) ────────────────────────────────────
+// ── Agentes de mercado (3 de elite) — corte cirúrgico 2026-04-15 ─────────────
+// Cortado: DoubleChanceAgent (45,4% global · CAINDO · sem Fire Zone viável)
 const AGENTS = [
   new BTTSAgent(),
   new GoalsAgent(),
   new CornersAgent(),
-  new DoubleChanceAgent(),
 ];
 
 // ── Entrada principal ─────────────────────────────────────────────────────────
@@ -142,9 +148,27 @@ async function _analyzeMatch(match, notifiedKeys) {
   if (isAcrescimo && minuto >= 97) return [];
   if (minuto < 55) return [];
 
-  // Roda os 4 agentes em paralelo sobre o liveData
+  // Pré-filtro por liga morta: elimina agentes cujos Kill Switches KS1/KS2 dependem
+  // apenas do nome da competição — evita ~1.390 tokens por chamada bloqueada.
+  const compLive = liveData.competition || match.competition || '';
+  const agentsToRun = AGENTS.filter((a) => {
+    if (a.name === 'BTTS' && bttsIsDeadLeague(compLive)) {
+      console.log(chalk.gray(`    ⏭ [Pre-filter BTTS] ${compLive} — liga morta`));
+      return false;
+    }
+    if (a.name === 'Escanteios' && cornersIsDeadLeague(compLive)) {
+      console.log(chalk.gray(`    ⏭ [Pre-filter Corners] ${compLive} — liga morta`));
+      return false;
+    }
+    return true;
+  });
+
+  // Roda os agentes elegíveis em paralelo sobre o liveData
   const rawResults = await Promise.all(
-    AGENTS.map((a) => a.analyze(liveData).catch(() => []))
+    agentsToRun.map((a) => a.analyze(liveData).catch((err) => {
+      console.warn(chalk.yellow(`  ⚠️  [Agente falhou] ${a.name || a.constructor?.name || 'agente'}: ${err?.message || err}`));
+      return [];
+    }))
   );
   const allResults = rawResults.flat();
 
@@ -203,6 +227,15 @@ function _applyGates(r, liveData) {
   const prob     = r.probabilidade ?? 0;
   const conf     = r.confianca     ?? 0;
 
+  // ── KILL ZONE GATE UNIVERSAL ──────────────────────────────────────────────
+  // Prob 60-70%: 0% de precisão em 880+ amostras (8 mercados simultâneos).
+  if (isKillZone(prob)) {
+    const mktKZ = r.mercado || r.market || '';
+    console.log(chalk.red(`    ⛔ [Kill Zone] ${mktKZ} — prob ${prob}% < ${KILL_ZONE_THRESHOLD}% (0% precisão · 880+ amostras)`));
+    trackKillZone(r, liveData, 'superodds-2t');
+    return false;
+  }
+
   /**
    * Calcula o score combined normalizado.
    * @param {number} p - probabilidade (0–100)
@@ -244,10 +277,11 @@ function _applyGates(r, liveData) {
     console.log(chalk.cyan(`    🎯 [BTTS Sniper SUPERODDS] DISPARO aprovado — ${prob}%/conf ${conf}%`));
   }
 
-  // Goals Sniper v1
-  const isGoalsMkt = /^(over|under)\s*[\d.]+$/.test(mkt) &&
-                     !/corner|escanteio/i.test(mkt) &&
-                     !/yc/i.test(mkt);
+  // Goals Sniper v2
+  const isGoalsMkt = (
+    /^(over|under)\s*[\d.]+$/i.test(mkt) ||  // flag i — LLM retorna "Over 1.5" maiúsculo
+    /total.*gols/i.test(mkt)
+  ) && !/corner|escanteio/i.test(mkt) && !/yc/i.test(mkt);
   if (isGoalsMkt) {
     const goalsBlock = goalsKillSwitch(r, liveData);
     if (goalsBlock) {
@@ -262,14 +296,37 @@ function _applyGates(r, liveData) {
       trackGoalsDecision('blocked', r, liveData, reason, 'superodds-2t');
       return false;
     }
-    if (conf < GOALS_MIN_CONFIDENCE) {
-      const reason = `Threshold — confiança ${conf}% < ${GOALS_MIN_CONFIDENCE}%`;
+    // AÇÃO 2 — Fire Zone: confiança mínima por mercado (Over 2.5/3.5 exigem 80%)
+    const minConfGoalsLive = goalsMinConfidence(mkt);
+    if (conf < minConfGoalsLive) {
+      const fzTag = minConfGoalsLive > GOALS_MIN_CONFIDENCE ? ' [Fire Zone gate]' : '';
+      const reason = `Threshold — confiança ${conf}% < ${minConfGoalsLive}%${fzTag}`;
       console.log(chalk.gray(`    🚫 [Goals Sniper SUPERODDS] ${reason}`));
       trackGoalsDecision('blocked', r, liveData, reason, 'superodds-2t');
       return false;
     }
     trackGoalsDecision('fired', r, liveData, null, 'superodds-2t');
     console.log(chalk.cyan(`    🎯 [Goals Sniper SUPERODDS] DISPARO aprovado — ${mkt} ${prob}%/conf ${conf}%`));
+  }
+
+  // Corners Sniper Gate — Liga Whitelist + Fire Zone (conf ≥ 80%) + KS1-3
+  const isCornersLive = /corner|escanteio/i.test(r.market || r.mercado || '');
+  if (isCornersLive) {
+    const cornersBlockLive = cornersKillSwitch(r, liveData);
+    if (cornersBlockLive) {
+      console.log(chalk.gray(`    🚫 [Corners Sniper SUPERODDS] ${cornersBlockLive}`));
+      trackCornersDecision('blocked', r, liveData, cornersBlockLive, 'superodds-2t');
+      return false;
+    }
+    const minConfCornersLive = cornersMinConfidence(mkt);
+    if (conf < minConfCornersLive) {
+      const reason = `Fire Zone gate — confiança ${conf}% < ${minConfCornersLive}% [Fire Zone gate]`;
+      console.log(chalk.gray(`    🚫 [Corners Sniper SUPERODDS] ${reason}`));
+      trackCornersDecision('blocked', r, liveData, reason, 'superodds-2t');
+      return false;
+    }
+    trackCornersDecision('fired', r, liveData, null, 'superodds-2t');
+    console.log(chalk.cyan(`    🎯 [Corners Sniper SUPERODDS] DISPARO aprovado — ${mkt} ${prob}%/conf ${conf}%`));
   }
 
   return true;

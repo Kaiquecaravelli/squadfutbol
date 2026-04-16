@@ -180,6 +180,24 @@ function parseTeamForm(events, teamId) {
   }
 
   const n = last8.length || 1;
+
+  // ── Sequências e janelas temporais (Módulo 4 · 2026-04-16) ──────────────────
+  // Calculadas dos placares já disponíveis — sem chamadas adicionais à API.
+  const last5  = last8.slice(0, 5);
+  const _btts   = (ev) => (ev.homeScore?.current > 0) && (ev.awayScore?.current > 0);
+  const _over15 = (ev) => ((ev.homeScore?.current ?? 0) + (ev.awayScore?.current ?? 0)) >= 2;
+
+  const btts_pct_5j   = last5.length ? Math.round(last5.filter(_btts).length   / last5.length * 100) : null;
+  const btts_pct_8j   = last8.length ? Math.round(last8.filter(_btts).length   / last8.length * 100) : null;
+  const over15_pct_5j = last5.length ? Math.round(last5.filter(_over15).length / last5.length * 100) : null;
+  const over15_pct_8j = last8.length ? Math.round(last8.filter(_over15).length / last8.length * 100) : null;
+
+  // Sequência consecutiva a partir do jogo mais recente (sinal de pressão estatística)
+  let sequencia_sem_btts = 0;
+  for (const ev of last8) { if (_btts(ev)) break; sequencia_sem_btts++; }
+  let sequencia_btts = 0;
+  for (const ev of last8) { if (!_btts(ev)) break; sequencia_btts++; }
+
   return {
     form: formChars.join(''),
     goals_scored_avg:   Math.round((scored / n) * 10) / 10,
@@ -191,6 +209,13 @@ function parseTeamForm(events, teamId) {
       const oppScore = isHome ? ev.awayScore?.current : ev.homeScore?.current;
       return oppScore === 0;
     }).length,
+    // Sequências e janelas temporais — usadas por BTTSAgent e GoalsAgent
+    btts_pct_5j,
+    btts_pct_8j,
+    over15_pct_5j,
+    over15_pct_8j,
+    sequencia_sem_btts,  // jogos consecutivos sem BTTS (pressão para ocorrência)
+    sequencia_btts,      // jogos consecutivos com BTTS (confirmação de tendência)
   };
 }
 
@@ -292,21 +317,33 @@ export async function getLiveStats(eventId) {
     const res  = await _withRetryLive(() => http.get(`/event/${eventId}/statistics`));
     const data = res.data?.statistics || [];
 
-    const period = data.find((p) => p.period === 'ALL') || data[0];
-    if (!period) return null;
+    const allPeriod  = data.find((p) => p.period === 'ALL') || data[0];
+    if (!allPeriod) return null;
 
-    const stats = {};
-    for (const group of period.groups || []) {
-      for (const item of group.statisticsItems || []) {
-        const key = item.name?.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
-        if (key) {
-          stats[key] = {
-            home: _parseLiveStat(item.home),
-            away: _parseLiveStat(item.away),
-          };
+    // ── Extrator de stats por período ──────────────────────────────────────────
+    const _extractStats = (periodData) => {
+      if (!periodData) return {};
+      const s = {};
+      for (const group of periodData.groups || []) {
+        for (const item of group.statisticsItems || []) {
+          const key = item.name?.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+          if (key) s[key] = { home: _parseLiveStat(item.home), away: _parseLiveStat(item.away) };
         }
       }
-    }
+      return s;
+    };
+
+    const stats  = _extractStats(allPeriod);
+    const stats1 = _extractStats(data.find((p) => p.period === '1ST'));
+    const stats2 = _extractStats(data.find((p) => p.period === '2ND'));
+
+    // Pressure index — % de ataques perigosos do time em relação ao total da partida
+    const _pressure = (own, opp) => {
+      const total = (own ?? 0) + (opp ?? 0);
+      return total > 0 ? Math.round((own ?? 0) / total * 100) : null;
+    };
+    const daHome = stats.dangerous_attacks?.home;
+    const daAway = stats.dangerous_attacks?.away;
 
     return {
       possession_home:       stats.ball_possession?.home ?? null,
@@ -319,12 +356,20 @@ export async function getLiveStats(eventId) {
       shots_off_target_away: stats.shots_off_target?.away ?? null,
       corners_home:           stats.corner_kicks?.home ?? null,
       corners_away:           stats.corner_kicks?.away ?? null,
+      // Distribuição temporal de escanteios — Módulo 4 CornersAgent (2026-04-16)
+      corners_1st_home:       stats1.corner_kicks?.home ?? null,
+      corners_1st_away:       stats1.corner_kicks?.away ?? null,
+      corners_2nd_home:       stats2.corner_kicks?.home ?? null,
+      corners_2nd_away:       stats2.corner_kicks?.away ?? null,
       fouls_home:             stats.fouls?.home ?? null,
       fouls_away:             stats.fouls?.away ?? null,
       yellow_cards_home:      stats.yellow_cards?.home ?? null,
       yellow_cards_away:      stats.yellow_cards?.away ?? null,
-      dangerous_attacks_home: stats.dangerous_attacks?.home ?? null,
-      dangerous_attacks_away: stats.dangerous_attacks?.away ?? null,
+      dangerous_attacks_home: daHome ?? null,
+      dangerous_attacks_away: daAway ?? null,
+      // Pressure index — % de DA do time vs total (Módulo 4 · 2026-04-16)
+      pressure_index_home:    _pressure(daHome, daAway),
+      pressure_index_away:    _pressure(daAway, daHome),
       attacks_home:           stats.attacks?.home ?? null,
       attacks_away:           stats.attacks?.away ?? null,
       xg_home:                stats.expected_goals?.home ?? null,
