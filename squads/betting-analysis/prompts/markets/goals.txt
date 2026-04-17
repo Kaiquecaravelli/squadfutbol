@@ -41,13 +41,16 @@ LIGAS BLOQUEADAS Over 1.5 (< 80% de precisão):
 ⛔ MLS:                           78% — BLOQUEAR
 ⛔ Brasileirão Série B:           77% — BLOQUEAR
 ⛔ CONMEBOL Sudamericana classif: 75% — BLOQUEAR Over 1.5 (Under 1.5 >= 65% é válido)
-⛔ Conference League:             40% — BLOQUEAR Over 1.5 (Under 1.5 >= 65% é válido)
+
+✅ ATENÇÃO — Conference League Over 1.5: 100% de precisão (7/7 amostras KO Phase — PIE 2026)
+   NÃO bloquear Over 1.5 em Conference League. BTTS permanece bloqueado (0% KO / 18% geral).
+   REGRA Conference League: Over 1.5 Tier 2 (prob >= 82%) → AUTORIZADO. Under 1.5 NÃO usar.
 
 [KILL SWITCHES — APLICAR ANTES DO CÁLCULO]
 KS1 — Liga Profesional Argentina Over 2.5/3.5: 42.6% histórico → INCERTO imediato
 KS2 — Europa League Over 2.5/3.5: 47-50% → INCERTO imediato
 KS3 — CONMEBOL Sudamericana grupos Over 2.5: 0-50% → INCERTO imediato
-KS4 — Liga bloqueada Over 1.5 (ver lista acima) → INCERTO para Over; analise Under 1.5
+KS4 — Liga bloqueada Over 1.5 (ver lista acima, Conference League NÃO está bloqueada) → INCERTO para Over; analise Under 1.5
 KS4b — Over 1.5 · Tier 2 · prob < 82% → INCERTO (LaLiga/PL/Brasileirão precisam 82%+)
 KS4c — Over 1.5 · Tier 3 · prob < 84% → INCERTO (Liga Portugal/Serie A precisam 84%+)
 KS5 — Ligue 1 Over 2.5 prob < 82% → INCERTO (50% base rate)
@@ -58,20 +61,27 @@ FZ1: Eredivisie Over 1.5 prob >= 80%            → 92% precisão
 FZ2: UCL Over 1.5 prob >= 80%                   → 84% (KO stage 90%)
 FZ3: Bundesliga Over 1.5 prob >= 80%            → 86% precisão
 FZ4: Tier 2 Over 1.5 prob >= 82%               → 83-84% precisão
+FZ4b: Conference League Over 1.5 prob >= 80%   → 100% PIE (7/7) — DISPARAR com confiança
 FZ5: Tier 3 Over 1.5 prob >= 84%               → 80-82% precisão (marginal)
 FZ6: QUALQUER liga Over 2.5 prob >= 80%         → 100% (113/113 amostras)
+FZ6b: UCL KO semifinal/quartas Over 2.5 prob >= 78% → gate contextual (P2)
+      Padrão P2 [Bayern 4-3 Real]: H2H média ≥ 3.5 gols + ambos eliminatórios → bônus +10pp
 FZ7: QUALQUER liga Over 3.5 prob >= 80%         → 100% (13/13 amostras)
-FZ8: Conference League Under 1.5 prob >= 65%    → DISPARO autorizado (fase eliminatória)
-FZ9: Championship Under 1.5 prob >= 65%         → DISPARO autorizado
-FZ10: QUALQUER liga Under 1.5 prob >= 75%       → DISPARO autorizado
-FZ11: QUALQUER liga Under 2.5 prob >= 65%       → DISPARO autorizado
+FZ8: ⛔ REMOVIDO — Conference League Under 1.5 NÃO usar (Over 1.5 = 100% real)
+FZ9: QUALQUER liga Under 1.5 prob >= 80% E conf >= 80% → DISPARO autorizado (gate v3)
+FZ10: QUALQUER liga Under 2.5 prob >= 80% E conf >= 80% → DISPARO autorizado (gate v3)
+⚠️ GATE UNDER ELEVADO: 80% de probabilidade E 80% de confiança simultâneos são obrigatórios.
+   Uma condição sozinha não aprova Under. Abaixo de qualquer das duas: retorne INCERTO.
 
 [ANÁLISE BIDIRECIONAL — REGRA CRÍTICA]
-QUANDO Over 1.5 está em KS4 (liga bloqueada) OU λ_total < 1.8:
+QUANDO Over 1.5 está em KS4 (liga bloqueada, Conference League EXCLUÍDA) OU λ_total < 1.8:
   1. Calcule P(Under 1.5) = P(0 gols) + P(1 gol) usando Poisson com λ_total
-  2. Se P(Under 1.5) >= 65% (Conference League/Championship) OU >= 75% (outras ligas):
+     ATENÇÃO: Com λ_total = 2.0 → P(Under 1.5) ≈ 40% — ABAIXO do threshold → INCERTO
+  2. Se P(Under 1.5) >= 65% (Championship) OU >= 75% (outras ligas):
      → Retorne mercado "Under 1.5" com APOSTAR
   3. Se Under 1.5 < threshold: retorne mercado com maior probabilidade com INCERTO
+  ⚠️ Conference League: NÃO usar Under 1.5. PIE mostra Over 1.5 = 100% real.
+     Baixo BTTS (0%) ≠ baixo λ. Jogos têm gols (Over 1.5), só não são de ambos os times.
 
 [CÁLCULO DE λ]
 λ_home = (gols_marcados + xg) / 2  (use média dos disponíveis)
@@ -110,7 +120,8 @@ Se gols_marcados ausente: usar xg para λ.
 Se AMBOS ausentes (stats_ausentes = true): usar priors de liga — NÃO retornar INCERTO com prob 0%.
 
 PRIORS DE λ POR LIGA (quando dados ausentes):
-  Conference League / Copa Sudamericana: λ_home = 1.05, λ_away = 0.95 → λ_total = 2.0
+  Conference League:                      λ_home = 1.60, λ_away = 0.80 → λ_total = 2.4  ← padrão real: favorito domina
+  Copa Sudamericana:                      λ_home = 1.05, λ_away = 0.95 → λ_total = 2.0
   Copa Libertadores:                     λ_home = 1.10, λ_away = 1.00 → λ_total = 2.1
   Liga Profesional Argentina:            λ_home = 1.15, λ_away = 1.05 → λ_total = 2.2
   Bundesliga / Eredivisie:               λ_home = 1.45, λ_away = 1.30 → λ_total = 2.75
@@ -129,9 +140,11 @@ Quando usar priors: reduzir confiança em -10pp (incerteza estrutural).
 • Over 2.5 qualquer:     prob >= 80, conf >= 78
 • Over 3.5 qualquer:     prob >= 80, conf >= 80
 • Over 4.5:              prob >= 85, conf >= 85 (ultra-especulativo)
-• Under 1.5 Conference League / Championship: prob >= 65, conf >= 65
-• Under 1.5 outras ligas:                     prob >= 75, conf >= 70
-• Under 2.5 qualquer:                         prob >= 65, conf >= 65
+// ── GATE UNDER — PISO ABSOLUTO INVIOLÁVEL (gate v3, 2026-04-16) ──────────────
+• Under 1.5 QUALQUER liga: prob >= 80 E conf >= 80 (AMBOS obrigatórios simultâneos)
+• Under 2.5 QUALQUER liga: prob >= 80 E conf >= 80 (AMBOS obrigatórios simultâneos)
+• Under 3.5 QUALQUER liga: prob >= 80 E conf >= 80 (AMBOS obrigatórios simultâneos)
+  ⚠️ Nenhuma liga, contexto ou escalada reduz esse piso. SE qualquer um < 80%: INCERTO.
 
 [OUTPUT]
 Retorne SEMPRE um único mercado — o de maior oportunidade identificada.

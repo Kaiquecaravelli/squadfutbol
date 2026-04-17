@@ -3,8 +3,8 @@ import { BaseMarketAgent } from './BaseMarketAgent.js';
 // Priors de λ por liga — usados quando times não têm stats no SofaScore
 // Fonte: média histórica de gols/jogo por liga × multiplicador casa/fora
 const LAMBDA_PRIORS = {
-  'conference league':      { home: 1.05, away: 0.95 },
-  'liga conference':        { home: 1.05, away: 0.95 },
+  'conference league':      { home: 1.60, away: 0.80 }, // padrão real: favorito domina, Over 1.5=100% PIE
+  'liga conference':        { home: 1.60, away: 0.80 },
   'copa sudamericana':      { home: 1.05, away: 0.95 },
   'copa libertadores':      { home: 1.10, away: 1.00 },
   'liga profesional':       { home: 1.15, away: 1.05 },

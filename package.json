@@ -120,7 +120,8 @@
     "coverage": "node scripts/coverage-panel.js",
     "coverage-json": "node scripts/coverage-panel.js --json",
     "coverage-corners": "node scripts/coverage-panel.js --market=Corners",
-    "coverage-under": "node scripts/coverage-panel.js --market=Under"
+    "coverage-under": "node scripts/coverage-panel.js --market=Under",
+    "notify-calibration": "node scripts/notify-calibration-deploy.js"
   },
   "dependencies": {
     "axios": "^1.7.2",

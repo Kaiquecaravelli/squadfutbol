@@ -39,29 +39,31 @@ import { ensureFresh,
          listCachedMatches }         from '../src/scrapers/superbet-cache.js';
 import { ScanHealthAgent }           from '../src/agents/scan-health-agent.js';
 import { checkPreLiveEligible }      from '../src/utils/match-status-guard.js';
+import { enrichSignalAndNotifyAdmin } from '../src/analysis/signalEnricher.js';
 
 // ── Configuração ──────────────────────────────────────────────────────────────
 const ARGS      = process.argv.slice(2);
 const DRY_RUN   = ARGS.includes('--dry-run');
-const HOURS     = parseInt(ARGS.find(a => a.startsWith('--hours='))?.split('=')[1]     || '12');
+const HOURS     = parseInt(ARGS.find(a => a.startsWith('--hours='))?.split('=')[1]     || '24');
 const MIN_HOURS = parseInt(ARGS.find(a => a.startsWith('--min-hours='))?.split('=')[1] || '0');   // bucket +1h cobre 0–60min
 const TIER_MAX  = parseInt(ARGS.find(a => a.startsWith('--tier='))?.split('=')[1]      || '3');
 const LIMIT     = parseInt(ARGS.find(a => a.startsWith('--limit='))?.split('=')[1]     || '20');
 const BANKROLL  = parseFloat(process.env.USER_BANKROLL || '1000');
 
 // ── Classificação por bucket de proximidade ───────────────────────────────────
-// Retorna '+1h' | '+3h' | '+6h' | '+12h' | null (fora do range)
-// Prioridade de envio: +1h > +3h > +6h > +12h
-const BUCKET_ORDER = ['+1h', '+3h', '+6h', '+12h'];
+// Retorna '+1h' | '+3h' | '+6h' | '+12h' | '+24h' | null (fora do range)
+// Prioridade de envio: +1h > +3h > +6h > +12h > +24h
+const BUCKET_ORDER = ['+1h', '+3h', '+6h', '+12h', '+24h'];
 
 function _getBucket(kickoffMs, nowMs = Date.now()) {
   const diffMin = (kickoffMs - nowMs) / 60_000;
-  if (diffMin <= 0)   return null;  // já iniciou
-  if (diffMin <= 60)  return '+1h';
-  if (diffMin <= 180) return '+3h';
-  if (diffMin <= 360) return '+6h';
-  if (diffMin <= 720) return '+12h';
-  return null; // além de 12h — fora do escopo dos buckets
+  if (diffMin <= 0)    return null;   // já iniciou
+  if (diffMin <= 60)   return '+1h';
+  if (diffMin <= 180)  return '+3h';
+  if (diffMin <= 360)  return '+6h';
+  if (diffMin <= 720)  return '+12h';
+  if (diffMin <= 1440) return '+24h'; // janela antecipada — flag_antecipado: true
+  return null; // além de 24h — fora do escopo dos buckets
 }
 
 // Ligas prioritárias (mesmo conjunto do sofascore-collector)
@@ -217,6 +219,7 @@ async function run() {
   for (const m of matches) {
     const kickoffMs = new Date(m.date).getTime();
     m._bucket = _getBucket(kickoffMs, now);
+    m.flag_antecipado = (m._bucket === '+24h'); // análise antecipada: sinais pendentes
   }
   const withBucket = matches.filter(m => m._bucket !== null);
 
@@ -425,8 +428,11 @@ async function run() {
           // Propaga bucket do match original para o matchData (usado no cabeçalho Telegram)
           const origMatch = matches.find(m => String(m.sofascore_id) === String(r.matchData.sofascore_id || r.matchData.match_id));
           if (origMatch?._bucket) r.matchData._bucket = origMatch._bucket;
+          if (origMatch?.flag_antecipado) r.matchData.flag_antecipado = true;
           // Protocolo de alerta: ALERTA → 90s validação → SINAL (fire-and-forget)
           queueSignalWithAlert(r.matchData, r.enriched, notifyPreLiveOpportunity);
+          // Análise profunda 8-D + padrões → DM admin (fire-and-forget, não bloqueia grupo)
+          enrichSignalAndNotifyAdmin(r.matchData, r.enriched);
           const sent = true; // fire-and-forget — sinal enviado assincronamente pelo alert-protocol
           if (sent) {
             preLiveSent++;

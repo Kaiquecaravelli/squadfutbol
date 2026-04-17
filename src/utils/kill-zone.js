@@ -51,12 +51,11 @@ const CALIBRATED_KZ_FLOORS = {
 /**
  * Retorna o floor Kill Zone para um mercado/liga específicos.
  *
- * Under markets têm floor REDUZIDO (62%) porque a lógica é invertida:
- *   Uma liga com Over 1.5 = 35% implica Under 1.5 ≈ 65% — fora da Kill Zone de Over.
- *   A Kill Zone de 70% se baseia em dados de Over/Corners/YC, NÃO em Under.
- *   Aplicar 70% a Under bloquearia mercados que são naturalmente corretos.
+ * Under markets têm floor ELEVADO para 80% (gate v3, 2026-04-16):
+ *   Gate duplo obrigatório: probabilidade Poisson ≥ 80% E confiança ≥ 80%.
+ *   O piso de 80% é absoluto e inviolável — nenhuma liga ou contexto o reduz.
  *
- * Floor mínimo absoluto: 62% para Under (proteção conservadora até n≥30).
+ * Floor Under: 80% (piso absoluto — gate v3).
  * Floor padrão para Over/BTTS/Corners: 70% (calibrado em 880+ amostras).
  *
  * @param {string} market      — mercado ('Over 2.5', 'Under 1.5', 'Over Corners 6.5', etc.)
@@ -66,9 +65,9 @@ const CALIBRATED_KZ_FLOORS = {
 export function getKillZoneFloor(market = '', competition = '') {
   const mkt = (market || '').trim();
 
-  // Under markets: Kill Zone começa mais abaixo — lógica inversa de Over
-  // Under 1.5/2.5/3.5: floor 62% (conservador até calibração real com n≥30)
-  if (/^under\s*[\d.]+$/i.test(mkt)) return 62;
+  // Under markets: piso absoluto 80% (gate v3, 2026-04-16)
+  // Dupla condição obrigatória: prob ≥ 80% E confiança ≥ 80%.
+  if (/^under\s*[\d.]+$/i.test(mkt)) return 80;
 
   // Calibração per-liga (Over/Corners — aguarda n≥50 na faixa 65-70%)
   const key  = `${competition.toLowerCase()}:${market}`;

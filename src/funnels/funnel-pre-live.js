@@ -23,7 +23,9 @@ import { getAgentCalibration } from '../pie/pie-storage.js';
 import { bttsKillSwitch, bttsMinProbability, trackBttsDecision, BTTS_MIN_CONFIDENCE, bttsIsDeadLeague } from '../utils/btts-sniper.js';
 import { goalsKillSwitch, goalsMinProbability, goalsMinConfidence, trackGoalsDecision, GOALS_MIN_CONFIDENCE } from '../utils/goals-sniper.js';
 import { cornersKillSwitch, cornersMinConfidence, trackCornersDecision, CORNERS_MIN_CONFIDENCE, cornersIsDeadLeague } from '../utils/corners-sniper.js';
-import { KILL_ZONE_THRESHOLD, isKillZone, trackKillZone } from '../utils/kill-zone.js';
+import { KILL_ZONE_THRESHOLD, isKillZone, trackKillZone }                   from '../utils/kill-zone.js';
+import { validarUnder }                                                      from '../analysis/gateManager.js';
+import { registrarUnderBloqueado }                                           from '../data/underBlockedTracker.js';
 
 // Lazy getters — lidos em tempo de execução (não em tempo de importação do módulo)
 // Permite que o protocolo de escalada (escalation-protocol.js) ajuste os gates
@@ -241,12 +243,12 @@ async function _analyzeMatch(match, idx, notifiedKeys) {
 
       // ── KILL ZONE GATE UNIVERSAL ────────────────────────────────────────────
       // Prob < floor: 0% de precisão histórica (880+ amostras para Over/BTTS/Corners).
-      // Floor padrão: 70% | Floor Under 1.5/2.5/3.5: 62% (lógica inversa de Over).
-      // Bug fix (2026-04-16): Under usa floor calibrado por mercado, não o 70% de Over.
+      // Floor padrão: 70% | Floor Under: 80% (gate v3, 2026-04-16 — piso absoluto inviolável).
+      // Dupla condição Under: probabilidade ≥ 80% E confiança ≥ 80% (ambas obrigatórias).
       const mktKZ = r.mercado || r.market || '';
       if (isKillZone(r.probabilidade, mktKZ, matchData.competition || '')) {
-        const floorKZ = (mktKZ && /^under\s*[\d.]+$/i.test(mktKZ.trim())) ? 62 : KILL_ZONE_THRESHOLD;
-        console.log(chalk.red(`    ⛔ [Kill Zone] ${mktKZ} — prob ${r.probabilidade}% < ${floorKZ}% (floor calibrado)`));
+        const floorKZ = (mktKZ && /^under\s*[\d.]+$/i.test(mktKZ.trim())) ? 80 : KILL_ZONE_THRESHOLD;
+        console.log(chalk.red(`    ⛔ [Kill Zone] ${mktKZ} — prob ${r.probabilidade}% < ${floorKZ}% (piso absoluto)`));
         trackKillZone(r, matchData, 'prelive');
         return false;
       }
@@ -328,6 +330,10 @@ async function _analyzeMatch(match, idx, notifiedKeys) {
         if (goalsBlock) {
           console.log(chalk.gray(`    🚫 [Goals Sniper] ${goalsBlock}`));
           trackGoalsDecision('blocked', r, matchData, goalsBlock, 'prelive');
+          // Under: registra no tracker para monitoramento de calibração
+          if (/^under\s*[\d.]+$/i.test(mktForGoals) && (r.probabilidade ?? 0) >= 62) {
+            registrarUnderBloqueado(matchData, mktForGoals, r.probabilidade, r.confianca ?? 0, goalsBlock);
+          }
           return false;
         }
         const minProbGoals = goalsMinProbability(mktForGoals, matchData.competition);
@@ -335,6 +341,9 @@ async function _analyzeMatch(match, idx, notifiedKeys) {
           const reason = `Threshold — prob ${r.probabilidade}% < ${minProbGoals}%`;
           console.log(chalk.gray(`    🚫 [Goals Sniper] ${reason}`));
           trackGoalsDecision('blocked', r, matchData, reason, 'prelive');
+          if (/^under\s*[\d.]+$/i.test(mktForGoals) && (r.probabilidade ?? 0) >= 62) {
+            registrarUnderBloqueado(matchData, mktForGoals, r.probabilidade, r.confianca ?? 0, reason);
+          }
           return false;
         }
         // AÇÃO 2 — Fire Zone: confiança mínima por mercado (Over 2.5/3.5 exigem 80%)
@@ -344,7 +353,30 @@ async function _analyzeMatch(match, idx, notifiedKeys) {
           const reason = `Threshold — confiança ${r.confianca}% < ${minConfGoals}%${fzTag}`;
           console.log(chalk.gray(`    🚫 [Goals Sniper] ${reason}`));
           trackGoalsDecision('blocked', r, matchData, reason, 'prelive');
+          // ── DUPLA VALIDAÇÃO UNDER (Módulo 2) ──────────────────────────────────
+          // Under requer prob ≥ 80% E confiança ≥ 80% simultaneamente.
+          // Aqui já sabemos que confiança < 80%. Registra como Under bloqueado.
+          if (/^under\s*[\d.]+$/i.test(mktForGoals) && (r.probabilidade ?? 0) >= 62) {
+            const vUnder = validarUnder(mktForGoals, r.probabilidade, r.confianca ?? 0,
+                                        matchData.competition || '');
+            if (vUnder && !vUnder.elegivel) {
+              registrarUnderBloqueado(matchData, mktForGoals, r.probabilidade, r.confianca ?? 0,
+                                      vUnder.motivo);
+            }
+          }
           return false;
+        }
+        // ── DUPLA VALIDAÇÃO UNDER — caso especial: prob OK mas conf na fronteira ─
+        if (/^under\s*[\d.]+$/i.test(mktForGoals)) {
+          const vUnder = validarUnder(mktForGoals, r.probabilidade, r.confianca ?? 0,
+                                      matchData.competition || '');
+          if (vUnder && !vUnder.elegivel) {
+            console.log(chalk.gray(`    🚫 [Under Gate] ${vUnder.motivo}`));
+            trackGoalsDecision('blocked', r, matchData, vUnder.motivo, 'prelive');
+            registrarUnderBloqueado(matchData, mktForGoals, r.probabilidade, r.confianca ?? 0,
+                                    vUnder.motivo);
+            return false;
+          }
         }
         trackGoalsDecision('fired', r, matchData, null, 'prelive');
         console.log(chalk.cyan(`    🎯 [Goals Sniper] DISPARO aprovado — ${mktForGoals} ${r.probabilidade}%/conf ${r.confianca}%`));

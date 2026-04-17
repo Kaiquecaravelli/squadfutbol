@@ -73,6 +73,14 @@ Todos os sub-mercados exigem confiança >= 80% (Kill Zone: conf < 70% = 0% hist�
   Over Corners 7.5: prob >= 80, conf >= 80
   Over Corners 8.5: prob >= 80, conf >= 80
 
+[PADRÃO P3 — CORNERS PRESS SEM GOLS (Calibração 15/04/2026)]
+⚡ PADRÃO VALIDADO: Olimpia vs Barracas 0-0 → Over Corners GREEN
+   Jogo truncado sem gols = escanteios altos. Placar final NÃO prediz escanteios.
+   Condição: Libertadores/Sul-Am + time casa pressiona sem converter + xG combinado ≥ 2.5
+   Bônus: +8pp sobre λ_corners calculado quando xG ≥ 2.5 E gols H2H recente ≤ 1
+   Dimensão líder: D6 (Press Index) — escanteios independem do placar, dependem da pressão.
+   Aplicar também quando: posse casa ≥ 60% + eficiência baixa (gols/xG ratio < 0.5)
+
 [DISTRIBUIÇÃO TEMPORAL E PRESSURE INDEX]
 analise_extra pode conter (disponível em partidas ao vivo):
 • escanteios_1t/2t: { casa, fora } — escanteios por tempo

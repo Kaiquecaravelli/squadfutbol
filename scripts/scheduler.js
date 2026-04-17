@@ -360,12 +360,30 @@ cron.schedule('30 21 * * *', async () => {
 cron.schedule('0 21 * * 0', async () => {
   console.log(chalk.bold.yellow(`\n[${ts()}] 📊 Relatório Semanal`));
   try {
-    const { getStats }     = await import('../src/pie/pie-storage.js');
+    const { getStats }       = await import('../src/pie/pie-storage.js');
     const { notifyPIEStats } = await import('../src/utils/telegram.js');
     await notifyPIEStats(getStats());
     console.log(chalk.green(`[${ts()}] ✅ Relatório semanal enviado`));
   } catch (e) {
-    console.error(chalk.red(`[${ts()}] ❌ Relatório falhou: ${e.message}`));
+    console.error(chalk.red(`[${ts()}] ❌ Relatório PIE falhou: ${e.message}`));
+  }
+
+  // ── Relatório semanal de Under Bloqueados (Módulo 4) ─────────────────────
+  try {
+    const token   = process.env.TELEGRAM_BOT_TOKEN;
+    const adminId = process.env.TELEGRAM_ADMIN_USER_ID;
+    if (token && adminId) {
+      const { gerarRelatorioUnderBloqueados } = await import('../src/data/underBlockedTracker.js');
+      const msg = gerarRelatorioUnderBloqueados();
+      await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ chat_id: adminId, text: msg, parse_mode: 'HTML', disable_web_page_preview: true }),
+      });
+      console.log(chalk.green(`[${ts()}] ✅ Relatório Under Bloqueados enviado ao admin`));
+    }
+  } catch (e) {
+    console.error(chalk.red(`[${ts()}] ❌ Relatório Under Bloqueados falhou: ${e.message}`));
   }
 }, { timezone: 'America/Sao_Paulo' });
 
@@ -486,6 +504,35 @@ setInterval(async () => {
     }
   } catch { /* silent */ }
 }, 10_000);
+
+// ── Handlers globais de erros não capturados ──────────────────────────────────
+// Evita que o processo scheduler morra silenciosamente por exceções imprevistas.
+// Notifica o admin via Telegram e mantém o processo vivo.
+async function _notifyAdminError(tipo, err) {
+  const adminId = process.env.TELEGRAM_ADMIN_USER_ID;
+  const token   = process.env.TELEGRAM_BOT_TOKEN;
+  if (!adminId || !token) return;
+  const msg = `🚨 <b>Scheduler — ${tipo}</b>\n\n<code>${String(err?.message || err).slice(0, 800)}</code>\n\n<i>${ts()}</i>`;
+  try {
+    await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: adminId, text: msg, parse_mode: 'HTML' }),
+    });
+  } catch { /* silent — não re-lançar dentro do handler */ }
+}
+
+process.on('uncaughtException', (err) => {
+  console.error(chalk.bold.red(`[${ts()}] 💥 uncaughtException: ${err.message}`), err.stack);
+  _notifyAdminError('uncaughtException', err).catch(() => {});
+  // Não chama process.exit — mantém o scheduler vivo
+});
+
+process.on('unhandledRejection', (reason) => {
+  const msg = reason instanceof Error ? reason.message : String(reason);
+  console.error(chalk.bold.red(`[${ts()}] ⚠️  unhandledRejection: ${msg}`));
+  _notifyAdminError('unhandledRejection', reason).catch(() => {});
+});
 
 // ── Keepalive ─────────────────────────────────────────────────────────────────
 console.log(chalk.gray(`[${ts()}] 💓 Scheduler iniciado — aguardando horários agendados...`));

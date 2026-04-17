@@ -90,6 +90,36 @@ const LEAGUE_LAMBDA_MULTIPLIERS = {
   'Copa Libertadores':                     { home: 0.92, away: 0.88 }, // fase grupos defensiva
 };
 
+// ── G3: Fator de altitude para CONMEBOL (2026-04-16) ─────────────────────────
+// Cidades acima de 1.400m reduzem expectativa de gols por cansaço físico do visitante.
+// Fonte: estudos de rendimento físico em altitude + histórico de resultados CONMEBOL.
+// Impacto aplicado a AMBOS os lambdas: jogo em altitude afeta times mandante e visitante.
+const ALTITUDE_FACTOR = {
+  'la paz':   0.88,  // 3.640m — Bolívia: maior impacto do calendário sul-americano
+  'potosí':   0.88,  // 3.900m — Bolívia
+  'potosi':   0.88,
+  'cusco':    0.89,  // 3.400m — Perú
+  'quito':    0.92,  // 2.850m — Equador
+  'bogotá':   0.93,  // 2.625m — Colômbia
+  'bogota':   0.93,
+  'medellín': 0.97,  // 1.495m — impacto leve
+  'medellin': 0.97,
+};
+
+/**
+ * Retorna o fator de ajuste de lambda por altitude.
+ * Fallback 1.0 (sem ajuste) quando cidade não encontrada.
+ * @param {string} city — cidade do jogo (matchData.cidade | city | venue_city)
+ */
+function getAltitudeFactor(city) {
+  if (!city) return 1.0;
+  const c = city.toLowerCase().trim();
+  for (const [k, v] of Object.entries(ALTITUDE_FACTOR)) {
+    if (c.includes(k)) return v;
+  }
+  return 1.0;
+}
+
 export function analyzeQuantitative(matchData) {
   console.log(`📊 [Quant] Calculando probabilidades...`);
 
@@ -104,7 +134,15 @@ export function analyzeQuantitative(matchData) {
   const awayGoalsScored   = away.goals_scored_avg   || 0.9;
   const awayConceded      = away.goals_conceded_avg  || 1.0;
 
-  let lambdaHome = homeGoalsScored * awayConceded * HOME_ADVANTAGE;
+  // ── Campo neutro: remove HOME_ADVANTAGE em finais e jogos explicitamente marcados ──
+  // matchData.campo_neutro = true → explicitamente neutro (SofaScore ou funnel)
+  // heurística: "final" na competição → provavelmente estádio neutro
+  const isNeutralVenue = matchData.campo_neutro === true ||
+    /\b(final|3rd place|tercer lugar|finale)\b/i.test(competition);
+  if (isNeutralVenue) {
+    console.log(`  ⚖️  [Campo Neutro] HOME_ADVANTAGE removido — ${competition}`);
+  }
+  let lambdaHome = homeGoalsScored * awayConceded * (isNeutralVenue ? 1.0 : HOME_ADVANTAGE);
   let lambdaAway = awayGoalsScored * homeConceded;
 
   // ── Melhoria 2: H2H lambda blending (30% peso histórico) ───────────────────
@@ -145,6 +183,33 @@ export function analyzeQuantitative(matchData) {
   if (lambdaAway < 0.28) {
     console.log(`  ⚠️  [Lambda Floor] ${competition}: λA ${lambdaAway.toFixed(3)} → 0.280 (floor aplicado)`);
     lambdaAway = 0.28;
+  }
+
+  // ── G3: Ajuste de altitude CONMEBOL (2026-04-16) ─────────────────────────────
+  // Jogos em cidades acima de 1.400m reduzem expectativa de gols de ambos os times.
+  // O campo matchData.cidade (ou city/venue_city) é preenchido pelo SofaScore scraper.
+  // Aplicado APÓS o floor para não interferir com o mínimo estatístico.
+  const cidadeJogo = matchData.cidade || matchData.city || matchData.venue_city || '';
+  const altitudeFator = getAltitudeFactor(cidadeJogo);
+  if (altitudeFator < 1.0) {
+    lambdaHome = Math.max(lambdaHome * altitudeFator, 0.35);
+    lambdaAway = Math.max(lambdaAway * altitudeFator, 0.28);
+    console.log(`  🏔️  [G3 Altitude] ${cidadeJogo}: λ×${altitudeFator} → λH=${lambdaHome.toFixed(3)} λA=${lambdaAway.toFixed(3)}`);
+  }
+
+  // ── G2: Artilheiro ausente — ajuste de lambda automático (2026-04-16) ─────────
+  // matchData.artilheiro_ausente: { casa: boolean, fora: boolean, nome_casa?, nome_fora? }
+  // Preenchido pelo coletor/funnel quando escalação confirmada via SofaScore.
+  // Impacto: -8% no lambda do time que perdeu o artilheiro principal.
+  if (matchData.artilheiro_ausente?.casa) {
+    const nome = matchData.artilheiro_ausente.nome_casa || 'artilheiro';
+    lambdaHome = Math.max(lambdaHome * 0.92, 0.35);
+    console.log(`  ⚠️  [G2] Artilheiro ausente (casa): ${nome} → λH×0.92 = ${lambdaHome.toFixed(3)}`);
+  }
+  if (matchData.artilheiro_ausente?.fora) {
+    const nome = matchData.artilheiro_ausente.nome_fora || 'artilheiro';
+    lambdaAway = Math.max(lambdaAway * 0.94, 0.28);
+    console.log(`  ⚠️  [G2] Artilheiro ausente (fora): ${nome} → λA×0.94 = ${lambdaAway.toFixed(3)}`);
   }
 
   const scoreMatrix     = buildScoreMatrix(lambdaHome, lambdaAway, 7);
@@ -193,6 +258,15 @@ export function analyzeQuantitative(matchData) {
     pBTTS *= 0.72;
     console.log(`  🛡️  [BTTS Filter] dominância extrema → pBTTS×0.72`);
   }
+
+  // ── B4: BTTS modelo independente (2026-04-16) ─────────────────────────────────
+  // P(BTTS) = P(casa marca ≥ 1) × P(fora marca ≥ 1) — independência dos eventos.
+  // Mais preciso que lambda genérico: usa os lambdas finais calibrados de cada time.
+  // Blend 55% matriz Dixon-Coles (captura correlação 0-0/1-1) + 45% modelo independente.
+  const pCasaMarca = 1 - Math.exp(-lambdaHome);
+  const pForaMarca = 1 - Math.exp(-lambdaAway);
+  const pBTTSIndependente = pCasaMarca * pForaMarca;
+  pBTTS = pBTTS * 0.55 + pBTTSIndependente * 0.45;
 
   // ── Escanteios e Cartões (via lambdas auxiliares) ──────────
   const totalGoalsExp = lambdaHome + lambdaAway;
@@ -258,9 +332,11 @@ export function analyzeQuantitative(matchData) {
     under_2_5:        round(1 - pOver25),
     under_3_5:        round(1 - pOver35),
     btts:             round(pBTTS),
-    over_corners_6_5: pOverCorners65,
-    over_corners_7_5: pOverCorners75,
-    over_corners_8_5: pOverCorners85Cal,
+    over_corners_6_5:  pOverCorners65,
+    over_corners_7_5:  pOverCorners75,
+    over_corners_8_5:  pOverCorners85Cal,
+    under_corners_6_5: round(1 - pOverCorners65),  // C1: Corners Under (2026-04-16)
+    under_corners_7_5: round(1 - pOverCorners75),  // C1: Corners Under (2026-04-16)
     over_yc_2_5:      pOverYC25,
     over_yc_3_5:      pOverYC35Calibrated,
     over_yc_4_5:      pOverYC45,
@@ -586,7 +662,7 @@ function buildScoreMatrix(lh, la, maxGoals) {
   for (let i = 0; i < maxGoals; i++) {
     matrix[i] = [];
     for (let j = 0; j < maxGoals; j++) {
-      matrix[i][j] = poisson(i, lh) * poisson(j, la);
+      matrix[i][j] = poissonPMF(i, lh) * poissonPMF(j, la);
     }
   }
   return matrix;
@@ -612,21 +688,37 @@ function dixonColesCorrection(matrix, lh, la) {
   return copy;
 }
 
-// CDF Poisson: P(X <= k) = soma de P(X=0)..P(X=k)
+// ── Log-Poisson com cache (2026-04-16) ───────────────────────────────────────
+// Evita overflow numérico em lambdas altas (k! cresce muito rápido).
+// Cache de 500 entradas previne recálculo repetido das mesmas combinações lambda/k.
+
+const _poissonCache = new Map();
+
+// CDF Poisson: P(X <= k) = soma de P(X=0)..P(X=k) — com memoização
 function poissonCDF(k, lambda) {
+  const key = `${k}_${lambda.toFixed(3)}`;
+  if (_poissonCache.has(key)) return _poissonCache.get(key);
   let cdf = 0;
-  for (let i = 0; i <= k; i++) cdf += poisson(i, lambda);
-  return Math.min(1, cdf);
+  for (let i = 0; i <= k; i++) cdf += poissonPMF(i, lambda);
+  const result = Math.min(1, cdf);
+  if (_poissonCache.size >= 500) _poissonCache.clear();
+  _poissonCache.set(key, result);
+  return result;
 }
 
-function poisson(k, lambda) {
-  return (Math.exp(-lambda) * Math.pow(lambda, k)) / factorial(k);
+// PMF Poisson em log-espaço: e^(k·ln(λ) − λ − ln(k!))
+// Estável para qualquer lambda (sem overflow de factorial para k grandes)
+function poissonPMF(k, lambda) {
+  if (lambda <= 0) return k === 0 ? 1 : 0;
+  return Math.exp(k * Math.log(lambda) - lambda - logFactorial(k));
 }
 
-function factorial(n) {
-  if (n <= 1) return 1;
-  let r = 1;
-  for (let i = 2; i <= n; i++) r *= i;
+// ln(k!) — Stirling para k > 20 (erro < 0.01%), iterativo para k ≤ 20
+function logFactorial(n) {
+  if (n <= 1) return 0;
+  if (n > 20) return n * Math.log(n) - n + 0.5 * Math.log(2 * Math.PI * n);
+  let r = 0;
+  for (let i = 2; i <= n; i++) r += Math.log(i);
   return r;
 }
 

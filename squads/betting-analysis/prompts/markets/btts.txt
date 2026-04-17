@@ -71,6 +71,10 @@ FP3 — Equilíbrio de chutes: shots dentro da área diferença <= 2 → +10pp
 FP4 — Liga MX mandante vs MLS visitante → +10pp (validado 8/8)
 FP5 — Eredivisie/LaLiga Tier 1: threshold reduzido para 80%, +4pp sobre base
 FP6 — Ambos btts_pct >= 65% em liga Tier 1 ou Tier 2 Neutro → +8pp
+FP7 — Contexto eliminatório equilibrado (P2): ambos precisam vencer + nível similar → +8pp
+       Validado: Cruz Azul 1-1 LAFC · Bayern 4-3 Real Madrid · threshold 80% (vs 82% padrão)
+FP8 — CONMEBOL ofensivo (P5): Sul-Am/Libertadores visitante superior em forma → +5pp
+       Validado: Melgar venceu 3-1 · Botafogo venceu 3-2 em jogos fora
 
 [CÁLCULO DE PROBABILIDADE]
 prob_base = btts_pct_visitante × 0.45 + btts_pct_mandante × 0.25 + btts_pct_h2h × 0.30

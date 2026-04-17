@@ -20,7 +20,7 @@
  *   Module 1 — Granularização por mercado: Championship bloqueada Over 1.5 / HABILITADA Under 1.5
  *   Module 3 — Under Intelligence: TIER1_UNDER15 (Championship/ConferenceLeague) · TIER1_UNDER25
  *   Module 5 — Emerging Leagues Watchlist: Eliteserien · Allsvenskan · Süper Lig · etc.
- *   Module 6 — Conference League recovery: bloqueada Over → habilitada Under 1.5/2.5 (BTTS 15%)
+ *   Module 6 — Conference League: Over 1.5 HABILITADA (100% PIE real) · Under 1.5 BLOQUEADA
  *
  * Exporta:
  *   goalsKillSwitch(result, matchData)        → string (motivo) ou null (aprovado)
@@ -50,9 +50,12 @@ const GOALS_CONFIDENCE_THRESHOLDS = {
   'Over 2.5':  80, // fire zone: 100% histórico com conf >= 80% (113 amostras)
   'Over 3.5':  80, // fire zone: 100% histórico com conf >= 80% (13 amostras)
   'Over 4.5':  80,
-  'Under 1.5': 65, // early-stage: BTTS 15% (Conference League) infere Under alto — calibrar com n≥50
-  'Under 2.5': 65, // early-stage: conservador até calibração real
-  'Under 3.5': 65,
+  // ── Under: piso absoluto 80% — sem tier especial, sem escalada ────────────
+  // Dupla condição obrigatória: probabilidade Poisson ≥ 80% E confiança ≥ 80%
+  // Ambas devem ser verdadeiras simultaneamente — uma sozinha não aprova.
+  'Under 1.5': 80,
+  'Under 2.5': 80,
+  'Under 3.5': 80,
 };
 
 /**
@@ -91,6 +94,7 @@ const TIER1_OVER15 = [
   'eredivisie',
   'bundesliga',
   'champions league',  // UCL group 84.2% + KO 89.7% — ambos acima de 80%
+  'conference league', // KO Phase: 7/7 = 100% Over 1.5 (PIE 2026) — TIER 1 Elite
 ];
 
 // TIER 2 — precisão 83-84%, prob ≥ 82% (threshold ligeiramente elevado)
@@ -142,7 +146,7 @@ const DEAD_LEAGUES_OVER15 = [
   'brasileirão série b',     // 77.4% (n=62)
   'brasileirao serie b',
   'conmebol sudamericana, qualification', // 75.0% (n=16)
-  'conference league',       // 15% BTTS → baixa pontuação → Over 1.5 inconsistente
+  // Conference League REMOVIDA — PIE real: Over 1.5 = 7/7 = 100% (KO Phase 2026)
 ];
 
 // KS3 — Ligue 1 requer threshold elevado para Over 2.5 (50.0% base rate)
@@ -164,21 +168,19 @@ const ELEVATED_THRESHOLD_LEAGUES = {
 // Inferência: Over 1.5 < 40% implica Under 1.5 > 60%
 // ┌────────────────────────┬────────────────────────────────────────────┐
 // │ Championship           │ 33% Over 1.5 → ~67% Under 1.5 (inferido) │
-// │ Conference League      │ BTTS 15% → baixa pontuação → Under forte  │
 // └────────────────────────┴────────────────────────────────────────────┘
+// Conference League REMOVIDA: PIE real = 100% Over 1.5 (7/7). BTTS baixo ≠ baixo scoring.
 const TIER1_UNDER15 = [
   'championship',       // ~67% Under 1.5 (inferido de 33% Over) — verificar com dados diretos
-  'conference league',  // BTTS 15% + baixa pontuação — Under 1.5 alta confiança
 ];
 
 // TIER 1 Under 2.5 — baixa pontuação, Under 2.5 > 55% base rate
 // ┌────────────────────────────────┬────────────────────────────────────────┐
-// │ Conference League              │ BTTS 15% → ≤1 gol freq. → Under 2.5  │
 // │ Europa League (grupos)         │ 47-50% Over 2.5 → ~50-53% Under 2.5  │
 // │ Liga Profesional (Argentina)   │ 42.6% Over 2.5 → ~57% Under 2.5      │
 // └────────────────────────────────┴────────────────────────────────────────┘
+// Conference League REMOVIDA: Under 2.5 = 0/2 no PIE. Over 1.5 = 100%.
 const TIER1_UNDER25 = [
-  'conference league',  // BTTS 15% — maior potencial Under 2.5
   'liga profesional',   // 57.4% Under 2.5 (inferido de 42.6% Over)
   // 'europa league'    — aguarda dados diretos Under 2.5 para validar (~50-53%)
 ];
@@ -202,8 +204,8 @@ export const EMERGING_LEAGUES_WATCHLIST = [
   // Ligas sul-americanas adicionais
   { competition: 'primera division',      priority: 'medium', targetMarkets: ['Under 2.5'] },  // Uruguai/Chile
   { competition: 'liga 1',               priority: 'low',    targetMarkets: ['Over 1.5'] },    // Peru/Tailândia
-  // Conference League (fase KO — dados insuficientes para Corners, promissor para Under)
-  { competition: 'conference league',     priority: 'high',   targetMarkets: ['Under 2.5', 'Under 1.5'], note: 'BTTS 15% → coletar Under direto' },
+  // Conference League — Over 1.5 = 100% PIE; coletar Over 2.5 e Corners para expandir
+  { competition: 'conference league',     priority: 'high',   targetMarkets: ['Over 2.5', 'Over Corners 6.5'], note: 'Over 1.5=100% confirmado; próximo: Over 2.5 e Corners KO' },
   // Championship inglesa (ouro para Under 1.5 se dados confirmarem)
   { competition: 'championship',          priority: 'high',   targetMarkets: ['Under 1.5'],               note: '33% Over → inferir Under, validar com n≥30' },
 ];
@@ -297,35 +299,20 @@ export function goalsKillSwitch(result, matchData) {
   //   Ligas mortas para Over → potencialmente EXCELENTES para Under.
   //   Threshold conservador até dados diretos Under acumularem n ≥ 30.
 
-  // KS8 — Under 1.5: Tier 1 (Championship, Conference League) → threshold reduzido
-  // Inferência: Championship 33% Over = ~67% Under 1.5 → threshold 65% (vs 80% padrão)
-  if (mkt === 'Under 1.5') {
-    const isTier1Under = TIER1_UNDER15.some(p => competition.includes(p));
-    if (isTier1Under && prob < 65) {
-      return `Kill Switch 8 — Under 1.5 Tier 1 — ${matchData.competition || competition} (threshold reduzido 65% · prob ${prob}% insuficiente · aguarda dados diretos)`;
-    }
-    // Liga não-listada: threshold padrão 80%
-    if (!isTier1Under && prob < 80) {
-      return `Kill Switch 8 — Under 1.5 — ${matchData.competition || competition} (liga sem calibração Under · prob ${prob}% < 80% padrão)`;
-    }
+  // ── KS8-10 — Under: piso absoluto 80% — sem Tier especial, sem escalada ──────
+  // Gate Under elevado para 80% em 2026-04-16 (spec v3):
+  //   · Piso inviolável: 80% de probabilidade Poisson
+  //   · Piso inviolável: 80% de confiança (verificado em goalsMinConfidence)
+  //   · Nenhuma liga ou contexto reduz esse piso
+  //   · Tier 1 Under removido — Championship não tem dados diretos suficientes
+  if (mkt === 'Under 1.5' && prob < 80) {
+    return `Kill Switch 8 — Under 1.5 — prob ${prob}% < 80% (piso absoluto inviolável — nenhuma liga reduz este gate)`;
   }
-
-  // KS9 — Under 2.5: Tier 1 (Conference League, Liga Profesional) → threshold 62%
-  // Inferência: Conference League BTTS 15% → baixa pontuação → Under 2.5 alta base rate
-  if (mkt === 'Under 2.5') {
-    const isTier1Under25 = TIER1_UNDER25.some(p => competition.includes(p));
-    if (isTier1Under25 && prob < 62) {
-      return `Kill Switch 9 — Under 2.5 Tier 1 — ${matchData.competition || competition} (threshold reduzido 62% · prob ${prob}% insuficiente · aguarda dados diretos)`;
-    }
-    // Liga não-listada: threshold padrão 80%
-    if (!isTier1Under25 && prob < 80) {
-      return `Kill Switch 9 — Under 2.5 — ${matchData.competition || competition} (liga sem calibração Under · prob ${prob}% < 80% padrão)`;
-    }
+  if (mkt === 'Under 2.5' && prob < 80) {
+    return `Kill Switch 9 — Under 2.5 — prob ${prob}% < 80% (piso absoluto inviolável — nenhuma liga reduz este gate)`;
   }
-
-  // KS10 — Under 3.5: threshold padrão 80% (dados insuficientes para calibração Under)
   if (mkt === 'Under 3.5' && prob < 80) {
-    return `Kill Switch 10 — Under 3.5 com prob ${prob}% < 80% (threshold conservador · aguarda calibração)`;
+    return `Kill Switch 10 — Under 3.5 — prob ${prob}% < 80% (piso absoluto inviolável — nenhuma liga reduz este gate)`;
   }
 
   return null; // aprovado
@@ -355,16 +342,8 @@ export function goalsMinProbability(market, competition = '') {
     return 85; // não-listada: elevado de 83% → Drill G1
   }
 
-  // Module 3 — Under market tier system
-  // Tier 1 Under recebe threshold reduzido (inferência inversa dos dados Over)
-  if (mkt === 'Under 1.5') {
-    if (TIER1_UNDER15.some(p => comp.includes(p))) return 65; // Championship ~67% inferido
-    return 80; // padrão conservador — aguarda calibração
-  }
-  if (mkt === 'Under 2.5') {
-    if (TIER1_UNDER25.some(p => comp.includes(p))) return 62; // Conf.League BTTS 15%
-    return 80; // padrão conservador
-  }
+  // Under: piso absoluto 80% — sem tier especial (gate elevado 2026-04-16)
+  if (mkt === 'Under 1.5' || mkt === 'Under 2.5' || mkt === 'Under 3.5') return 80;
 
   return GOALS_THRESHOLDS[mkt] ?? 80;
 }

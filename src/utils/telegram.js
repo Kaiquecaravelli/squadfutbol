@@ -2554,3 +2554,70 @@ export async function notifyAdminDailySummary({ pieStats, calibration = {}, engS
     });
   } catch { /* silencioso */ }
 }
+
+/**
+ * notifyAdminCalibration — envia relatório de calibração ao admin via DM.
+ * Chamado uma única vez após deploy de nova calibração auditada.
+ *
+ * @param {object} opts
+ * @param {string} opts.versao          — ex: "1.0"
+ * @param {string} opts.data            — ex: "2026-04-15"
+ * @param {Array}  opts.jogosReferencia — lista de jogos auditados (objetos {id, jogo, resultado, mercados})
+ * @param {object} opts.pesosMudados    — { dimensao: { antes, depois, delta } }
+ * @param {Array}  opts.padroes         — lista de padrões P1-P6 { id, mercados, bonus, condicao }
+ */
+export async function notifyAdminCalibration({ versao, data, jogosReferencia = [], pesosMudados = {}, padroes = [] }) {
+  const adminId = process.env.TELEGRAM_ADMIN_USER_ID;
+  const token   = process.env.TELEGRAM_BOT_TOKEN;
+  if (!adminId || !token) {
+    console.warn('[Telegram] notifyAdminCalibration: TELEGRAM_ADMIN_USER_ID não configurado');
+    return;
+  }
+
+  const jogosList = jogosReferencia.map(j =>
+    `  ${j.id} · <b>${j.jogo}</b> → <code>${j.resultado}</code> · ${j.mercados}`
+  ).join('\n');
+
+  const pesosList = Object.entries(pesosMudados).map(([dim, { antes, depois, delta }]) => {
+    const arrow = delta > 0 ? '📈' : delta < 0 ? '📉' : '➡️';
+    const sinal = delta > 0 ? '+' : '';
+    return `  ${arrow} <b>${dim}</b>: ${antes} → ${depois} (<code>${sinal}${delta}</code>)`;
+  }).join('\n');
+
+  const padroesList = padroes.map(p =>
+    `  <b>${p.id}</b> [${p.mercados}] bônus <code>+${p.bonus}pp</code> · ${p.condicao}`
+  ).join('\n');
+
+  const text = [
+    `🔬 <b>CALIBRAÇÃO DEPLOYADA — AUDITORIA ${data}</b>`,
+    ``,
+    `📌 Versão: <code>v${versao}</code> · Baseado em <b>${jogosReferencia.length} sinais GREEN</b>`,
+    ``,
+    `<b>Jogos de referência:</b>`,
+    jogosList,
+    ``,
+    `<b>Pesos recalibrados (D1–D8):</b>`,
+    pesosList || '  Nenhuma mudança',
+    ``,
+    `<b>Padrões contextuais (P1–P6):</b>`,
+    padroesList || '  Nenhum padrão novo',
+    ``,
+    `⚠️ <b>Dimensão #1:</b> D4 Contexto Motivacional (<code>0.18</code>) — liderou 4/7 GREENs`,
+    `✅ Gate Under elevado para <b>80% prob E 80% conf</b> (gate v3)`,
+    `✅ Conference League Over 1.5 habilitada (<b>100% PIE, 7/7 KO</b>)`,
+    ``,
+    `🤖 <i>${new Date().toLocaleString('pt-BR')} · Calibração automática pós-auditoria</i>`,
+  ].join('\n');
+
+  try {
+    await axios.post(`https://api.telegram.org/bot${token}/sendMessage`, {
+      chat_id:    adminId,
+      text,
+      parse_mode: 'HTML',
+      disable_web_page_preview: true,
+    });
+    console.log('[Telegram] notifyAdminCalibration enviado ao admin');
+  } catch (err) {
+    console.warn('[Telegram] notifyAdminCalibration falhou:', err.message);
+  }
+}

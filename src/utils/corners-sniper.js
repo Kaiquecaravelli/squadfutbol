@@ -131,10 +131,25 @@ const CORNERS_WHITELIST_85 = [
 // Alias retrocompatível — Over 6.5 é o mercado âncora
 export const CORNERS_WHITELIST = CORNERS_WHITELIST_65;
 
+// C1: Corners Under ligas ativas (exportado para uso nos funnels)
+export { CORNERS_UNDER_LIGAS };
+
 // Ligas explicitamente bloqueadas para QUALQUER sub-mercado (abaixo do limiar ou sem dados)
 const CORNERS_DEAD_LEAGUES = [
   'champions league',   // UCL — grupo 67% / KO 76% (separados por data — ver Module 2)
   'conference league',  // sem dados suficientes para validar (n < 20)
+];
+
+// ── C1: Corners Under — ligas ativas (2026-04-16) ────────────────────────────
+// Corners Under é válido apenas em competições eliminatórias/defensivas.
+// Gate: 80% (mesmo padrão Under absoluto — inviolável).
+// Mercados: Under Corners 6.5 (≤6) e Under Corners 7.5 (≤7).
+// Protocolo: shadow mode para demais ligas antes de ativar.
+const CORNERS_UNDER_LIGAS = [
+  'champions league knockout',   // UCL KO (Fev–Mai): jogo controlado, menos escanteios
+  'europa league knockout',      // UEL KO: 54% Under 7.5 histórico
+  'copa del rey',                // Copa espanhola: jogos gerenciados
+  'copa do brasil',              // Copa nacional: mandante gerencia vantagem
 ];
 
 // ── Module 2 — UCL Phase Detector (2026-04-16) ────────────────────────────────
@@ -232,6 +247,14 @@ export function cornersKillSwitch(result, matchData) {
     if (!ok) {
       const cmpName = matchData.competition || competition;
       return `Corners Kill Switch 2 — ${cmpName} (Over 6.5 · fora da whitelist 6.5 · precisão não validada ≥ 75%)`;
+    }
+  } else if (mkt === 'Under Corners 7.5' || mkt === 'Under Corners 6.5') {
+    // C1 — Corners Under: lista restrita a competições eliminatórias/defensivas (2026-04-16)
+    // UCL KO (Fev–Mai) é válido; outras ligas precisam de shadow mode antes de ativar.
+    const okUnder = isUCLKO || CORNERS_UNDER_LIGAS.some(w => competition.includes(w));
+    if (!okUnder) {
+      const cmpName = matchData.competition || competition;
+      return `Corners Kill Switch 2 — ${cmpName} (${mkt} · não está na lista de ligas defensivas ativas para Corners Under)`;
     }
   } else if (mkt !== 'Over Corners 9.5') {
     // Mercado Under ou desconhecido: usa whitelist 6.5 como fallback (UCL KO incluído)

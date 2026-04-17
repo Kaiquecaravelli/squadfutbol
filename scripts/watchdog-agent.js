@@ -320,6 +320,46 @@ async function checkPadrao() {
     }
   }
 
+  // 2.5 W1 — Monitor de invocação dos agentes (2026-04-16)
+  // Detecta quando um agente fica silencioso enquanto partidas foram analisadas.
+  // Critério: sem atividade (fired + blocked) há > 24h E pipeline processou matches.
+  // Separa silêncio legítimo (sem odds na liga) de silêncio anômalo (bug/skip).
+  const healthLog = _readJson(PATHS.pipelineHealth);
+  if (Array.isArray(healthLog) && healthLog.length >= 2) {
+    const recentCycles = healthLog.slice(-3);
+    const totalMatchesRecent = recentCycles.reduce((s, r) => s + (r.matches_found || 0), 0);
+    const hora = new Date().getHours();
+
+    if (totalMatchesRecent > 0 && hora >= 10 && hora <= 22) {
+      for (const t of agentTrackers) {
+        const data = _readJson(t.path);
+        if (!data) continue;
+
+        // Última atividade = max(último fired, último blocked)
+        const lastFiredTs  = data.fired_log?.at(-1)?.ts   || data.fired_log?.at(-1)?.fired_at   || null;
+        const lastBlockTs  = data.blocked_log?.at(-1)?.ts || null;
+        const candidates   = [lastFiredTs, lastBlockTs].filter(Boolean);
+        const lastActivity = candidates.length
+          ? Math.max(...candidates.map(d => new Date(d).getTime()))
+          : null;
+
+        const silenceH = lastActivity ? (Date.now() - lastActivity) / 3_600_000 : null;
+
+        // Agente sem atividade há > 24h com partidas processadas = anomalia
+        if (silenceH != null && silenceH > 24) {
+          issues.push({
+            key:   `agent_silence_${t.name}`,
+            sev:   'MEDIA',
+            msg:   `${t.name} sem atividade há ${Math.round(silenceH)}h (${totalMatchesRecent} partidas nas últimas ${recentCycles.length} execuções)`,
+            agent: t.name,
+            tipo:  'AGENTE_SILENCIOSO',
+          });
+          log('⚠️', `[W1] ${t.name} silencioso há ${Math.round(silenceH)}h`, 'yellow');
+        }
+      }
+    }
+  }
+
   return issues;
 }
 
