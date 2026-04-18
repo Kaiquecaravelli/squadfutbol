@@ -26,6 +26,7 @@ import {
 } from '../src/utils/telegram.js';
 import { resolveTeamName } from '../src/utils/team-aliases.js';
 import { saveResult, getPendingPredictions } from '../src/pie/pie-storage.js';
+import { processarConfronto } from '../src/resultados/confronto-engine.js';
 import { isObsidianConfigured, updateAnaliseNoteResult } from '../src/utils/obsidian.js';
 
 const ROOT               = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -545,6 +546,13 @@ export async function runResultChecker() {
 
         pieSaved = true;
         console.log(chalk.gray(`    📊 PIE atualizado — ${entry.market} (${entry.competition || 'sem liga'})`));
+
+        // Ciclo de autoalimentação: confronto pré-análise vs dados reais
+        processarConfronto(
+          { ...entry, acertou },
+          result,
+          piePred || null
+        ).catch(() => {});
       } catch (e) {
         // PIE falhou mas não bloqueia o fluxo — loga de forma visível
         console.warn(chalk.yellow(`    ⚠ PIE não atualizado: ${e.message}`));

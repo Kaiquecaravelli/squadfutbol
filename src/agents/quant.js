@@ -17,7 +17,7 @@
  */
 
 import { applyAllPIECorrections } from '../utils/pie-rules.js';
-import { loadDB } from '../pie/pie-storage.js';
+import { loadDB, getLambdaFatorSync } from '../pie/pie-storage.js';
 
 const HOME_ADVANTAGE = 1.15;
 
@@ -183,6 +183,17 @@ export function analyzeQuantitative(matchData) {
   if (lambdaAway < 0.28) {
     console.log(`  ⚠️  [Lambda Floor] ${competition}: λA ${lambdaAway.toFixed(3)} → 0.280 (floor aplicado)`);
     lambdaAway = 0.28;
+  }
+
+  // ── Feed Loop: fator lambda aprendido per-liga (2026-04-18) ─────────────────
+  // getLambdaFatorSync retorna 1.0 (neutro) se a liga ainda não foi calibrada.
+  // Ajustado automaticamente pelo feed-loop.js com base em confrontos acumulados.
+  // Range: [0.75, 1.25] — nunca ultrapassa esses limites.
+  const lambdaFatorPIE = getLambdaFatorSync(competition);
+  if (lambdaFatorPIE !== 1.0) {
+    lambdaHome = Math.max(lambdaHome * lambdaFatorPIE, 0.35);
+    lambdaAway = Math.max(lambdaAway * lambdaFatorPIE, 0.28);
+    console.log(`  🧠 [PIE λ-fator] ${competition}: ×${lambdaFatorPIE.toFixed(3)} → λH=${lambdaHome.toFixed(3)} λA=${lambdaAway.toFixed(3)}`);
   }
 
   // ── G3: Ajuste de altitude CONMEBOL (2026-04-16) ─────────────────────────────

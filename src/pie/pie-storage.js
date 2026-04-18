@@ -22,6 +22,8 @@ const EMPTY_DB = () => ({
   agentLogs:         [],  // todos os outputs dos agentes (aprovados e não-aprovados)
   calibration:       {},  // { [market]: { total, hits, byRange, byCompetition } }
   model_improvements: [], // log de melhorias aplicadas no modelo (APEX changelog)
+  lambdaFatores:     {},  // { [competition]: fator } — calibrado pelo feed-loop (range 0.75-1.25)
+  confrontos:        [],  // lições estruturadas com diagnóstico pré-análise vs real
   stats: { total: 0, acertos: 0, erros: 0, nao_verificaveis: 0 },
 });
 
@@ -65,6 +67,8 @@ export function loadDB() {
   if (!db.agentLogs)          db.agentLogs          = [];
   if (!db.positivePatterns)   db.positivePatterns   = [];
   if (!db.model_improvements) db.model_improvements = [];
+  if (!db.lambdaFatores)      db.lambdaFatores      = {};
+  if (!db.confrontos)         db.confrontos         = [];
 
   // Migração automática: se pie.json ainda tem lições e pie-lessons.json ainda não existe
   if (Array.isArray(db.lessons) && db.lessons.length > 0 && !existsSync(LESSONS_PATH)) {
@@ -674,4 +678,123 @@ export function loadPieSnapshots(limit = 90) {
       .filter(Boolean);
     return lines.slice(-limit).reverse();
   } catch { return []; }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SISTEMA DE AUTOALIMENTAÇÃO — Feed Loop + Confronto Engine
+// ═══════════════════════════════════════════════════════════════════════════
+
+// ── Lambda Fatores — calibração per-liga pelo feed loop ──────────────────────
+/**
+ * Retorna o fator lambda aprendido para uma competição.
+ * Default: 1.0 (neutro) se ainda não calibrado.
+ */
+export function getLambdaFator(competition) {
+  if (!competition) return 1.0;
+  const db = loadDB();
+  const fator = db.lambdaFatores?.[competition];
+  return (fator != null && !isNaN(fator)) ? Number(fator) : 1.0;
+}
+
+/**
+ * Salva ou atualiza o fator lambda para uma competição.
+ * Range permitido: [0.75, 1.25].
+ */
+export function setLambdaFator(competition, fator) {
+  if (!competition) return;
+  const db = loadDB();
+  db.lambdaFatores[competition] = Math.max(0.75, Math.min(1.25, Number(fator)));
+  saveDB(db);
+}
+
+// ── Lição de confronto — diagnóstico estruturado por jogo ────────────────────
+/**
+ * Salva confronto completo (diagnóstico pré-análise vs real) como lição estruturada.
+ * Imutável após salvo — nunca deletar.
+ */
+export function saveConfronto({ predictionId, matchName, competition, market, acertou, confronto }) {
+  const db  = loadDB();
+  const now = new Date().toISOString();
+
+  const entrada = {
+    id:            randomUUID(),
+    prediction_id: predictionId || null,
+    match_name:    matchName    || '',
+    competition:   competition  || '',
+    market:        market       || '',
+    acertou:       acertou,
+    confronto,                        // objeto completo do confronto-engine
+    processado:    false,             // marcado pelo feed-loop após processar
+    salvo_em:      now,
+  };
+
+  db.confrontos.push(entrada);
+
+  // Limitar histórico a 500 confrontos (mantém os mais recentes)
+  if (db.confrontos.length > 500) db.confrontos = db.confrontos.slice(-500);
+
+  saveDB(db);
+  return entrada.id;
+}
+
+// ── Lições de confronto para o feed loop ─────────────────────────────────────
+/**
+ * Retorna confrontos com diagnóstico para processamento do feed loop.
+ * @param {{ dias, apenasNaoProcessadas }} opts
+ */
+export function getLicoesConfronto({ dias = 30, apenasNaoProcessadas = false } = {}) {
+  const db     = loadDB();
+  const cutoff = new Date(Date.now() - dias * 86_400_000).toISOString();
+
+  return db.confrontos.filter(c => {
+    if (c.salvo_em < cutoff) return false;
+    if (apenasNaoProcessadas && c.processado) return false;
+    return true;
+  });
+}
+
+/**
+ * Marca confrontos como processados pelo feed loop (evita reprocessar).
+ * @param {string[]} ids — lista de IDs dos confrontos processados
+ */
+export function marcarLicoesProcessadas(ids) {
+  if (!Array.isArray(ids) || ids.length === 0) return;
+  const db  = loadDB();
+  const set = new Set(ids);
+  let alterou = false;
+
+  for (const c of db.confrontos) {
+    if (set.has(c.id) && !c.processado) {
+      c.processado   = true;
+      c.processado_em = new Date().toISOString();
+      alterou = true;
+    }
+  }
+
+  if (alterou) saveDB(db);
+}
+
+// ── Cache de lambdaFatores para quant.js (leitura frequente) ─────────────────
+let _lambdaFatoresCache     = null;
+let _lambdaFatoresCacheTs   = 0;
+const LAMBDA_CACHE_TTL = 10 * 60_000; // 10 min
+
+/**
+ * Versão com cache para uso no quant.js (evita leitura de disco por jogo).
+ * Retorna 1.0 se não há fator para a competição.
+ */
+export function getLambdaFatorSync(competition) {
+  if (!competition) return 1.0;
+  const now = Date.now();
+  if (!_lambdaFatoresCache || now - _lambdaFatoresCacheTs > LAMBDA_CACHE_TTL) {
+    try {
+      const db = loadDB();
+      _lambdaFatoresCache   = db.lambdaFatores || {};
+      _lambdaFatoresCacheTs = now;
+    } catch {
+      return 1.0;
+    }
+  }
+  const fator = _lambdaFatoresCache[competition];
+  return (fator != null && !isNaN(fator)) ? Number(fator) : 1.0;
 }

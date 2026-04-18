@@ -43,6 +43,7 @@ import { checkAndEscalate, runEscalationProtocol } from './escalation-protocol.j
 import { sendDailyClosingReport } from './educational-analysis.js';
 import { getDailyStatus } from './daily-counter.js';
 import { layerOneCheck, markScanExecutedSync } from './cycle-check.js';
+import { executarFeedLoop, verificarFeedLoop } from '../src/learning/feed-loop.js';
 
 // ── Lock anti-overlap ──────────────────────────────────────────────────────────
 // Evita que duas execuções simultâneas corrompam o PIE
@@ -504,6 +505,24 @@ setInterval(async () => {
     }
   } catch { /* silent */ }
 }, 10_000);
+
+// ── Feed Loop — autoalimentação do PIE ────────────────────────────────────────
+// Diariamente às 06:05 (após o pipeline): ajusta lambdaFatores + relatório dominical
+cron.schedule('5 6 * * *', async () => {
+  console.log(chalk.bold.cyan(`\n[${ts()}] 🧠 Feed Loop — ciclo de autoalimentação PIE`));
+  try {
+    const { processadas, ajustes } = await executarFeedLoop();
+    console.log(chalk.cyan(`[${ts()}] ✅ FeedLoop: ${processadas} lições · ${ajustes} ajuste(s) de λ`));
+  } catch (e) {
+    console.error(chalk.red(`[${ts()}] ❌ FeedLoop falhou: ${e.message}`));
+  }
+}, { timezone: 'America/Sao_Paulo' });
+
+// Verificação horária: aciona se >= 10 lições novas acumuladas
+cron.schedule('30 * * * *', async () => {
+  try { await verificarFeedLoop(); }
+  catch { /* silencioso */ }
+}, { timezone: 'America/Sao_Paulo' });
 
 // ── Handlers globais de erros não capturados ──────────────────────────────────
 // Evita que o processo scheduler morra silenciosamente por exceções imprevistas.
