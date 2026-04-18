@@ -37,6 +37,7 @@ import cron   from 'node-cron';
 import chalk  from 'chalk';
 import { runDailyPipeline }  from './daily-pipeline.js';
 import { runResultChecker }  from './result-checker.js';
+import { runSweepAndLearn }  from './sweep-and-learn.js';
 import { runPreOpCycle } from './prelive-monitor.js';
 import { runPreLiveSuperOdds } from './prelive-superodds-now.js';
 import { checkAndEscalate, runEscalationProtocol } from './escalation-protocol.js';
@@ -114,6 +115,7 @@ console.log('  📋 06h/12h/18h/23h  → Relatórios operacionais ao admin');
 console.log('  📡 13:00 diário     → Pipeline histórico extra (tarde)');
 console.log('  🟢 */1h             → SUPERODDS 2T: análise 2° Tempo');
 console.log('  🔍 */5 min          → Verificação de resultados GREEN/RED');
+console.log('  🧹 08:00 / 22:00    → Sweep & Learn (varredura completa + admin)');
 console.log('  📊 21:00 domingo    → Relatório semanal');
 console.log('  🚨 12h/15h/18h/21h  → Alertas de mínimo diário (Módulo 1.3)');
 console.log('  📝 23:45            → Relatório de fechamento do dia (admin)');
@@ -466,6 +468,27 @@ cron.schedule('*/5 * * * *', async () => {
     await runResultChecker();
   } catch (err) {
     console.error(chalk.red(`[${ts()}] ❌ Result checker falhou: ${err.message}`));
+  }
+}, { timezone: 'America/Sao_Paulo' });
+
+// ── Sweep & Learn — varredura completa 2× por dia ────────────────────────────
+// Complementa o result-checker (*/5 min) com um relatório consolidado ao admin
+// Útil para detectar pendências acumuladas e forçar ciclo de aprendizagem completo
+cron.schedule('0 8 * * *', async () => {
+  console.log(chalk.bold.magenta(`\n[${ts()}] 🧹 Sweep & Learn 08:00 — varredura completa`));
+  try {
+    await runSweepAndLearn();
+  } catch (err) {
+    console.error(chalk.red(`[${ts()}] ❌ Sweep 08:00 falhou: ${err.message}`));
+  }
+}, { timezone: 'America/Sao_Paulo' });
+
+cron.schedule('0 22 * * *', async () => {
+  console.log(chalk.bold.magenta(`\n[${ts()}] 🧹 Sweep & Learn 22:00 — varredura completa`));
+  try {
+    await runSweepAndLearn();
+  } catch (err) {
+    console.error(chalk.red(`[${ts()}] ❌ Sweep 22:00 falhou: ${err.message}`));
   }
 }, { timezone: 'America/Sao_Paulo' });
 

@@ -39,6 +39,8 @@
     "gemini-status": "node src/utils/gemini-key-manager.js",
     "result-check": "node scripts/result-checker.js",
     "result-check-dry": "node scripts/result-checker.js --dry-run",
+    "sweep": "node scripts/sweep-and-learn.js",
+    "sweep-dry": "node scripts/sweep-and-learn.js --dry-run",
     "tg-cleanup": "node scripts/telegram-cleanup.js",
     "tg-cleanup-dry": "node scripts/telegram-cleanup.js --dry-run",
     "deep-train": "node scripts/deep-training.js",
