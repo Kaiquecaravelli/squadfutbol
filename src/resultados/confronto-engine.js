@@ -101,8 +101,8 @@ export function analisarConfronto(entry, result, piePred) {
     licao_texto:        licaoTexto,
     acao_pie:           acaoPIE,
     // Dados quantitativos
-    gols_casa,
-    gols_fora,
+    gols_casa:          golsCasa,
+    gols_fora:          golsFora,
     gols_reais:         golsReais,
     lambda_estimado:    lambdaEstimado,
     erro_lambda:        erroLambda !== null ? Number(erroLambda.toFixed(3)) : null,
