@@ -61,7 +61,7 @@ import { checkPreLiveEligible } from '../utils/match-status-guard.js';
 import { BTTSAgent }         from '../../squads/betting-analysis/market-agents/BTTSAgent.js';
 import { GoalsAgent }        from '../../squads/betting-analysis/market-agents/GoalsAgent.js';
 import { CornersAgent }      from '../../squads/betting-analysis/market-agents/CornersAgent.js';
-import { DoubleChanceAgent } from '../../squads/betting-analysis/market-agents/DoubleChanceAgent.js';
+// DoubleChanceAgent ELIMINADO em 18/04/2026 — 5/100 scorecard · 45.4% precisão · desqualificado
 
 const SCAN_INTERVAL_MINUTES      = parseInt(process.env.SCAN_INTERVAL_MINUTES          || '60');
 const SUPERODDS_INTERVAL_MINUTES = parseInt(process.env.SUPERODDS_SCAN_INTERVAL_MINUTES || '15');
@@ -105,12 +105,11 @@ function _saveNotifiedKeys() {
   } catch { /* ignora */ }
 }
 
-// Agentes PRÉ-LIVE: 4 mercados core
+// Agentes PRÉ-LIVE: 3 mercados selecionados (DoubleChanceAgent eliminado 18/04/2026)
 const MARKET_AGENTS = [
   new BTTSAgent(),
   new GoalsAgent(),
   new CornersAgent(),
-  new DoubleChanceAgent(),
 ];
 
 // ── Funil SUPERODDS 2T — wrapper com notificações Telegram ────────────────────
@@ -159,7 +158,7 @@ async function _learnFromComparison(matchData, placar, analyses) {
 
     const AGENT_MAP = {
       BTTS: 'BTTSAgent', Gols: 'GoalsAgent', Escanteios: 'CornersAgent',
-      DuplaChance: 'DoubleChanceAgent',
+      // DuplaChance: 'DoubleChanceAgent', — ELIMINADO 18/04/2026
     };
 
     for (const a of analyses) {

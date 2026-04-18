@@ -24,7 +24,7 @@ import { getLiveMatches, collectLiveMatchData } from '../scrapers/sofascore.js';
 import { BTTSAgent }         from '../../squads/betting-analysis/market-agents/BTTSAgent.js';
 import { GoalsAgent }        from '../../squads/betting-analysis/market-agents/GoalsAgent.js';
 import { CornersAgent }      from '../../squads/betting-analysis/market-agents/CornersAgent.js';
-import { DoubleChanceAgent } from '../../squads/betting-analysis/market-agents/DoubleChanceAgent.js';
+// DoubleChanceAgent ELIMINADO em 18/04/2026 — 5/100 scorecard · 45.4% precisão · desqualificado
 import { notifyLiveOpportunity } from '../utils/telegram.js';
 import { saveLiveOpportunity } from '../utils/obsidian.js';
 import { checkSuperbetLiveEligibility } from '../scrapers/superbet.js';
@@ -44,7 +44,7 @@ const AGENTS = [
   new BTTSAgent(),
   new GoalsAgent(),
   new CornersAgent(),
-  new DoubleChanceAgent(),
+  // DoubleChanceAgent eliminado 18/04/2026 — 5/100 scorecard
 ];
 
 // ── Entrada principal ─────────────────────────────────────────────────────────
