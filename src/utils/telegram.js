@@ -738,6 +738,81 @@ function _formatRec(mercado, rec) {
 }
 
 /**
+ * Normaliza mercado + recomendação para uma chave calculável e inequívoca.
+ * NUNCA retorna "APOSTAR" — retorna a recomendação específica ou null.
+ *
+ * Exemplos:
+ *   ("Dupla Chance", "X2")          → "X2"
+ *   ("Total de Gols", "APOSTAR")    → "Over"  (limite extraído do messageText)
+ *   ("Over 2.5 Gols", "APOSTAR")   → "Over 2.5"
+ *   ("BTTS", "SIM")                 → "Sim"
+ *   ("Ambas Marcam", "APOSTAR")    → "Sim"
+ *   ("Resultado Final", "X")        → "X"
+ *   ("Resultado Final", "APOSTAR") → null
+ *
+ * @param {string} mercado           - Nome do mercado (ex: "Dupla Chance", "Over 2.5 Gols")
+ * @param {string} rec               - Recomendação bruta  (ex: "APOSTAR", "X2", "SIM")
+ * @param {string|null} timeSinalizado - Time sinalizado, usado quando rec contém nome de time
+ */
+export function normalizarMercado(mercado, rec, timeSinalizado = null) {
+  const mu = (mercado || '').toUpperCase().trim();
+  const r  = (rec || '').trim().toUpperCase();
+
+  // BTTS / Ambas Marcam — sempre positivo salvo rec "NÃO"
+  if (mu.includes('BTTS') || mu.includes('AMBAS') || mu.includes('MARCAM')) {
+    if (r === 'NÃO' || r === 'NAO' || r === 'NO') return 'Não';
+    return 'Sim';
+  }
+
+  // Dupla Chance — rec deve ser a variante explícita (1X, X2, 12)
+  if (mu.includes('DUPLA') || mu.includes('CHANCE')) {
+    if (r === '1X' || r === 'X2' || r === '12') return r;
+    return null;
+  }
+
+  // Resultado Final — extrai variante ou time sinalizado
+  if (mu.includes('RESULTADO FINAL') || mu.includes('HOME WIN') ||
+      mu.includes('AWAY WIN') || mu.includes('VITÓRIA')) {
+    if (r === '1' || r === 'CASA' || r === 'HOME') return '1';
+    if (r === 'X' || r === 'EMPATE' || r === 'DRAW') return 'X';
+    if (r === '2' || r === 'FORA' || r === 'AWAY') return '2';
+    if (timeSinalizado) return String(timeSinalizado);
+    return null;
+  }
+
+  // Mercados Over/Under com limiar embutido no nome (ex: "Over 2.5", "Under 2.5 Gols")
+  // Direção prioriza o nome do mercado; rec é fallback
+  const linhaFromMercado = (mercado || '').match(/(\d+(?:\.\d+)?)/)?.[1];
+  const dirFromMercado = mu.includes('UNDER') || mu.includes('MENOS') ? 'Under'
+                       : mu.includes('OVER')  || mu.includes('MAIS')  ? 'Over'
+                       : null;
+  const isOver = r.includes('OVER') || r.includes('MAIS') || r === 'SIM' || r === 'APOSTAR';
+  const isUnder = r.includes('UNDER') || r.includes('MENOS');
+  const dir = dirFromMercado ?? (isUnder ? 'Under' : (isOver ? 'Over' : null));
+
+  if (linhaFromMercado && dir) {
+    const linhaFmt = linhaFromMercado.includes('.')
+      ? linhaFromMercado
+      : `${linhaFromMercado}.5`;
+    return `${dir} ${linhaFmt}`;
+  }
+
+  // Rec já contém limiar (ex: rec = "Over 2.5")
+  const linhaFromRec = (rec || '').match(/(\d+(?:\.\d+)?)/)?.[1];
+  if (linhaFromRec && dir) {
+    const linhaFmt = linhaFromRec.includes('.') ? linhaFromRec : `${linhaFromRec}.5`;
+    return `${dir} ${linhaFmt}`;
+  }
+
+  // Rec é Over/Under sem limiar (messageText fará o trabalho)
+  if (dir) return dir;
+
+  // Fallback: retorna rec limpo ou null
+  if (r && r !== 'APOSTAR') return rec.trim();
+  return null;
+}
+
+/**
  * Constrói a descrição completa da aposta para exibição ao usuário.
  * Combina tipo de mercado + seleção específica, resultando em frases como:
  *   "Gols  Over 1.5", "Ambas Marcam  Sim", "Escanteios  Over 8.5"
@@ -1428,7 +1503,8 @@ export async function notifyPreLiveAnalysis(analysis, opts = {}) {
       competition:  comp,
       sofascoreId:  String(matchData.match_id || matchData.sofascore_id || matchData.event_id || ''),
       market:       topBet.market || '',
-      prediction:   _formatRec(topBet.market || '', 'APOSTAR') || 'Sim',
+      prediction:   (normalizarMercado(topBet.market || '', topBet.recomendacao || 'APOSTAR', null)
+                    ?? _formatRec(topBet.market || '', topBet.recomendacao || '')) || 'Sim',
       probabilidade: prob,
       confianca:    score,
       odds:         topBet.odds || null,
@@ -1540,7 +1616,8 @@ export async function notifyLiveSecondHalf(liveData, opportunities, opts = {}) {
       competition:  comp,
       sofascoreId:  String(liveData.match_id || liveData.sofascore_id || liveData.event_id || ''),
       market:       topOpp.mercado || '',
-      prediction:   _formatRec(topOpp.mercado || '', topOpp.recomendacao) || 'Sim',
+      prediction:   (normalizarMercado(topOpp.mercado || '', topOpp.recomendacao, null)
+                    ?? _formatRec(topOpp.mercado || '', topOpp.recomendacao || '')) || 'Sim',
       probabilidade: topOpp.probabilidade,
       confianca:    topOpp.confianca,
       odds:         topOpp.odds ?? null,
@@ -2073,7 +2150,8 @@ export async function notifyPreLiveOpportunity(matchData, markets) {
         competition:   matchData.competition || null,
         sofascoreId:   String(matchData.match_id || matchData.sofascore_id || matchData.event_id || ''),
         market:        m.market || m.mercado || '',
-        prediction:    String(m.recomendacao || 'Sim'),
+        prediction:    (normalizarMercado(m.market || m.mercado || '', m.recomendacao, null)
+                       ?? String(m.recomendacao || '')) || 'Sim',
         probabilidade: m.probabilidade ?? 0,
         confianca:     m.confianca ?? 0,
         odds:          m.odds_minima ?? null,
@@ -2152,7 +2230,8 @@ export async function notifyLive2TOpportunity(liveData, markets) {
         competition:   liveData.competition || null,
         sofascoreId:   String(liveData.match_id || liveData.sofascore_id || liveData.event_id || ''),
         market:        m.mercado || m.market || '',
-        prediction:    String(m.recomendacao || 'Sim'),
+        prediction:    (normalizarMercado(m.mercado || m.market || '', m.recomendacao, null)
+                       ?? String(m.recomendacao || '')) || 'Sim',
         probabilidade: m.probabilidade ?? 0,
         confianca:     m.confianca ?? 0,
         odds:          m.odds_minima ?? null,
@@ -2234,7 +2313,8 @@ export async function notifyLiveOpportunity(liveData, markets) {
         competition:   liveData.competition || null,
         sofascoreId:   String(liveData.match_id || liveData.sofascore_id || liveData.event_id || ''),
         market:        m.mercado || m.market || '',
-        prediction:    String(m.recomendacao || 'Sim'),
+        prediction:    (normalizarMercado(m.mercado || m.market || '', m.recomendacao, null)
+                       ?? String(m.recomendacao || '')) || 'Sim',
         probabilidade: m.probabilidade ?? 0,
         confianca:     m.confianca ?? 0,
         odds:          m.odds_minima ?? null,

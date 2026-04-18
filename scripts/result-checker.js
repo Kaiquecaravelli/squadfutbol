@@ -67,7 +67,7 @@ function determineOutcome(market, prediction, score, entry = {}, stats = null) {
   if (market.includes('Under 4.5')) return total < 5;
 
   // ── Gols Over/Under — mercado genérico "Gols" → limiar extraído do messageText ──
-  if (mkt === 'GOLS' || mkt === 'TOTAL GOLS') {
+  if (mkt === 'GOLS' || mkt === 'TOTAL GOLS' || mkt === 'TOTAL DE GOLS') {
     const thresh = _extractThresholdFromText(entry.messageText, 'Gols');
     if (!thresh?.threshold) return null;
     const isOver = thresh.direction === 'OVER';
@@ -112,6 +112,11 @@ function determineOutcome(market, prediction, score, entry = {}, stats = null) {
 
   // ── "Resultado Final {time}" — identifica time pelo nome ────────────────────
   if (mkt.includes('RESULTADO FINAL')) {
+    // Prediction normalizada por normalizarMercado ("1", "2", "X")
+    if (rec === '1' || rec === 'CASA') return homeGoals > awayGoals;
+    if (rec === '2' || rec === 'FORA') return awayGoals > homeGoals;
+    if (rec === 'X' || rec === 'EMPATE') return homeGoals === awayGoals;
+
     const [homeTeam, awayTeam] = (entry.match || '').split(/\s+vs\s+/i);
     const teamInMarket = market.replace(/resultado final/i, '').trim().toLowerCase();
     if (teamInMarket.length >= 3) {
@@ -131,11 +136,16 @@ function determineOutcome(market, prediction, score, entry = {}, stats = null) {
   }
 
   // ── Dupla Chance ─────────────────────────────────────────────────────────────
+  // Verificação direta por prediction normalizada (1X/X2/12 pode vir de normalizarMercado)
+  if (rec === '1X') return homeGoals >= awayGoals;
+  if (rec === 'X2') return awayGoals >= homeGoals;
+  if (rec === '12') return homeGoals !== awayGoals;
+
   if (market === '1X' || mkt.includes('DUPLA CHANCE 1X')) return homeGoals >= awayGoals;
   if (market === 'X2' || mkt.includes('DUPLA CHANCE X2')) return awayGoals >= homeGoals;
   if (market === '12' || mkt.includes('DUPLA CHANCE 12')) return homeGoals !== awayGoals;
 
-  // "Dupla Chance" genérico — extrai variante do messageText
+  // "Dupla Chance" genérico — extrai variante do prediction ou messageText
   if (mkt.includes('DUPLA CHANCE') || mkt === 'DUPLA') {
     const thresh = _extractThresholdFromText(entry.messageText, 'Dupla Chance');
     if (thresh?.variant === '1X') return homeGoals >= awayGoals;
@@ -155,14 +165,24 @@ function _extractThresholdFromText(messageText, marketCategory) {
 
   // Dupla Chance — extrai variante (1X/X2/12)
   if (catUpper.includes('DUPLA') || catUpper.includes('CHANCE')) {
-    const dupla = messageText.match(/dupla chance[^<]*<b>(1x|x2|12)<\/b>/i);
-    return dupla ? { variant: dupla[1].toUpperCase() } : null;
+    // Padrão 1: "Dupla Chance  <b>1X</b>" ou "dupla chance ... <b>X2</b>"
+    const dupla1 = messageText.match(/dupla chance[^<]*<b>\s*(1x|x2|12)\s*<\/b>/i);
+    if (dupla1) return { variant: dupla1[1].toUpperCase() };
+    // Padrão 2: variante standalone "<b>X2</b>" (formato multi-mercado unificado)
+    const dupla2 = messageText.match(/<b>\s*(1x|x2|12)\s*<\/b>/i);
+    if (dupla2) return { variant: dupla2[1].toUpperCase() };
+    return null;
   }
 
   // Resultado Final — extrai resultado (1/X/2/Casa/Fora/Empate)
   if (catUpper.includes('RESULTADO FINAL')) {
-    const res = messageText.match(/resultado final[^<]*<b>(1|x|2|casa|fora|empate)[^<]*<\/b>/i);
-    return res ? { variant: res[1].toUpperCase() } : null;
+    // Padrão 1: inline com label
+    const res1 = messageText.match(/resultado final[^<]*<b>(1|x|2|casa|fora|empate)[^<]*<\/b>/i);
+    if (res1) return { variant: res1[1].toUpperCase() };
+    // Padrão 2: standalone "<b>1</b>", "<b>X</b>", "<b>2</b>"
+    const res2 = messageText.match(/<b>\s*([12x]|casa|fora|empate)\s*<\/b>/i);
+    if (res2) return { variant: res2[1].toUpperCase() };
+    return null;
   }
 
   // Para Escanteios/Cartões/Gols: tenta padrão específico da categoria primeiro,
