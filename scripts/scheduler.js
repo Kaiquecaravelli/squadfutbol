@@ -45,6 +45,8 @@ import { sendDailyClosingReport } from './educational-analysis.js';
 import { getDailyStatus } from './daily-counter.js';
 import { layerOneCheck, markScanExecutedSync } from './cycle-check.js';
 import { executarFeedLoop, verificarFeedLoop } from '../src/learning/feed-loop.js';
+import { isSystemIdle }        from '../src/training/idleDetector.js';
+import { executarCicloTreino, executarSessaoNoturna } from '../src/training/trainingOrchestrator.js';
 
 // ── Lock anti-overlap ──────────────────────────────────────────────────────────
 // Evita que duas execuções simultâneas corrompam o PIE
@@ -119,6 +121,8 @@ console.log('  🧹 08:00 / 22:00    → Sweep & Learn (varredura completa + adm
 console.log('  📊 21:00 domingo    → Relatório semanal');
 console.log('  🚨 12h/15h/18h/21h  → Alertas de mínimo diário (Módulo 1.3)');
 console.log('  📝 23:45            → Relatório de fechamento do dia (admin)');
+console.log('  🧠 01:30 diário     → Sessão noturna intensiva (prep overnight-trainer)');
+console.log('  🧠 */10 min (ocioso)→ Ciclo de treino contínuo (backfill + sniper)');
 console.log('  💡 Ctrl+C para parar\n');
 
 // ── Pré-operacional (04:00–05:59) ──────────────────────────────────────────────
@@ -545,6 +549,34 @@ cron.schedule('5 6 * * *', async () => {
 cron.schedule('30 * * * *', async () => {
   try { await verificarFeedLoop(); }
   catch { /* silencioso */ }
+}, { timezone: 'America/Sao_Paulo' });
+
+// ── Treinamento Contínuo em Janelas Ociosas ───────────────────────────────────
+// Ciclo leve a cada 10 min: verifica ociosidade e treina se disponível.
+// Anti-sobreposição: respeita _scanRunning para não competir com varreduras ativas.
+
+setInterval(async () => {
+  try {
+    const { isIdle, janela, reason } = isSystemIdle({ scanRunning: _scanRunning });
+    if (!isIdle) {
+      console.log(chalk.gray(`[${ts()}] 🧠 Treino: sistema ativo (${reason}) — aguardando`));
+      return;
+    }
+    console.log(chalk.cyan(`[${ts()}] 🧠 Treino: sistema ocioso (${janela}) — iniciando ciclo`));
+    await executarCicloTreino();
+  } catch (err) {
+    console.error(chalk.red(`[${ts()}] ❌ Ciclo de treino: ${err.message}`));
+  }
+}, 10 * 60 * 1000); // a cada 10 minutos
+
+// 01:30 — sessão noturna intensiva (fecha loops + calibra antes do overnight-trainer das 02:00)
+cron.schedule('30 1 * * *', async () => {
+  console.log(chalk.bold.cyan(`\n[${ts()}] 🌙 Sessão noturna intensiva iniciada (01:30)`));
+  try {
+    await executarSessaoNoturna();
+  } catch (err) {
+    console.error(chalk.red(`[${ts()}] ❌ Sessão noturna falhou: ${err.message}`));
+  }
 }, { timezone: 'America/Sao_Paulo' });
 
 // ── Handlers globais de erros não capturados ──────────────────────────────────
