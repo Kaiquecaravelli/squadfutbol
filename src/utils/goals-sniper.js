@@ -603,6 +603,277 @@ export function aplicarPadroesOverGols(result, matchData) {
   };
 }
 
+// ── Padrões Under Gols (calibração 19/04/2026) ──────────────────────────────
+//
+// 10 padrões P_U1–P_U10 extraídos de 9 jogos Under confirmados.
+// Média da amostra: 1.33 gols/jogo. Under 2.5: 9/9 · Under 3.5: 9/9.
+// aplicarPadroesUnderGols() deve ser chamada ANTES de goalsKillSwitch() no funil.
+//
+// O gate absoluto de 80% (KS8-10) permanece inviolável — os bônus ajudam a
+// CHEGAR ao gate, nunca a CONTORNÁ-lo.
+//
+// Estrutura:
+//   id:        identificador único
+//   delta15:   ajuste em pp para Under 1.5 (0 = não se aplica)
+//   delta25:   ajuste em pp para Under 2.5 (0 = não se aplica)
+//   fator:     multiplicador lambda opcional (undefined = sem ajuste)
+//   ativo:     predicado (result, matchData) → boolean
+//
+// Cap: bônus positivos acumulam até +20pp por mercado. Penalidades ilimitadas.
+
+// ── Helpers internos Under ────────────────────────────────────────────────────
+
+function _gConcedidosCasa(md) {
+  return md.home?.goals_conceded_avg ??
+         md.home?.goals_against_avg  ??
+         md.home_goals_conceded_avg  ?? null;
+}
+function _gConcedidosFora(md) {
+  return md.away?.goals_conceded_avg ??
+         md.away?.goals_against_avg  ??
+         md.away_goals_conceded_avg  ?? null;
+}
+function _gMarcadosFora(md) {
+  return md.away?.goals_scored_avg   ??
+         md.away?.goals_for_avg      ??
+         md.away_goals_scored_avg    ?? null;
+}
+function _gMarcadosCasa(md) {
+  return md.home?.goals_scored_avg   ??
+         md.home?.goals_for_avg      ??
+         md.home_goals_scored_avg    ?? null;
+}
+
+/**
+ * Fator de perfil defensivo combinado.
+ * Quanto menor a média de gols sofridos dos dois times, menor o fator.
+ * Retorna 0.75–1.05 multiplicado pela prob base.
+ */
+function _fatorPerfilDefensivo(matchData) {
+  const gc = _gConcedidosCasa(matchData);
+  const gf = _gConcedidosFora(matchData);
+  if (gc === null && gf === null) return 1.0; // sem dados — neutro
+  const vals = [gc, gf].filter(v => v !== null);
+  const media = vals.reduce((a, b) => a + b, 0) / vals.length;
+  if (media <= 0.60) return 0.75;
+  if (media <= 0.80) return 0.85;
+  if (media <= 1.00) return 0.92;
+  if (media <= 1.20) return 0.98;
+  return 1.05;
+}
+
+const _ITALIA_COMPS  = ['serie a', 'serie b', 'coppa italia'];
+const _BRASIL_EXCL   = ['brasil', 'betano', 'série b', 'serie b'];
+
+const PADROES_UNDER_GOLS = [
+  {
+    // P_U1 — Itália: DNA defensivo cultural (3/3 = 100% na amostra)
+    // Serie A: 1.50 gols/j · Serie B: 0.00 gols/j
+    id: 'P_U1_ITALIA_UNDER_DNA',
+    delta15: 5, delta25: 9,
+    fator: (md) => {
+      const comp = (md.competition || md.league || '').toLowerCase();
+      if (comp.includes('serie b')) return 0.85;
+      return 0.88; // serie a + coppa italia
+    },
+    ativo: (_r, md) => {
+      const comp = (md.competition || md.league || '').toLowerCase();
+      const isIT = _ITALIA_COMPS.some(c => comp.includes(c));
+      const isBR = _BRASIL_EXCL.some(c => comp.includes(c));
+      return isIT && !isBR;
+    },
+  },
+  {
+    // P_U2 — Time com DNA defensivo ≤ 0.80 gols sofridos/jogo
+    // Palmeiras 1-0, Juventus 2-0, AC Milan 1-0 (3/9)
+    id: 'P_U2_DNA_DEFENSIVO_TIME',
+    delta15: 4, delta25: 8,
+    ativo: (_r, md) => {
+      const gc = _gConcedidosCasa(md);
+      const gf = _gConcedidosFora(md);
+      return (gc !== null && gc <= 0.80) || (gf !== null && gf <= 0.80);
+    },
+  },
+  {
+    // P_U3 — Divisão inferior (Série C BR / Serie B IT) + ataque fraco
+    // Londrina 0-0 Ceará, Cremonese 0-0 Torino (2/9)
+    id: 'P_U3_DIV_INFERIOR_ATAQUE_FRACO',
+    delta15: 7, delta25: 5,
+    ativo: (_r, md) => {
+      const comp = (md.competition || md.league || '').toLowerCase();
+      const isDivInf = comp.includes('serie c') ||
+                       (comp.includes('serie b') && !comp.includes('brasileir') && !comp.includes('betano')) ||
+                       comp.includes('championship');
+      const gcH = _gMarcadosCasa(md);
+      const gcA = _gMarcadosFora(md);
+      const ataqueFragil = (gcH !== null && gcH <= 1.0) || (gcA !== null && gcA <= 1.0);
+      return isDivInf && ataqueFragil;
+    },
+  },
+  {
+    // P_U4 — Time que gere resultado: mandante favorito com perfil 1-0/2-0
+    // Palmeiras, Juventus: vencem e fecham o jogo (2/9)
+    id: 'P_U4_GESTAO_RESULTADO',
+    delta15: 0, delta25: 6,
+    ativo: (_r, md) => {
+      const posH = md.home?.position ?? md.home_position ?? null;
+      // Dados de % jogos 1-0/2-0 raramente disponíveis — usa proxy: mandante elite + defensivo
+      if (posH === null) return false;
+      const gc = _gConcedidosCasa(md);
+      const gm = _gMarcadosCasa(md);
+      const ehFavorito  = posH <= 5;
+      const ehDefensivo = gc !== null && gc <= 0.85;
+      const ehEficiente = gm !== null && gm >= 1.5 && gm <= 2.2; // marca mas não explode
+      return ehFavorito && ehDefensivo && ehEficiente;
+    },
+  },
+  {
+    // P_U5 — Zona intermediária = Under natural (complemento de P_G8)
+    // Botafogo-SP 1-1 e Nantes 1-1 (2/9)
+    id: 'P_U5_ZONA_INTERMEDIARIA_UNDER',
+    delta15: 0, delta25: 6,
+    ativo: (_r, md) => {
+      const total = md.total_teams ?? md.teams_in_league ?? 20;
+      const posH  = md.home?.position ?? md.home_position ?? null;
+      const posA  = md.away?.position ?? md.away_position ?? null;
+      if (posH === null || posA === null) return false;
+      const midLow  = Math.ceil(total * 0.35);
+      const midHigh = Math.ceil(total * 0.70);
+      return posH >= midLow && posH <= midHigh &&
+             posA >= midLow && posA <= midHigh;
+    },
+  },
+  {
+    // P_U6 — Visitante fraco ofensivamente + mandante defensivo em casa
+    // 7/9 jogos Under: visitante não marcou ou marcou apenas 1 gol
+    id: 'P_U6_VISITANTE_FRACO_MANDANTE_DEFENSIVO',
+    delta15: 0, delta25: 7,
+    ativo: (_r, md) => {
+      const gMarcFora  = _gMarcadosFora(md);
+      const gConcCasa  = _gConcedidosCasa(md);
+      return (gMarcFora !== null && gMarcFora <= 1.0) &&
+             (gConcCasa !== null && gConcCasa <= 0.80);
+    },
+  },
+  {
+    // P_U7 — Série A brasileira com mandante de perfil defensivo
+    // Coritiba 2-0 Atlético-MG, Palmeiras 1-0 Athletico-PR (2/9)
+    id: 'P_U7_SERIE_A_BR_MANDANTE_DEFENSIVO',
+    delta15: 0, delta25: 5,
+    ativo: (_r, md) => {
+      const comp = (md.competition || md.league || '').toLowerCase();
+      const isSerieA = (comp.includes('brasileir') || comp.includes('brasileirao')) &&
+                       !comp.includes('serie b') && !comp.includes('série b') &&
+                       !comp.includes('serie c');
+      const gc = _gConcedidosCasa(md);
+      return isSerieA && gc !== null && gc <= 0.85;
+    },
+  },
+  {
+    // P_U8 — Série B/C brasileira sem urgência = lambda 0.88
+    // Goiás 0-2 e Botafogo 1-1 na Série B, Londrina 0-0 na Série C (2/9)
+    id: 'P_U8_SERIE_BC_SEM_URGENCIA',
+    delta15: 0, delta25: 4,
+    fator: 0.88,
+    ativo: (_r, md) => {
+      const comp = (md.competition || md.league || '').toLowerCase();
+      const isDivInf = (comp.includes('serie b') || comp.includes('série b') ||
+                        comp.includes('serie c') || comp.includes('série c')) &&
+                       (comp.includes('brasileir') || comp.includes('brasil'));
+      const total  = md.total_teams ?? 20;
+      const posH   = md.home?.position ?? md.home_position ?? null;
+      const posA   = md.away?.position ?? md.away_position ?? null;
+      if (!isDivInf || posH === null || posA === null) return false;
+      const zonaSeg = (pos) => pos >= 4 && pos <= Math.floor(total * 0.75);
+      return zonaSeg(posH) && zonaSeg(posA);
+    },
+  },
+  {
+    // P_U9 — Dupla defensiva italiana = Under extremo
+    // AC Milan × Verona e Cremonese × Torino (2/9)
+    id: 'P_U9_DUPLA_DEFENSIVA_ITALIANA',
+    delta15: 8, delta25: 6,
+    ativo: (_r, md) => {
+      const comp = (md.competition || md.league || '').toLowerCase();
+      const isIT = _ITALIA_COMPS.some(c => comp.includes(c));
+      const isBR = _BRASIL_EXCL.some(c => comp.includes(c));
+      if (!isIT || isBR) return false;
+      const gcH = _gConcedidosCasa(md);
+      const gcA = _gConcedidosFora(md);
+      // Ambos defensivos: média de gols sofridos ≤ 1.0
+      return gcH !== null && gcH <= 1.0 && gcA !== null && gcA <= 1.0;
+    },
+  },
+  // P_U10 — Princípio: contexto supera liga. Sem bônus direto — aplicado via fator de perfil.
+  // Implementado como _fatorPerfilDefensivo() acima, que pondera gols sofridos de ambos os times.
+];
+
+/**
+ * Aplica os padrões P_U1–P_U9 sobre uma análise de mercado Under.
+ * Deve ser chamada ANTES de goalsKillSwitch() no funil.
+ * O gate 80% permanece inviolável — Kill Switches KS8-10 continuam ativos.
+ *
+ * @param {object} result    — saída do agente (probabilidade, mercado, ...)
+ * @param {object} matchData — dados da partida
+ * @returns {{ result: object, delta_total: number, padroes_ativos: string[] }}
+ */
+export function aplicarPadroesUnderGols(result, matchData) {
+  const mktResult = (result.mercado || result.market || '').trim().toLowerCase();
+  const isUnder15 = /^under\s*1\.5$/i.test(mktResult);
+  const isUnder25 = /^under\s*2\.5$/i.test(mktResult);
+  const isUnder35 = /^under\s*3\.5$/i.test(mktResult);
+  if (!isUnder15 && !isUnder25 && !isUnder35) return { result, delta_total: 0, padroes_ativos: [] };
+
+  let prob       = result.probabilidade ?? 0;
+  let deltaTotal = 0;
+  let bonusAcum  = 0;
+  const ativos   = [];
+  const MAX_BONUS = 20;
+
+  // P_U10: fator de perfil defensivo (princípio — contexto > liga)
+  const fatorPerfil = _fatorPerfilDefensivo(matchData);
+  if (fatorPerfil !== 1.0) {
+    prob = Math.min(Math.round(prob * fatorPerfil), 99);
+  }
+
+  for (const padrao of PADROES_UNDER_GOLS) {
+    let isAtivo = false;
+    try { isAtivo = padrao.ativo(result, matchData); } catch { continue; }
+    if (!isAtivo) continue;
+
+    // Aplicar fator lambda do padrão (pode ser número ou função)
+    if (padrao.fator) {
+      const f = typeof padrao.fator === 'function' ? padrao.fator(matchData) : padrao.fator;
+      prob = Math.min(Math.round(prob * f), 99);
+    }
+
+    // Seleciona delta por mercado
+    const delta = isUnder15 ? (padrao.delta15 ?? 0) :
+                  isUnder25 ? (padrao.delta25 ?? 0) :
+                  /* 3.5 usa U25 como aproximação */ (padrao.delta25 ?? 0);
+
+    if (delta === 0) continue;
+
+    if (delta > 0) {
+      const aplicar = Math.min(delta, MAX_BONUS - bonusAcum);
+      if (aplicar <= 0) { ativos.push(`${padrao.id}(cap)`); continue; }
+      bonusAcum  += aplicar;
+      deltaTotal += aplicar;
+      ativos.push(`${padrao.id}(+${aplicar}pp)`);
+    } else {
+      deltaTotal += delta;
+      ativos.push(`${padrao.id}(${delta}pp)`);
+    }
+  }
+
+  const prob_final = Math.min(Math.max(prob + deltaTotal, 0), 99);
+  return {
+    result:         { ...result, probabilidade: Math.round(prob_final) },
+    delta_total:    deltaTotal,
+    padroes_ativos: ativos,
+  };
+}
+
 // ── Tracker ─────────────────────────────────────────────────────────────────────
 function _loadTracker() {
   try { return JSON.parse(readFileSync(TRACKER, 'utf8')); }

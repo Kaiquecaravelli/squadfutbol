@@ -21,7 +21,7 @@ import { aggregateMatchData } from '../scrapers/aggregator.js';
 import { saveMatchScan } from '../utils/obsidian.js';
 import { getAgentCalibration } from '../pie/pie-storage.js';
 import { bttsKillSwitch, bttsMinProbability, trackBttsDecision, BTTS_MIN_CONFIDENCE, bttsIsDeadLeague, aplicarBonusBTTS } from '../utils/btts-sniper.js';
-import { goalsKillSwitch, goalsMinProbability, goalsMinConfidence, trackGoalsDecision, GOALS_MIN_CONFIDENCE, aplicarPadroesOverGols } from '../utils/goals-sniper.js';
+import { goalsKillSwitch, goalsMinProbability, goalsMinConfidence, trackGoalsDecision, GOALS_MIN_CONFIDENCE, aplicarPadroesOverGols, aplicarPadroesUnderGols } from '../utils/goals-sniper.js';
 import { cornersKillSwitch, cornersMinConfidence, trackCornersDecision, CORNERS_MIN_CONFIDENCE, cornersIsDeadLeague } from '../utils/corners-sniper.js';
 import { KILL_ZONE_THRESHOLD, isKillZone, trackKillZone }                   from '../utils/kill-zone.js';
 import { validarUnder }                                                      from '../analysis/gateManager.js';
@@ -329,12 +329,20 @@ async function _analyzeMatch(match, idx, notifiedKeys) {
       !/corner|escanteio/i.test(mktForGoals) &&
       !/yc/i.test(mktForGoals);
       if (isGoalsMarket) {
-        // Padrões P_G1–P_G12 (calibração 19/04/2026): ajustam probabilidade antes do gate
+        // Padrões Over P_G1–P_G12 (calibração 19/04/2026): ajustam probabilidade antes do gate
         if (/^over\s*[\d.]+$/i.test(mktForGoals)) {
           const goalsPatterns = aplicarPadroesOverGols(r, matchData);
           if (goalsPatterns.padroes_ativos.length > 0) {
             r = { ...r, ...goalsPatterns.result };
             console.log(chalk.blue(`    📐 [Goals Patterns] ${goalsPatterns.padroes_ativos.join(' · ')} → prob ${goalsPatterns.result.probabilidade}%`));
+          }
+        }
+        // Padrões Under P_U1–P_U9 (calibração 19/04/2026): elevam prob Under antes do gate 80%
+        if (/^under\s*[\d.]+$/i.test(mktForGoals)) {
+          const underPatterns = aplicarPadroesUnderGols(r, matchData);
+          if (underPatterns.padroes_ativos.length > 0) {
+            r = { ...r, ...underPatterns.result };
+            console.log(chalk.blue(`    📐 [Under Patterns] ${underPatterns.padroes_ativos.join(' · ')} → prob ${underPatterns.result.probabilidade}%`));
           }
         }
         const goalsBlock = goalsKillSwitch(r, matchData);

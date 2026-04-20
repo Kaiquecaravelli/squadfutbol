@@ -18535,5 +18535,301 @@
     "padroes": [
       "P_G1-P_G12"
     ]
+  },
+  {
+    "type": "HISTORICO_AUDITORIA",
+    "mercado": "Under 2.5",
+    "match": "Coritiba vs Atletico-MG",
+    "competition": "Brasileirao Serie A",
+    "data": "2026-04-19",
+    "ts": "2026-04-20T02:25:18.559Z",
+    "score_real": "2-0",
+    "gols_total": 2,
+    "acertou": true,
+    "source": "AUDITORIA_UNDER_GOLS_19042026",
+    "padroes": [
+      "P_U7",
+      "P_U4"
+    ]
+  },
+  {
+    "type": "HISTORICO_AUDITORIA",
+    "mercado": "Under 3.5",
+    "match": "Coritiba vs Atletico-MG",
+    "competition": "Brasileirao Serie A",
+    "data": "2026-04-19",
+    "ts": "2026-04-20T02:25:18.559Z",
+    "score_real": "2-0",
+    "gols_total": 2,
+    "acertou": true,
+    "source": "AUDITORIA_UNDER_GOLS_19042026",
+    "padroes": [
+      "P_U7",
+      "P_U4"
+    ]
+  },
+  {
+    "type": "HISTORICO_AUDITORIA",
+    "mercado": "Under 2.5",
+    "match": "Palmeiras vs Athletico-PR",
+    "competition": "Brasileirao Serie A",
+    "data": "2026-04-19",
+    "ts": "2026-04-20T02:25:18.559Z",
+    "score_real": "1-0",
+    "gols_total": 1,
+    "acertou": true,
+    "source": "AUDITORIA_UNDER_GOLS_19042026",
+    "padroes": [
+      "P_U2",
+      "P_U4",
+      "P_U7"
+    ]
+  },
+  {
+    "type": "HISTORICO_AUDITORIA",
+    "mercado": "Under 3.5",
+    "match": "Palmeiras vs Athletico-PR",
+    "competition": "Brasileirao Serie A",
+    "data": "2026-04-19",
+    "ts": "2026-04-20T02:25:18.559Z",
+    "score_real": "1-0",
+    "gols_total": 1,
+    "acertou": true,
+    "source": "AUDITORIA_UNDER_GOLS_19042026",
+    "padroes": [
+      "P_U2",
+      "P_U4",
+      "P_U7"
+    ]
+  },
+  {
+    "type": "HISTORICO_AUDITORIA",
+    "mercado": "Under 2.5",
+    "match": "Botafogo-SP vs Atletico-GO",
+    "competition": "Brasileirao Serie B",
+    "data": "2026-04-19",
+    "ts": "2026-04-20T02:25:18.559Z",
+    "score_real": "1-1",
+    "gols_total": 2,
+    "acertou": true,
+    "source": "AUDITORIA_UNDER_GOLS_19042026",
+    "padroes": [
+      "P_U5",
+      "P_U8"
+    ]
+  },
+  {
+    "type": "HISTORICO_AUDITORIA",
+    "mercado": "Under 3.5",
+    "match": "Botafogo-SP vs Atletico-GO",
+    "competition": "Brasileirao Serie B",
+    "data": "2026-04-19",
+    "ts": "2026-04-20T02:25:18.559Z",
+    "score_real": "1-1",
+    "gols_total": 2,
+    "acertou": true,
+    "source": "AUDITORIA_UNDER_GOLS_19042026",
+    "padroes": [
+      "P_U5",
+      "P_U8"
+    ]
+  },
+  {
+    "type": "HISTORICO_AUDITORIA",
+    "mercado": "Under 2.5",
+    "match": "Londrina vs Ceara",
+    "competition": "Brasileirao Serie C",
+    "data": "2026-04-19",
+    "ts": "2026-04-20T02:25:18.559Z",
+    "score_real": "0-0",
+    "gols_total": 0,
+    "acertou": true,
+    "source": "AUDITORIA_UNDER_GOLS_19042026",
+    "padroes": [
+      "P_U3",
+      "P_U8"
+    ]
+  },
+  {
+    "type": "HISTORICO_AUDITORIA",
+    "mercado": "Under 3.5",
+    "match": "Londrina vs Ceara",
+    "competition": "Brasileirao Serie C",
+    "data": "2026-04-19",
+    "ts": "2026-04-20T02:25:18.559Z",
+    "score_real": "0-0",
+    "gols_total": 0,
+    "acertou": true,
+    "source": "AUDITORIA_UNDER_GOLS_19042026",
+    "padroes": [
+      "P_U3",
+      "P_U8"
+    ]
+  },
+  {
+    "type": "HISTORICO_AUDITORIA",
+    "mercado": "Under 2.5",
+    "match": "Goias vs Cuiaba",
+    "competition": "Brasileirao Serie B",
+    "data": "2026-04-19",
+    "ts": "2026-04-20T02:25:18.559Z",
+    "score_real": "0-2",
+    "gols_total": 2,
+    "acertou": true,
+    "source": "AUDITORIA_UNDER_GOLS_19042026",
+    "padroes": [
+      "P_U6",
+      "P_U8"
+    ]
+  },
+  {
+    "type": "HISTORICO_AUDITORIA",
+    "mercado": "Under 3.5",
+    "match": "Goias vs Cuiaba",
+    "competition": "Brasileirao Serie B",
+    "data": "2026-04-19",
+    "ts": "2026-04-20T02:25:18.559Z",
+    "score_real": "0-2",
+    "gols_total": 2,
+    "acertou": true,
+    "source": "AUDITORIA_UNDER_GOLS_19042026",
+    "padroes": [
+      "P_U6",
+      "P_U8"
+    ]
+  },
+  {
+    "type": "HISTORICO_AUDITORIA",
+    "mercado": "Under 2.5",
+    "match": "Nantes vs Brest",
+    "competition": "Ligue 1",
+    "data": "2026-04-19",
+    "ts": "2026-04-20T02:25:18.559Z",
+    "score_real": "1-1",
+    "gols_total": 2,
+    "acertou": true,
+    "source": "AUDITORIA_UNDER_GOLS_19042026",
+    "padroes": [
+      "P_U5",
+      "P_U10"
+    ]
+  },
+  {
+    "type": "HISTORICO_AUDITORIA",
+    "mercado": "Under 3.5",
+    "match": "Nantes vs Brest",
+    "competition": "Ligue 1",
+    "data": "2026-04-19",
+    "ts": "2026-04-20T02:25:18.559Z",
+    "score_real": "1-1",
+    "gols_total": 2,
+    "acertou": true,
+    "source": "AUDITORIA_UNDER_GOLS_19042026",
+    "padroes": [
+      "P_U5",
+      "P_U10"
+    ]
+  },
+  {
+    "type": "HISTORICO_AUDITORIA",
+    "mercado": "Under 2.5",
+    "match": "Cremonese vs Torino",
+    "competition": "Serie B Italiana",
+    "data": "2026-04-19",
+    "ts": "2026-04-20T02:25:18.559Z",
+    "score_real": "0-0",
+    "gols_total": 0,
+    "acertou": true,
+    "source": "AUDITORIA_UNDER_GOLS_19042026",
+    "padroes": [
+      "P_U1",
+      "P_U3",
+      "P_U9"
+    ]
+  },
+  {
+    "type": "HISTORICO_AUDITORIA",
+    "mercado": "Under 3.5",
+    "match": "Cremonese vs Torino",
+    "competition": "Serie B Italiana",
+    "data": "2026-04-19",
+    "ts": "2026-04-20T02:25:18.559Z",
+    "score_real": "0-0",
+    "gols_total": 0,
+    "acertou": true,
+    "source": "AUDITORIA_UNDER_GOLS_19042026",
+    "padroes": [
+      "P_U1",
+      "P_U3",
+      "P_U9"
+    ]
+  },
+  {
+    "type": "HISTORICO_AUDITORIA",
+    "mercado": "Under 2.5",
+    "match": "AC Milan vs Verona",
+    "competition": "Serie A Italiana",
+    "data": "2026-04-19",
+    "ts": "2026-04-20T02:25:18.559Z",
+    "score_real": "1-0",
+    "gols_total": 1,
+    "acertou": true,
+    "source": "AUDITORIA_UNDER_GOLS_19042026",
+    "padroes": [
+      "P_U1",
+      "P_U2",
+      "P_U9"
+    ]
+  },
+  {
+    "type": "HISTORICO_AUDITORIA",
+    "mercado": "Under 3.5",
+    "match": "AC Milan vs Verona",
+    "competition": "Serie A Italiana",
+    "data": "2026-04-19",
+    "ts": "2026-04-20T02:25:18.559Z",
+    "score_real": "1-0",
+    "gols_total": 1,
+    "acertou": true,
+    "source": "AUDITORIA_UNDER_GOLS_19042026",
+    "padroes": [
+      "P_U1",
+      "P_U2",
+      "P_U9"
+    ]
+  },
+  {
+    "type": "HISTORICO_AUDITORIA",
+    "mercado": "Under 2.5",
+    "match": "Juventus vs Bologna",
+    "competition": "Serie A Italiana",
+    "data": "2026-04-19",
+    "ts": "2026-04-20T02:25:18.559Z",
+    "score_real": "2-0",
+    "gols_total": 2,
+    "acertou": true,
+    "source": "AUDITORIA_UNDER_GOLS_19042026",
+    "padroes": [
+      "P_U1",
+      "P_U2",
+      "P_U4"
+    ]
+  },
+  {
+    "type": "HISTORICO_AUDITORIA",
+    "mercado": "Under 3.5",
+    "match": "Juventus vs Bologna",
+    "competition": "Serie A Italiana",
+    "data": "2026-04-19",
+    "ts": "2026-04-20T02:25:18.559Z",
+    "score_real": "2-0",
+    "gols_total": 2,
+    "acertou": true,
+    "source": "AUDITORIA_UNDER_GOLS_19042026",
+    "padroes": [
+      "P_U1",
+      "P_U2",
+      "P_U4"
+    ]
   }
 ]

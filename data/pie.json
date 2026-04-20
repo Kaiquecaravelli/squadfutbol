@@ -13301,6 +13301,25 @@
       ],
       "lambda_fatores": 9,
       "amostras_adicionadas": 45
+    },
+    {
+      "ts": "2026-04-20T02:25:03.491Z",
+      "id": "AUDITORIA_UNDER_GOLS_19042026",
+      "descricao": "Calibração Under Goals: 10 padrões P_U1-P_U10 + 6 lambda Under + 18 amostras históricas (9 jogos × 2 mercados)",
+      "padroes": [
+        "P_U1",
+        "P_U2",
+        "P_U3",
+        "P_U4",
+        "P_U5",
+        "P_U6",
+        "P_U7",
+        "P_U8",
+        "P_U9",
+        "P_U10"
+      ],
+      "lambda_under": 6,
+      "amostras_adicionadas": 18
     }
   ],
   "pattern_library": {},
@@ -15809,5 +15828,13 @@
     "Serie A Italiana": 0.9,
     "Serie B Italiana": 0.92,
     "FA Cup": 1.15
+  },
+  "lambdaFatoresUnder": {
+    "Serie A Italiana": 0.88,
+    "Serie B Italiana": 0.85,
+    "Brasileirao Serie A": 0.93,
+    "Brasileirao Serie B": 0.9,
+    "Brasileirao Serie C": 0.87,
+    "Ligue 1 Midtable": 0.94
   }
 }
