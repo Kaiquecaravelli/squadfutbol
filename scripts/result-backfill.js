@@ -111,6 +111,8 @@ function determineOutcome(market, recommendation, score, stats = null) {
     }
 
     default:
+      // Log mercados desconhecidos para facilitar mapeamento futuro
+      console.warn(`[Backfill] ⚠️  Mercado não mapeado: "${market}" — predição ignorada (adicione ao switch para calibrar)`);
       return null;
   }
 }

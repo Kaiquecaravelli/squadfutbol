@@ -35,6 +35,9 @@
 
 import cron   from 'node-cron';
 import chalk  from 'chalk';
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
 import { runDailyPipeline }  from './daily-pipeline.js';
 import { runResultChecker }  from './result-checker.js';
 import { runSweepAndLearn }  from './sweep-and-learn.js';
@@ -49,24 +52,61 @@ import { executarFeedLoop, verificarFeedLoop } from '../src/learning/feed-loop.j
 import { isSystemIdle }        from '../src/training/idleDetector.js';
 import { executarCicloTreino, executarSessaoNoturna } from '../src/training/trainingOrchestrator.js';
 
-// ── Lock anti-overlap ──────────────────────────────────────────────────────────
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const ROOT      = join(__dirname, '..');
+
+// ── Lock anti-overlap (persistido em arquivo — sobrevive a restarts PM2) ───────
 // Evita que duas execuções simultâneas corrompam o PIE
-let isRunning = false;
-const PIPELINE_TIMEOUT_MS = 55 * 60_000; // 55 minutos — libera lock se pipeline travar
+const PIPELINE_LOCK_PATH  = join(ROOT, 'data/pipeline-lock.json');
+const PIPELINE_TIMEOUT_MS = 55 * 60_000; // 55 minutos — auto-expiry
+
+function _isPipelineLocked() {
+  try {
+    if (!existsSync(PIPELINE_LOCK_PATH)) return false;
+    const lock = JSON.parse(readFileSync(PIPELINE_LOCK_PATH, 'utf8'));
+    if (!lock.lockedAt) return false;
+    const age = Date.now() - new Date(lock.lockedAt).getTime();
+    if (age > PIPELINE_TIMEOUT_MS) {
+      // Lock expirado — limpa automaticamente
+      _releasePipelineLock();
+      return false;
+    }
+    return true;
+  } catch { return false; }
+}
+
+function _acquirePipelineLock(label) {
+  try {
+    mkdirSync(join(ROOT, 'data'), { recursive: true });
+    writeFileSync(PIPELINE_LOCK_PATH, JSON.stringify({
+      lockedAt: new Date().toISOString(),
+      label,
+      pid: process.pid,
+    }), 'utf8');
+  } catch { /* silencioso */ }
+}
+
+function _releasePipelineLock() {
+  try {
+    if (existsSync(PIPELINE_LOCK_PATH)) {
+      writeFileSync(PIPELINE_LOCK_PATH, JSON.stringify({ lockedAt: null }), 'utf8');
+    }
+  } catch { /* silencioso */ }
+}
 
 async function safePipeline(label, opts = {}) {
-  if (isRunning) {
-    console.log(chalk.yellow(`[${ts()}] ⏭  ${label} — pipeline já em execução, ignorando`));
+  if (_isPipelineLocked()) {
+    console.log(chalk.yellow(`[${ts()}] ⏭  ${label} — pipeline já em execução (lock persistido), ignorando`));
     return;
   }
-  isRunning = true;
+  _acquirePipelineLock(label);
   console.log(chalk.bold.cyan(`\n[${ts()}] 🚀 Iniciando: ${label}`));
 
   // Watchdog — libera lock automaticamente se pipeline travar
   const watchdog = setTimeout(() => {
-    if (isRunning) {
+    if (_isPipelineLocked()) {
       console.error(chalk.red(`[${ts()}] ⏰ TIMEOUT — ${label} travou há mais de 55min; liberando lock`));
-      isRunning = false;
+      _releasePipelineLock();
     }
   }, PIPELINE_TIMEOUT_MS);
 
@@ -76,7 +116,7 @@ async function safePipeline(label, opts = {}) {
     console.error(chalk.red(`[${ts()}] ❌ ${label} — erro: ${err.message}`));
   } finally {
     clearTimeout(watchdog);
-    isRunning = false;
+    _releasePipelineLock();
     console.log(chalk.green(`[${ts()}] ✅ ${label} — concluído\n`));
   }
 }
@@ -510,7 +550,7 @@ cron.schedule('0 22 * * *', async () => {
 let _guardianOffset = 0;
 const ALLOWED_UPDATES = ['message', 'chat_join_request', 'callback_query', 'message_reaction'];
 
-setInterval(async () => {
+const _guardianInterval = setInterval(async () => {
   try {
     const { handleGuardianCommand, handleNewMember, handleAntiFlood,
             handleJoinRequest, handleCallbackQuery,
@@ -565,7 +605,7 @@ cron.schedule('30 * * * *', async () => {
 // Ciclo leve a cada 10 min: verifica ociosidade e treina se disponível.
 // Anti-sobreposição: respeita _scanRunning para não competir com varreduras ativas.
 
-setInterval(async () => {
+const _trainInterval = setInterval(async () => {
   try {
     const { isIdle, janela, reason } = isSystemIdle({ scanRunning: _scanRunning });
     if (!isIdle) {
@@ -617,6 +657,18 @@ process.on('unhandledRejection', (reason) => {
   console.error(chalk.bold.red(`[${ts()}] ⚠️  unhandledRejection: ${msg}`));
   _notifyAdminError('unhandledRejection', reason).catch(() => {});
 });
+
+// ── Cleanup de intervals ao encerrar ─────────────────────────────────────────
+// Evita memory leaks ao encerrar o processo (SIGTERM do PM2, SIGINT do Ctrl+C)
+function _cleanup() {
+  clearInterval(_guardianInterval);
+  clearInterval(_trainInterval);
+  _releasePipelineLock();
+  console.log(chalk.gray(`[${ts()}] 🛑 Scheduler encerrado — intervals limpos`));
+}
+process.on('SIGTERM', _cleanup);
+process.on('SIGINT',  _cleanup);
+process.on('exit',    _cleanup);
 
 // ── Keepalive ─────────────────────────────────────────────────────────────────
 console.log(chalk.gray(`[${ts()}] 💓 Scheduler iniciado — aguardando horários agendados...`));

@@ -90,15 +90,27 @@ function log(icon, msg, color = 'white') {
   console.log(chalk[color]?.(line) ?? line);
 }
 
-// ── Carregamento de dados (idêntico ao deep-training.js Phase 1) ──────────────
+// ── Carregamento de dados (limita a 90 dias para evitar OOM) ─────────────────
+const MAX_HISTORY_DAYS = 90;
+
 function loadAllMatches() {
   const sources = [DAILY_DIR, HIST_CACHE_DIR].filter(d => existsSync(d));
   if (!sources.length) return [];
   const seenIds = new Set();
   const all = [];
 
+  // Calcula cutoff de 90 dias atrás (formato YYYY-MM-DD)
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - MAX_HISTORY_DAYS);
+  const cutoffStr = cutoff.toISOString().split('T')[0];
+
   for (const dir of sources) {
-    const files = readdirSync(dir).filter(f => f.endsWith('.json')).sort();
+    // Ordena decrescente (mais recente primeiro) e filtra pelo cutoff no nome do arquivo
+    const files = readdirSync(dir)
+      .filter(f => f.endsWith('.json') && f >= cutoffStr + '.json')
+      .sort()
+      .reverse();
+
     for (const file of files) {
       try {
         const raw     = JSON.parse(readFileSync(join(dir, file), 'utf-8'));

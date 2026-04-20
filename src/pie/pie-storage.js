@@ -3,7 +3,7 @@
  * Camada de persistência: predições, resultados, lições, calibração e logs de agentes.
  */
 
-import { readFileSync, writeFileSync, appendFileSync, existsSync, copyFileSync } from 'fs';
+import { readFileSync, writeFileSync, appendFileSync, existsSync, copyFileSync, renameSync, mkdirSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { randomUUID } from 'crypto';
@@ -85,13 +85,21 @@ export function loadDB() {
 }
 
 function saveDB(db) {
-  // Backup antes de escrever — protege contra crash durante gravação
+  // Escrita atômica: grava em arquivo temporário e depois renomeia
+  // Garante que pie.json nunca fica em estado parcial/corrompido (crash-safe)
   try { if (existsSync(DB_PATH)) copyFileSync(DB_PATH, DB_PATH + '.backup'); } catch {}
-  // Extrai lições antes de salvar pie.json
   const { lessons, ...dbWithoutLessons } = db;
   _saveLessons(lessons || []);
-  // Salva pie.json sem as lições (mas mantém campo vazio para compatibilidade de schema)
-  writeFileSync(DB_PATH, JSON.stringify({ ...dbWithoutLessons, lessons: [] }, null, 2), 'utf-8');
+  const tmpPath = DB_PATH + '.tmp';
+  try {
+    mkdirSync(dirname(DB_PATH), { recursive: true });
+    writeFileSync(tmpPath, JSON.stringify({ ...dbWithoutLessons, lessons: [] }, null, 2), 'utf-8');
+    renameSync(tmpPath, DB_PATH); // operação atômica no SO
+  } catch (e) {
+    // Fallback para escrita direta se rename falhar (ex: cross-device)
+    try { writeFileSync(DB_PATH, JSON.stringify({ ...dbWithoutLessons, lessons: [] }, null, 2), 'utf-8'); } catch {}
+    console.error(`[PIE] saveDB fallback (rename falhou): ${e.message}`);
+  }
 }
 
 function _probRange(prob) {

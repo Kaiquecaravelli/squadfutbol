@@ -43,8 +43,11 @@ function dataHoje() {
 }
 
 function saudacao() {
-  const hora = new Date().toLocaleString('pt-BR', { hour: 'numeric', timeZone: 'America/Sao_Paulo' });
-  const h    = parseInt(hora);
+  // Usa hour12:false para garantir valor numérico sem "AM"/"PM" em qualquer locale
+  const hora = new Date().toLocaleString('pt-BR', {
+    hour: '2-digit', hour12: false, timeZone: 'America/Sao_Paulo',
+  });
+  const h = parseInt(hora, 10);
   if (h < 12) return 'Bom dia';
   if (h < 18) return 'Boa tarde';
   return 'Boa noite';
