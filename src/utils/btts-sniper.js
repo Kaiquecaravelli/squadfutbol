@@ -16,6 +16,198 @@ import { readFileSync, writeFileSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
+// ── Derbies históricos — calibração P_B3 (19/04/2026) ────────────────────────
+const DERBIES_HISTORICOS = new Set([
+  // Inglaterra
+  'everton_liverpool', 'liverpool_everton',
+  'manchester city_manchester united', 'manchester united_manchester city',
+  'arsenal_tottenham', 'tottenham_arsenal',
+  'chelsea_arsenal', 'arsenal_chelsea',
+  'chelsea_tottenham', 'tottenham_chelsea',
+  'aston villa_birmingham', 'birmingham_aston villa',
+  // Brasil
+  'flamengo_fluminense', 'fluminense_flamengo',
+  'santos_palmeiras', 'palmeiras_santos',
+  'corinthians_são paulo', 'são paulo_corinthians',
+  'corinthians_sao paulo', 'sao paulo_corinthians',
+  'grêmio_internacional', 'internacional_grêmio',
+  'gremio_internacional', 'internacional_gremio',
+  'atlético mineiro_cruzeiro', 'cruzeiro_atlético mineiro',
+  'atletico mineiro_cruzeiro', 'cruzeiro_atletico mineiro',
+  'vasco_flamengo', 'flamengo_vasco',
+  'ceará_fortaleza', 'fortaleza_ceará',
+  'ceara_fortaleza', 'fortaleza_ceara',
+  // Espanha
+  'real madrid_barcelona', 'barcelona_real madrid',
+  'atlético de madrid_real madrid', 'real madrid_atlético de madrid',
+  'atletico de madrid_real madrid', 'real madrid_atletico de madrid',
+  'barcelona_espanyol', 'espanyol_barcelona',
+  // Itália
+  'inter_milan', 'milan_inter',
+  'juventus_torino', 'torino_juventus',
+  'roma_lazio', 'lazio_roma',
+  // França
+  'psg_lyon', 'lyon_psg',
+  'paris saint-germain_lyon', 'lyon_paris saint-germain',
+  'marseille_psg', 'psg_marseille',
+  // Alemanha
+  'borussia dortmund_schalke', 'schalke_borussia dortmund',
+  'fc bayern münchen_borussia dortmund', 'borussia dortmund_fc bayern münchen',
+  'fc bayern munchen_borussia dortmund', 'borussia dortmund_fc bayern munchen',
+]);
+
+function _isDerbyHistorico(matchData) {
+  const casa = (matchData.home?.team || matchData.home_team || '').toLowerCase().trim();
+  const fora = (matchData.away?.team || matchData.away_team || '').toLowerCase().trim();
+  return DERBIES_HISTORICOS.has(`${casa}_${fora}`) || DERBIES_HISTORICOS.has(`${fora}_${casa}`);
+}
+
+// ── Padrões BTTS — calibração 19/04/2026 ─────────────────────────────────────
+// Derivados de análise de 15 jogos BTTS confirmados (7 ligas · 4 países)
+// Bônus em pp (pontos percentuais). Teto acumulado: +15pp por análise.
+const PADROES_BTTS = [
+  {
+    id:      'P_B1_OVER35_CORRELACAO',
+    // 11/15 jogos com 4+ gols totais tiveram BTTS. P(BTTS|Over3.5≥70%) ≈ 0.95
+    ativo:   (r, md) => (r._probOver35 ?? 0) >= 70,
+    bonus:   8, // pp
+  },
+  {
+    id:      'P_B2_VISITANTE_REBAIXAMENTO',
+    // 7/15 jogos: time inferior/rebaixamento visitante marcou mesmo perdendo
+    ativo:   (r, md) => {
+      const pos  = md.away?.league_position ?? md.away?.posicao ?? 0;
+      const total = md.total_teams ?? md.away?.total_times ?? 20;
+      return pos > 0 && pos >= total - 4;
+    },
+    bonus:   7,
+  },
+  {
+    id:      'P_B3_DERBY_CLASSICO',
+    // Everton×Liverpool confirmou: rivalidade elimina postura conservadora
+    ativo:   (r, md) => _isDerbyHistorico(md),
+    bonus:   9,
+  },
+  {
+    id:      'P_B4_FAVORITO_TAMBEM_SOFRE',
+    // 10/15: favorito venceu mas levou gol. Remove penalidade implícita por desequilíbrio.
+    ativo:   (r, md) => {
+      const posC = md.home?.league_position ?? md.home?.posicao ?? 0;
+      const posF = md.away?.league_position ?? md.away?.posicao ?? 0;
+      return posC > 0 && posF > 0 && Math.abs(posC - posF) >= 8;
+    },
+    bonus:   4,
+  },
+  {
+    id:      'P_B5_SEGUNDA_DIVISAO_OFENSIVA',
+    // Série B BR, Championship EN, Ligue 2 FR, Serie B IT — defesas menos organizadas
+    ligas:   [
+      'brasileirão série b', 'brasileirao serie b', 'série b', 'serie b',
+      'ligue 2',
+      // Championship removida: já está em DEAD_LEAGUE_PATTERNS (sem BTTS histórico)
+      // 2. Bundesliga: EXCLUÍDA (BTTS historicamente baixo na Bundesliga 2)
+      'segunda division', 'segunda división',
+    ],
+    ativo:   (r, md) => {
+      const comp = (md.competition || md.league || '').toLowerCase();
+      return PADROES_BTTS.find(p => p.id === 'P_B5_SEGUNDA_DIVISAO_OFENSIVA')
+        .ligas.some(l => comp.includes(l));
+    },
+    bonus:   5,
+    fator:   1.03, // eleva prob_base em 3% antes dos bônus aditivos
+  },
+  {
+    id:      'P_B6_COPA_DOMESTICA',
+    // FA Cup Aston Villa 4-3 Sunderland: eliminação direta remove postura conservadora
+    ligas:   ['fa cup', 'copa do brasil', 'coupe de france', 'coppa italia', 'dfb pokal'],
+    // copa del rey está em DEAD_LEAGUE_PATTERNS → não aplicar
+    ativo:   (r, md) => {
+      const comp = (md.competition || md.league || '').toLowerCase();
+      return PADROES_BTTS.find(p => p.id === 'P_B6_COPA_DOMESTICA')
+        .ligas.some(l => comp.includes(l));
+    },
+    bonus:   6,
+  },
+  {
+    id:      'P_B7_H2H_EMPATE_FREQUENTE',
+    // 3 empates hoje — todos BTTS. H2H com ≥40% de empates alimenta BTTS.
+    ativo:   (r, md) => (md.h2h?.draw_rate ?? md.taxa_empate_h2h ?? 0) >= 0.40,
+    bonus:   5,
+  },
+  {
+    id:      'P_B8_LIGUE1_SISTEMATICO',
+    // 3/3 jogos Ligue 1 hoje com BTTS. Whitelist mantida com fator extra.
+    ativo:   (r, md) => {
+      const comp = (md.competition || md.league || '').toLowerCase();
+      return comp.includes('ligue 1') || comp.includes('ligue1');
+    },
+    bonus:   4,
+  },
+  {
+    id:      'P_B10_SERIE_A_PRESSAO',
+    // Santos marcou 2, Criciúma marcou 2 — times pressionados da Série A atacam
+    ativo:   (r, md) => {
+      const comp = (md.competition || md.league || '').toLowerCase();
+      const isSerieA = (comp.includes('brasileirão') || comp.includes('brasileirao')) &&
+                       !comp.includes('série b') && !comp.includes('serie b');
+      const posC = md.home?.league_position ?? 0;
+      const posF = md.away?.league_position ?? 0;
+      return isSerieA && (posC >= 14 || posF >= 14);
+    },
+    bonus:   6,
+  },
+  // P_B9 é princípio arquitetural — não adiciona bônus, apenas documenta que
+  // prob_vitória_mandante NÃO deve ser usada como fator BTTS (PSG perdeu mas marcou)
+];
+
+/**
+ * Aplica os padrões BTTS (P_B1–P_B10) à probabilidade retornada pelo LLM.
+ * Deve ser chamado ANTES do kill switch para que os padrões possam ajudar
+ * sinais borderline a cruzar o threshold.
+ *
+ * @param {object} result    — saída do agente { probabilidade, confianca, ... }
+ * @param {object} matchData — dados da partida
+ * @returns {{ result: object, bonus_total: number, padroes_ativos: string[] }}
+ */
+export function aplicarBonusBTTS(result, matchData) {
+  let prob     = result.probabilidade ?? 0;
+  let bonus    = 0;
+  const ativos = [];
+  const MAX_BONUS = 15; // pp — teto acumulado
+
+  for (const padrao of PADROES_BTTS) {
+    try {
+      if (!padrao.ativo(result, matchData)) continue;
+
+      // Fator multiplicativo (aplicado à prob base, antes dos bônus aditivos)
+      if (padrao.fator) {
+        prob = Math.min(prob * padrao.fator, 99);
+      }
+
+      // Bônus aditivo (com teto)
+      if (padrao.bonus && bonus < MAX_BONUS) {
+        const aplicar = Math.min(padrao.bonus, MAX_BONUS - bonus);
+        bonus += aplicar;
+        ativos.push(`${padrao.id}(+${aplicar}pp)`);
+      } else if (padrao.fator) {
+        ativos.push(`${padrao.id}(×${padrao.fator})`);
+      }
+    } catch { /* padrão individual não bloqueia o pipeline */ }
+  }
+
+  if (ativos.length === 0) return { result, bonus_total: 0, padroes_ativos: [] };
+
+  const prob_final = Math.min(prob + bonus, 99);
+  const novo_result = { ...result, probabilidade: Math.round(prob_final) };
+
+  console.log(
+    `[BTTS Padrões] ${ativos.join(' · ')} ` +
+    `· prob ${result.probabilidade}% → ${Math.round(prob_final)}%`
+  );
+
+  return { result: novo_result, bonus_total: bonus, padroes_ativos: ativos };
+}
+
 const __dirSn    = dirname(fileURLToPath(import.meta.url));
 const TRACKER    = join(__dirSn, '../../data/btts-tracker.json');
 

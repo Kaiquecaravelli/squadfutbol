@@ -20,7 +20,7 @@ import { CornersAgent }      from '../../squads/betting-analysis/market-agents/C
 import { aggregateMatchData } from '../scrapers/aggregator.js';
 import { saveMatchScan } from '../utils/obsidian.js';
 import { getAgentCalibration } from '../pie/pie-storage.js';
-import { bttsKillSwitch, bttsMinProbability, trackBttsDecision, BTTS_MIN_CONFIDENCE, bttsIsDeadLeague } from '../utils/btts-sniper.js';
+import { bttsKillSwitch, bttsMinProbability, trackBttsDecision, BTTS_MIN_CONFIDENCE, bttsIsDeadLeague, aplicarBonusBTTS } from '../utils/btts-sniper.js';
 import { goalsKillSwitch, goalsMinProbability, goalsMinConfidence, trackGoalsDecision, GOALS_MIN_CONFIDENCE } from '../utils/goals-sniper.js';
 import { cornersKillSwitch, cornersMinConfidence, trackCornersDecision, CORNERS_MIN_CONFIDENCE, cornersIsDeadLeague } from '../utils/corners-sniper.js';
 import { KILL_ZONE_THRESHOLD, isKillZone, trackKillZone }                   from '../utils/kill-zone.js';
@@ -294,6 +294,9 @@ async function _analyzeMatch(match, idx, notifiedKeys) {
       // BTTS Sniper Gate — Kill Switches v3 (módulo btts-sniper.js compartilhado)
       const mktForBtts = (r.mercado || r.market || '').trim();
       if (mktForBtts === 'BTTS' || mktForBtts === 'Ambas Marcam') {
+        // Padrões P_B1–P_B10 (calibração 19/04/2026): elevam probabilidade antes do gate
+        const bonusResult = aplicarBonusBTTS(r, matchData);
+        if (bonusResult.padroes_ativos.length > 0) r = { ...r, ...bonusResult.result };
         const bttsBlock = bttsKillSwitch(r, matchData);
         if (bttsBlock) {
           console.log(chalk.gray(`    🚫 [BTTS Sniper] ${bttsBlock}`));
