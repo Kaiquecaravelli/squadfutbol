@@ -512,8 +512,20 @@ export async function runResultChecker() {
       const acertou = determineOutcome(entry.market, entry.prediction, result.score, entry, result.stats);
 
       if (acertou === null) {
-        console.log(chalk.yellow('Resultado não verificável para este mercado'));
-        skipped++;
+        // Verificar se o jogo terminou há muito tempo (> 3h) — se sim, mover para dead-letter
+        // Evita loop eterno para mercados não verificáveis (ex: escanteios sem stats)
+        const jogoFim = entry.gameTime
+          ? new Date(entry.gameTime).getTime() + 110 * 60_000  // kickoff + 110min estimado
+          : new Date(entry.sentAt).getTime() + 3 * 3_600_000;  // sentAt + 3h fallback
+        const horasAposJogo = (Date.now() - jogoFim) / 3_600_000;
+
+        if (horasAposJogo > 3) {
+          _moveToDeadLetter(entry, `mercado não verificável (${entry.market}) após ${horasAposJogo.toFixed(1)}h do apito`);
+          console.log(chalk.yellow(`Não verificável → dead-letter (${entry.market})`));
+        } else {
+          console.log(chalk.yellow('Resultado não verificável para este mercado — aguardar stats'));
+          skipped++;
+        }
         await sleep(DELAY_MS);
         continue;
       }

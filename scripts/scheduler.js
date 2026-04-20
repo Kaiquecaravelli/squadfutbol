@@ -41,6 +41,7 @@ import { runSweepAndLearn }  from './sweep-and-learn.js';
 import { runPreOpCycle } from './prelive-monitor.js';
 import { runPreLiveSuperOdds } from './prelive-superodds-now.js';
 import { checkAndEscalate, runEscalationProtocol } from './escalation-protocol.js';
+import { restaurarAoStartup } from './alert-protocol.js';
 import { sendDailyClosingReport } from './educational-analysis.js';
 import { getDailyStatus } from './daily-counter.js';
 import { layerOneCheck, markScanExecutedSync } from './cycle-check.js';
@@ -92,6 +93,13 @@ if (process.argv.includes('--once')) {
 
 // ── Agendamento ────────────────────────────────────────────────────────────────
 import('dotenv/config').catch(() => {});
+
+// ── Limpeza de alertas orphan de sessões anteriores ───────────────────────────
+try {
+  await restaurarAoStartup();
+} catch (e) {
+  console.warn(chalk.yellow(`[AlertProtocol] Aviso ao restaurar alertas: ${e.message}`));
+}
 
 // ── Group Guardian — ativa proteção de conteúdo no startup ────────────────────
 try {

@@ -21,19 +21,23 @@ import { readFileSync, writeFileSync, existsSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
-const __dirname    = dirname(fileURLToPath(import.meta.url));
-const QUEUE_FILE   = join(__dirname, '../data/alert-queue.json');
-const CACHE_FILE   = join(__dirname, '../data/superbet-url-cache.json');
+const __dirname      = dirname(fileURLToPath(import.meta.url));
+const QUEUE_FILE     = join(__dirname, '../data/alert-queue.json');
+const CACHE_FILE     = join(__dirname, '../data/superbet-url-cache.json');
+const ALERT_STATE_FILE = join(__dirname, '../data/alert-active.json');
 
 const ALERT_WAIT_MS     = 90_000;        // 90 segundos entre alerta e sinal
 const MIN_INTERVAL_MS   = 10 * 60_000;   // 10 minutos entre alertas consecutivos
 const MAX_ODDS_DRIFT    = 0.03;          // cancelar se odds mudar > 3%
+const ALERT_MAX_AGE_MS  = 5 * 60_000;   // 5 minutos máximo no grupo
 
 // ── Estado em memória (singleton do processo) ─────────────────────────────────
-let _processorRunning = false;
-let _lastAlertTs      = 0;
-let _activeAlert      = false;
-let _queue            = [];  // { matchData, enriched, sendFn, sendAdminFn, queuedAt, odds }
+let _processorRunning  = false;
+let _lastAlertTs       = 0;
+let _activeAlert       = false;
+let _alertMsgId        = null;   // message_id do alerta ativo no grupo
+let _alertTimeoutHandle = null;  // handle do auto-delete de 5 min
+let _queue             = [];  // { matchData, enriched, sendFn, sendAdminFn, queuedAt, odds }
 
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
@@ -53,8 +57,53 @@ const CANCEL_TEXT = `⚠️ <b>ANÁLISE CANCELADA</b>
 
 <i>Continuamos monitorando o mercado.</i>`;
 
-// ── Envio de mensagem simples ao Telegram ─────────────────────────────────────
+// ── Persistência do estado do alerta (para recuperação após restart) ──────────
 
+function _saveAlertState(msgId, sinalId) {
+  try {
+    writeFileSync(ALERT_STATE_FILE, JSON.stringify({
+      msgId, sinalId, ts: Date.now(),
+    }), 'utf-8');
+  } catch { /* silent */ }
+}
+
+function _clearAlertState() {
+  try {
+    writeFileSync(ALERT_STATE_FILE, JSON.stringify({}), 'utf-8');
+  } catch { /* silent */ }
+}
+
+function _loadAlertState() {
+  try {
+    if (!existsSync(ALERT_STATE_FILE)) return null;
+    const data = JSON.parse(readFileSync(ALERT_STATE_FILE, 'utf-8'));
+    return data?.msgId ? data : null;
+  } catch { return null; }
+}
+
+// ── Envio de mensagem ao Telegram ─────────────────────────────────────────────
+
+/** Envia mensagem e retorna o message_id (para posterior deleção). */
+async function _sendGetMsgId(chatId, text, token) {
+  try {
+    const url = `https://api.telegram.org/bot${token}/sendMessage`;
+    const res = await fetch(url, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({
+        chat_id:                  chatId,
+        text,
+        parse_mode:               'HTML',
+        disable_web_page_preview: true,
+      }),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const json = await res.json();
+    return json?.result?.message_id ?? null;
+  } catch { return null; }
+}
+
+/** Envia mensagem sem capturar message_id (para cancelamentos e admin). */
 async function _sendToTelegram(chatId, text, token) {
   try {
     const url = `https://api.telegram.org/bot${token}/sendMessage`;
@@ -71,6 +120,33 @@ async function _sendToTelegram(chatId, text, token) {
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return true;
   } catch { return false; }
+}
+
+/** Apaga uma mensagem do grupo. */
+async function _deleteMsg(chatId, msgId, token) {
+  if (!msgId) return;
+  try {
+    const url = `https://api.telegram.org/bot${token}/deleteMessage`;
+    await fetch(url, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ chat_id: chatId, message_id: msgId }),
+    });
+  } catch { /* mensagem já apagada ou expirada — ignorar */ }
+}
+
+/** Cancela o timeout de auto-delete e apaga o alerta do grupo. */
+async function _clearActiveAlert(chatId, token) {
+  if (_alertTimeoutHandle) {
+    clearTimeout(_alertTimeoutHandle);
+    _alertTimeoutHandle = null;
+  }
+  if (_alertMsgId) {
+    await _deleteMsg(chatId, _alertMsgId, token);
+    console.log(`[AlertProtocol] 🗑  Alerta apagado do grupo (msg_id=${_alertMsgId})`);
+    _alertMsgId = null;
+  }
+  _clearAlertState();
 }
 
 // ── Validação final (Módulo 3.3) ──────────────────────────────────────────────
@@ -150,8 +226,20 @@ async function _processQueue() {
       // ── PASSO 1: Enviar alerta ao grupo ─────────────────────────────────────
       _activeAlert = true;
       _lastAlertTs = Date.now();
+      const sinalId = `sinal_${Date.now()}`;
       console.log(`[AlertProtocol] 🔔 Enviando alerta para "${item.matchData?.match || 'partida'}"`);
-      await _sendToTelegram(chatId, ALERT_TEXT, token);
+      _alertMsgId = await _sendGetMsgId(chatId, ALERT_TEXT, token);
+      if (_alertMsgId) {
+        _saveAlertState(_alertMsgId, sinalId);
+        console.log(`[AlertProtocol] 🔔 Alerta enviado (msg_id=${_alertMsgId})`);
+      }
+
+      // Auto-delete de segurança: apaga alerta se o sinal não chegar em 5 min
+      _alertTimeoutHandle = setTimeout(async () => {
+        console.warn(`[AlertProtocol] ⏰ Timeout 5min — apagando alerta orphan (msg_id=${_alertMsgId})`);
+        await _clearActiveAlert(chatId, token);
+        _activeAlert = false;
+      }, ALERT_MAX_AGE_MS);
 
       // ── PASSO 2: Aguardar 90 segundos (validação em paralelo) ───────────────
       console.log('[AlertProtocol] ⏳ Aguardando 90 segundos para validação final...');
@@ -161,8 +249,9 @@ async function _processQueue() {
       const { valid, reason } = _validateSignal(item);
 
       if (!valid) {
-        // Sinal cancelado — notifica grupo
+        // Alerta apagado ANTES de publicar o cancelamento
         console.log(`[AlertProtocol] ⚠️ Sinal cancelado: ${reason}`);
+        await _clearActiveAlert(chatId, token);
         await _sendToTelegram(chatId, CANCEL_TEXT, token);
         _activeAlert = false;
         continue;
@@ -176,6 +265,10 @@ async function _processQueue() {
       } catch (err) {
         console.error(`[AlertProtocol] ❌ Erro ao enviar sinal: ${err.message}`);
       }
+
+      // ── PASSO 4.5: APAGAR ALERTA imediatamente após publicar o sinal ─────────
+      await _clearActiveAlert(chatId, token);
+      console.log(`[AlertProtocol] ✅ Alerta apagado do grupo após sinal publicado`);
 
       // ── PASSO 5: Notificação ao admin (Módulo 4.3) ───────────────────────────
       if (sent && adminId) {
@@ -212,8 +305,36 @@ async function _processQueue() {
     }
   } finally {
     _processorRunning = false;
+    _activeAlert = false;
     console.log('[AlertProtocol] Processador finalizado');
   }
+}
+
+// ── Limpeza de alertas orphan ao startup ──────────────────────────────────────
+
+/**
+ * Verificar e apagar alertas de sessões anteriores.
+ * Chamar no startup do scheduler, logo após carregar as variáveis de ambiente.
+ */
+export async function restaurarAoStartup() {
+  const estado = _loadAlertState();
+  if (!estado?.msgId) {
+    console.log('[AlertProtocol] Startup: nenhum alerta orphan encontrado');
+    return;
+  }
+
+  const token   = process.env.TELEGRAM_BOT_TOKEN;
+  const chatId  = process.env.TELEGRAM_GROUP_ID || process.env.TELEGRAM_CHAT_ID;
+  const minAtras = ((Date.now() - estado.ts) / 60_000).toFixed(1);
+
+  console.warn(`[AlertProtocol] ⚠️ Alerta orphan detectado: msg_id=${estado.msgId} · ${minAtras} min atrás`);
+
+  if (token && chatId) {
+    await _deleteMsg(chatId, estado.msgId, token);
+    console.log(`[AlertProtocol] ✅ Alerta orphan apagado (msg_id=${estado.msgId})`);
+  }
+
+  _clearAlertState();
 }
 
 // ── API pública ───────────────────────────────────────────────────────────────
