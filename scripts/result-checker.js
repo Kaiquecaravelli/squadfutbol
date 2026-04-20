@@ -36,11 +36,56 @@ const DELAY_MS           = 1200;
 const MAX_RETRIES        = 10;
 const FAILED_CHECKS_PATH = join(ROOT, 'data/failed-checks.json');
 const PENDING_PATH       = join(ROOT, 'data/pending-analyses.json');
+
+// ── Dead-letter: constantes e motivos padronizados ────────────────────────────
+const HORAS_PARA_DEAD_LETTER = 3;   // 3h após fim estimado do jogo → dead-letter
+const DURACAO_JOGO_MIN       = 110; // duração estimada em minutos (90min + acréscimos)
+
+export const MOTIVOS_DEAD_LETTER = {
+  TIMEOUT_3H:           'TIMEOUT_3H — jogo encerrado há +3h sem resultado',
+  MERCADO_INCALCULAVEL: 'MERCADO_INCALCULAVEL — determineOutcome retornou null',
+  MAX_TENTATIVAS:       'MAX_TENTATIVAS — excedeu limite de tentativas SofaScore',
+  SEM_DATA:             'SEM_DATA — sinal sem gameTime nem sentAt',
+};
 const HEADERS            = {
   'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
   'Accept':     'application/json',
   'Referer':    'https://www.sofascore.com/',
 };
+
+// ── Dead-letter: verifica se entrada deve ser descartada antes de chamar a API ──
+/**
+ * Verifica se um sinal pendente deve ir direto para dead-letter,
+ * sem nem chamar a API do SofaScore (poupa requests).
+ *
+ * Retorna o motivo (string) se deve virar dead-letter, ou null se ainda
+ * deve ser processado normalmente.
+ *
+ * Exportado para uso em testes.
+ */
+export function verificarDeadLetter(entry) {
+  const agora    = Date.now();
+  const kickoff  = entry.gameTime
+    ? new Date(entry.gameTime).getTime()
+    : entry.sentAt ? new Date(entry.sentAt).getTime() : null;
+
+  // Sem nenhuma referência de tempo → não podemos monitorar
+  if (!kickoff) return MOTIVOS_DEAD_LETTER.SEM_DATA;
+
+  // Fim estimado do jogo = kickoff + duração estimada
+  const jogoFimEstimado = kickoff + DURACAO_JOGO_MIN * 60_000;
+  const horasAposJogo   = (agora - jogoFimEstimado) / 3_600_000;
+
+  // Jogo ainda em andamento → continuar processando normalmente
+  if (horasAposJogo <= 0) return null;
+
+  // Jogo terminou há mais de HORAS_PARA_DEAD_LETTER → dead-letter
+  if (horasAposJogo > HORAS_PARA_DEAD_LETTER) {
+    return `${MOTIVOS_DEAD_LETTER.TIMEOUT_3H} (${horasAposJogo.toFixed(1)}h)`;
+  }
+
+  return null;
+}
 
 // ── Avalia se a predição acertou (score + stats opcionais + entry para context) ──
 function determineOutcome(market, prediction, score, entry = {}, stats = null) {
@@ -451,13 +496,28 @@ export async function runResultChecker() {
 
   console.log(chalk.white(`  ${pending.length} análise(s) pendente(s)\n`));
 
-  let greens = 0, reds = 0, skipped = 0;
+  let greens = 0, reds = 0, skipped = 0, deadLettered = 0;
 
   for (const entry of pending) {
     // Melhoria 2: pula silenciosamente entradas em cooldown de rate-limit
     if (entry.nextRetry && Date.now() < entry.nextRetry) {
       skipped++;
       continue;
+    }
+
+    // Dead-letter check ANTES de chamar SofaScore (poupa requests)
+    // Jogos com mais de HORAS_PARA_DEAD_LETTER após o apito final → descartar
+    if (!DRY_RUN) {
+      const motivoDl = verificarDeadLetter(entry);
+      if (motivoDl) {
+        const label = `${entry.match} [${entry.market}]`;
+        process.stdout.write(`  → ${label.substring(0, 50).padEnd(50)}  `);
+        console.log(chalk.gray(`⏰ DL: ${motivoDl.split('(')[0].trim()}`));
+        _moveToDeadLetter(entry, motivoDl);
+        deadLettered++;
+        await sleep(DELAY_MS);
+        continue;
+      }
     }
 
     const label = `${entry.match} [${entry.market}]`;
@@ -492,7 +552,11 @@ export async function runResultChecker() {
         entry.retries = (entry.retries || 0) + 1;
         _incrementRetries(entry.id);
         if (entry.retries >= MAX_RETRIES) {
-          _moveToDeadLetter(entry, `SofaScore indisponível após ${entry.retries} tentativas`);
+          _moveToDeadLetter(
+            entry,
+            `${MOTIVOS_DEAD_LETTER.MAX_TENTATIVAS} (${entry.retries}/${MAX_RETRIES})`
+          );
+          deadLettered++;
         } else {
           console.log(chalk.gray(`SofaScore indisponível — pular (tentativa ${entry.retries}/${MAX_RETRIES})`));
         }
@@ -512,16 +576,20 @@ export async function runResultChecker() {
       const acertou = determineOutcome(entry.market, entry.prediction, result.score, entry, result.stats);
 
       if (acertou === null) {
-        // Verificar se o jogo terminou há muito tempo (> 3h) — se sim, mover para dead-letter
-        // Evita loop eterno para mercados não verificáveis (ex: escanteios sem stats)
+        // Jogo finalizado (SofaScore confirma) mas outcome não determinável:
+        // Se > 3h após fim estimado → dead-letter; senão → tentar de novo
         const jogoFim = entry.gameTime
-          ? new Date(entry.gameTime).getTime() + 110 * 60_000  // kickoff + 110min estimado
-          : new Date(entry.sentAt).getTime() + 3 * 3_600_000;  // sentAt + 3h fallback
+          ? new Date(entry.gameTime).getTime() + DURACAO_JOGO_MIN * 60_000
+          : new Date(entry.sentAt).getTime() + (DURACAO_JOGO_MIN + HORAS_PARA_DEAD_LETTER * 60) * 60_000;
         const horasAposJogo = (Date.now() - jogoFim) / 3_600_000;
 
-        if (horasAposJogo > 3) {
-          _moveToDeadLetter(entry, `mercado não verificável (${entry.market}) após ${horasAposJogo.toFixed(1)}h do apito`);
-          console.log(chalk.yellow(`Não verificável → dead-letter (${entry.market})`));
+        if (horasAposJogo > HORAS_PARA_DEAD_LETTER) {
+          _moveToDeadLetter(
+            entry,
+            `${MOTIVOS_DEAD_LETTER.MERCADO_INCALCULAVEL} após ${horasAposJogo.toFixed(1)}h`
+          );
+          console.log(chalk.gray(`Não verificável → dead-letter`));
+          deadLettered++;
         } else {
           console.log(chalk.yellow('Resultado não verificável para este mercado — aguardar stats'));
           skipped++;
@@ -622,7 +690,8 @@ export async function runResultChecker() {
 
   // Resumo
   console.log('\n' + '═'.repeat(64));
-  console.log(`  ✅ GREEN: ${greens}  |  ❌ RED: ${reds}  |  ⏳ Pendentes: ${skipped}`);
+  const dlStr = deadLettered > 0 ? chalk.gray(`  |  📭 DL: ${deadLettered}`) : '';
+  console.log(`  ✅ GREEN: ${greens}  |  ❌ RED: ${reds}  |  ⏳ Pendentes: ${skipped}${dlStr}`);
   console.log('═'.repeat(64) + '\n');
 
   // Melhoria 3: health alert ao admin após N execuções sem resolução
