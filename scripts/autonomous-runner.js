@@ -290,7 +290,7 @@ async function runHistoricalExpansion() {
  *  2. Todo resultado foi gravado no PIE (pieSaved === true)
  *  3. Entradas pendentes com jogo encerrado há >3h recebem nova tentativa
  *
- * Agenda: a cada 15 min (cron '*/15 * * * *')
+ * Agenda: a cada 15 min (cron "* /15 * * * *")
  */
 async function runTelegramAudit() {
   if (state.resultRunning) return;
