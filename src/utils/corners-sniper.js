@@ -484,25 +484,20 @@ const PADROES_CORNERS = [
     },
   },
   {
-    // C_E9 — Série B/C zona intermediária = baixa intensidade = corners baixos
-    // Atlético-GO 1-1, Ceará 0-0: sem urgência = Under corners provável (2 amostras)
-    id: 'C_E9_ZONA_INT_CORNERS_BAIXOS',
-    fator: 0.88,
-    d65: -5, d75: -6, d85: -4,
-    ativo: (_r, md) => {
-      const comp  = (md.competition || md.league || '').toLowerCase();
-      const isDivInf = (comp.includes('série b') || comp.includes('serie b') ||
-                        comp.includes('série c') || comp.includes('serie c')) &&
-                       (comp.includes('brasil') || comp.includes('brasileir'));
-      if (!isDivInf) return false;
-      const total = md.total_teams ?? 20;
-      const posH  = md.home?.position ?? md.home_position ?? null;
-      const posA  = md.away?.position ?? md.away_position ?? null;
-      if (posH === null || posA === null) return false;
-      const midLow  = Math.ceil(total * 0.28);
-      const midHigh = Math.ceil(total * 0.70);
-      return posH >= midLow && posH <= midHigh && posA >= midLow && posA <= midHigh;
-    },
+    // C_E9 — [REVISADO 19/04/2026 — DADOS REAIS FALSIFICARAM HIPÓTESE ORIGINAL]
+    // ORIGINAL: Série B/C zona intermediária = corners baixos (λ×0.88, -6pp)
+    // FALSIFICADO: Ceará 0-0 Londrina (Série C, zona int) teve 18 corners!
+    //
+    // INSIGHT: jogo defensivo com times que NÃO conseguem marcar = MAIS corners.
+    // Times pressionam para abrir o placar → chutes na defesa → corners contínuos.
+    // A hipótese "zona intermediária = menos intensidade" confundiu GOLS com CORNERS.
+    // 0-0 não significa baixa intensidade ofensiva — significa alta ineficiência.
+    //
+    // PADRÃO REVISADO: zona intermediária Série B/C → neutro para corners (removido penalidade)
+    // Monitorar com mais dados antes de reativar qualquer ajuste direcional.
+    id: 'C_E9_ZONA_INT_REVISADO',
+    d65: 0, d75: 0, d85: 0, // DESATIVADO — falsificado por dados reais 19/04/2026
+    ativo: () => false,      // não ativa — padrão em revisão
   },
   {
     // C_E10 — Derby/clássico nacional = intensidade máxima = corners altos (2 amostras)

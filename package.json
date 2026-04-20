@@ -123,7 +123,9 @@
     "coverage-json": "node scripts/coverage-panel.js --json",
     "coverage-corners": "node scripts/coverage-panel.js --market=Corners",
     "coverage-under": "node scripts/coverage-panel.js --market=Under",
-    "notify-calibration": "node scripts/notify-calibration-deploy.js"
+    "notify-calibration": "node scripts/notify-calibration-deploy.js",
+    "corners-dia": "node scripts/coletar-escanteios-dia.js",
+    "corners-dia-dry": "node scripts/coletar-escanteios-dia.js 2026-04-19"
   },
   "dependencies": {
     "axios": "^1.7.2",
