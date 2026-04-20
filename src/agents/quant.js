@@ -64,9 +64,16 @@ const LEAGUE_CORNERS_COEF = [
  * Retorna o coeficiente corners/goals para a liga especificada.
  * Fallback para 3.6 se a liga não estiver mapeada.
  */
+// Ligas sem coeficiente próprio — registra uma vez por processo para facilitar calibração futura
+const _cornersCoefWarned = new Set();
+
 function getCornersCoef(competition) {
   const comp = (competition || '').toLowerCase();
   const entry = LEAGUE_CORNERS_COEF.find(e => comp.includes(e.pattern));
+  if (!entry && competition && !_cornersCoefWarned.has(comp)) {
+    _cornersCoefWarned.add(comp);
+    console.warn(`[Quant] ⚠️  getCornersCoef: liga sem coeficiente calibrado: "${competition}" — usando fallback 3.6 (adicione a LEAGUE_CORNERS_COEF para maior precisão)`);
+  }
   return entry ? entry.coef : 3.6;
 }
 

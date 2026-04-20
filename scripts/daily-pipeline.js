@@ -106,9 +106,13 @@ const PIE_ACCURACY_BY_MARKET = {
 
 // ── Utilidades ─────────────────────────────────────────────────────────────────
 function dateStr(daysAgo = 0) {
-  const d = new Date();
-  d.setDate(d.getDate() - daysAgo);
-  return d.toISOString().split('T')[0];
+  // Usa fuso de Brasília para garantir data correta independente do TZ do servidor
+  const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
+  now.setDate(now.getDate() - daysAgo);
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, '0');
+  const d = String(now.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
 }
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }

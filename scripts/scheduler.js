@@ -346,12 +346,19 @@ async function safeRadar(label) {
 
 // ── LIVE — verifica Superbet a cada 1h e analisa jogos em andamento ────────────
 const _liveNotifiedKeys = new Map();
+const LIVE_KEYS_MAX_SIZE = 5_000; // cap de segurança — nunca cresce além disso
 
-// Cleanup diário do Map de notificações live — evita memory leak após meses de execução
-setInterval(() => {
+// Cleanup a cada 6h: remove entradas >24h e aplica cap máximo
+const _liveKeysCleanupInterval = setInterval(() => {
   const cutoff = Date.now() - 24 * 3_600_000;
   for (const [key, tsVal] of _liveNotifiedKeys) {
     if (tsVal < cutoff) _liveNotifiedKeys.delete(key);
+  }
+  // Cap de segurança: se ainda muito grande, remove as entradas mais antigas
+  if (_liveNotifiedKeys.size > LIVE_KEYS_MAX_SIZE) {
+    const sorted = [..._liveNotifiedKeys.entries()].sort((a, b) => a[1] - b[1]);
+    const toRemove = sorted.slice(0, _liveNotifiedKeys.size - LIVE_KEYS_MAX_SIZE);
+    for (const [key] of toRemove) _liveNotifiedKeys.delete(key);
   }
   if (_liveNotifiedKeys.size > 0) {
     console.log(chalk.gray(`[Scheduler] 🧹 _liveNotifiedKeys limpo — ${_liveNotifiedKeys.size} entradas ativas`));
@@ -663,6 +670,7 @@ process.on('unhandledRejection', (reason) => {
 function _cleanup() {
   clearInterval(_guardianInterval);
   clearInterval(_trainInterval);
+  clearInterval(_liveKeysCleanupInterval);
   _releasePipelineLock();
   console.log(chalk.gray(`[${ts()}] 🛑 Scheduler encerrado — intervals limpos`));
 }
