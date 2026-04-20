@@ -22,7 +22,7 @@ import { saveMatchScan } from '../utils/obsidian.js';
 import { getAgentCalibration } from '../pie/pie-storage.js';
 import { bttsKillSwitch, bttsMinProbability, trackBttsDecision, BTTS_MIN_CONFIDENCE, bttsIsDeadLeague, aplicarBonusBTTS } from '../utils/btts-sniper.js';
 import { goalsKillSwitch, goalsMinProbability, goalsMinConfidence, trackGoalsDecision, GOALS_MIN_CONFIDENCE, aplicarPadroesOverGols, aplicarPadroesUnderGols } from '../utils/goals-sniper.js';
-import { cornersKillSwitch, cornersMinConfidence, trackCornersDecision, CORNERS_MIN_CONFIDENCE, cornersIsDeadLeague } from '../utils/corners-sniper.js';
+import { cornersKillSwitch, cornersMinConfidence, trackCornersDecision, CORNERS_MIN_CONFIDENCE, cornersIsDeadLeague, aplicarPadroesCorners } from '../utils/corners-sniper.js';
 import { KILL_ZONE_THRESHOLD, isKillZone, trackKillZone }                   from '../utils/kill-zone.js';
 import { validarUnder }                                                      from '../analysis/gateManager.js';
 import { registrarUnderBloqueado }                                           from '../data/underBlockedTracker.js';
@@ -404,6 +404,14 @@ async function _analyzeMatch(match, idx, notifiedKeys) {
       const mktForCorners = (r.mercado || r.market || '').trim();
       const isCornersMarket = /corner|escanteio/i.test(r.market || r.mercado || '');
       if (isCornersMarket) {
+        // Padrões C_E1–C_E10 (calibração 19/04/2026): ajustam prob antes de whitelist/gate
+        if (/^over corners/i.test(mktForCorners)) {
+          const cornersPatterns = aplicarPadroesCorners(r, matchData);
+          if (cornersPatterns.padroes_ativos.length > 0) {
+            r = { ...r, ...cornersPatterns.result };
+            console.log(chalk.blue(`    📐 [Corners Patterns] ${cornersPatterns.padroes_ativos.join(' · ')} → prob ${cornersPatterns.result.probabilidade}%`));
+          }
+        }
         const cornersBlock = cornersKillSwitch(r, matchData);
         if (cornersBlock) {
           console.log(chalk.gray(`    🚫 [Corners Sniper] ${cornersBlock}`));

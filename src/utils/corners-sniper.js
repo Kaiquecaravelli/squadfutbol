@@ -273,6 +273,316 @@ export function cornersKillSwitch(result, matchData) {
   return null; // aprovado
 }
 
+// ── Lambda Corners por Liga (calibração 19/04/2026) ──────────────────────────
+// Valores baseados em análise contextual de 18 jogos + calibração PIE existente.
+// Uso: coef multiplicativo para Poisson de escanteios por jogo.
+export const CORNERS_LAMBDA_LIGAS = {
+  'fa cup':                    4.20,  // copa eliminatória = máxima intensidade
+  'coupe de france':           3.95,
+  'copa do brasil':            3.40,
+  'copa del rey':              3.35,
+  'coppa italia':              3.30,
+  'dfb-pokal':                 3.55,
+  'premier league':            3.70,
+  'championship':              3.50,
+  'ligue 1':                   3.55,
+  'ligue 2':                   3.30,
+  'bundesliga':                3.50,
+  '2. bundesliga':             3.35,
+  'serie a':                   3.20,  // italiana — corners moderados apesar dos poucos gols
+  'serie b italiana':          3.05,
+  'eredivisie':                3.80,
+  'la liga':                   3.40,
+  'laliga':                    3.40,
+  'liga portugal':             3.60,
+  'mls':                       3.45,
+  'brasileirão betano':        3.15,
+  'brasileirao betano':        3.15,
+  'brasileirão série b':       3.00,
+  'brasileirao serie b':       3.00,
+  'brasileirão série c':       2.75,  // divisão menor = menos intensidade
+  'brasileirao serie c':       2.75,
+  'liga profesional':          3.10,  // Argentina
+};
+
+export function getLambdaCornersLiga(competition) {
+  const comp = (competition || '').toLowerCase();
+  for (const [key, val] of Object.entries(CORNERS_LAMBDA_LIGAS)) {
+    if (comp.includes(key)) return val;
+  }
+  return 3.20; // default europeu médio
+}
+
+// ── Padrões Corners (calibração 19/04/2026) ───────────────────────────────────
+//
+// 10 padrões C_E1–C_E10 extraídos de análise contextual de 18 jogos.
+// aplicarPadroesCorners() deve ser chamada ANTES de cornersKillSwitch() no funil.
+//
+// A whitelist por sub-mercado (KS2) permanece inviolável — os padrões ajustam
+// a probabilidade do agente para ajudá-la a cruzar o gate 80% quando aplicável.
+//
+// Estrutura de cada padrão:
+//   id:     identificador único
+//   fator:  multiplicador lambda opcional (aplicado à prob via ×fator)
+//   d65:    delta pp para Over Corners 6.5
+//   d75:    delta pp para Over Corners 7.5
+//   d85:    delta pp para Over Corners 8.5
+//   ativo:  predicado (result, matchData) → boolean
+//
+// Notas de amostragem (1 amostra → delta/2 conforme regra do analista):
+//   C_E3, C_E4, C_E5, C_E7: 1 amostra → delta reduzido à metade
+
+// Lista de derbies brasileiros para C_E10
+const _DERBIES_BR = new Set([
+  'fluminense_flamengo', 'flamengo_fluminense',
+  'fluminense_vasco', 'vasco_fluminense',
+  'fluminense_botafogo', 'botafogo_fluminense',
+  'flamengo_vasco', 'vasco_flamengo',
+  'flamengo_botafogo', 'botafogo_flamengo',
+  'vasco_botafogo', 'botafogo_vasco',
+  'atletico-mg_cruzeiro', 'cruzeiro_atletico-mg',
+  'atletico mineiro_cruzeiro', 'cruzeiro_atletico mineiro',
+  'palmeiras_corinthians', 'corinthians_palmeiras',
+  'palmeiras_santos', 'santos_palmeiras',
+  'palmeiras_sao paulo', 'sao paulo_palmeiras',
+  'corinthians_santos', 'santos_corinthians',
+  'corinthians_sao paulo', 'sao paulo_corinthians',
+  'santos_sao paulo', 'sao paulo_santos',
+  'fluminense_santos', 'santos_fluminense',
+  'internacional_gremio', 'gremio_internacional',
+  'bahia_vitoria', 'vitoria_bahia',
+  'sport_nautico', 'nautico_sport',
+]);
+
+function _isDerbyBR(matchData) {
+  const home = (matchData.home?.team || matchData.home_team || '').toLowerCase().replace(/\s+/g, ' ');
+  const away = (matchData.away?.team || matchData.away_team || '').toLowerCase().replace(/\s+/g, ' ');
+  const key  = `${home}_${away}`.replace(/\s/g, '-');
+  const key2 = `${home}_${away}`;
+  return _DERBIES_BR.has(key) || _DERBIES_BR.has(key2);
+}
+
+const _COPA_LIGAS_CORNERS = new Set([
+  'fa cup', 'copa do brasil', 'copa del rey', 'coupe de france',
+  'coppa italia', 'dfb-pokal', 'dfb pokal', 'efl cup',
+]);
+
+const PADROES_CORNERS = [
+  {
+    // C_E1 — Correlação Over 2.5 → corners elevados (7 amostras — bonus completo)
+    // Gols e corners correlacionados r≈0.72 historicamente.
+    id: 'C_E1_OVER25_CORNERS',
+    fator: 1.15,
+    d65: 5, d75: 5, d85: 3,
+    ativo: (_r, md) => {
+      const gH = md.home?.goals_scored_avg ?? md.home_goals_avg ?? null;
+      const gA = md.away?.goals_scored_avg ?? md.away_goals_avg ?? null;
+      if (gH === null || gA === null) return false;
+      return (gH + gA) >= 2.5;
+    },
+  },
+  {
+    // C_E2 — Time grande (top 4) em jogo de alta pressão = avalanche de corners
+    // Atlético-MG, Inter: times grandes geram muitos ataques (2 amostras)
+    id: 'C_E2_TIME_GRANDE_ALTA_PRESSAO',
+    d65: 5, d75: 8, d85: 5,
+    ativo: (_r, md) => {
+      const posH = md.home?.position ?? md.home_position ?? null;
+      // Proxy: time top 4 em casa + atacante médio alto
+      if (posH === null) return false;
+      const gH = md.home?.goals_scored_avg ?? null;
+      return posH <= 4 && gH !== null && gH >= 1.8;
+    },
+  },
+  {
+    // C_E3 — Copa doméstica = máximo de corners (1 amostra → delta/2)
+    // FA Cup Aston Villa 4-3 Sunderland: eliminação direta → ambos atacam ao máximo
+    id: 'C_E3_COPA_DOMESTICA_CORNERS',
+    fator: 1.20,
+    d65: 4, d75: 4, d85: 4, // spec: +7pp O9.5 → reduzido por 1 amostra
+    ativo: (_r, md) => {
+      const comp = (md.competition || md.league || '').toLowerCase();
+      return [..._COPA_LIGAS_CORNERS].some(c => comp.includes(c));
+    },
+  },
+  {
+    // C_E4 — Domínio unilateral: xG combinado alto + diferença de posição ≥ 6
+    // Rennes 3-0 Strasbourg (1 amostra → delta/2)
+    id: 'C_E4_DOMINIO_UNILATERAL',
+    fator: 1.12,
+    d65: 3, d75: 3, d85: 3, // spec: +6pp → reduzido por 1 amostra
+    ativo: (_r, md) => {
+      const posH = md.home?.position ?? md.home_position ?? null;
+      const posA = md.away?.position ?? md.away_position ?? null;
+      const xgH  = md.home?.xg_avg ?? md.home?.xg ?? null;
+      const xgA  = md.away?.xg_avg ?? md.away?.xg ?? null;
+      if (posH === null || posA === null) return false;
+      const diffPos  = Math.abs(posH - posA) >= 6;
+      const xgAlto   = xgH !== null && xgA !== null && (xgH + xgA) >= 2.5;
+      // Proxy sem xG: mandante elite vs adversário de zona baixa
+      const diffSemXg = posH <= 5 && posA >= 12;
+      return diffPos && (xgAlto || diffSemXg);
+    },
+  },
+  {
+    // C_E5 — Ligue 1 empate provável com gols = corners máximos (1 amostra → delta/2)
+    // Monaco 2-2 Auxerre: ambos atacando continuamente
+    id: 'C_E5_LIGUE1_EMPATE_GOLS',
+    d65: 4, d75: 4, d85: 4, // spec: +9pp O8.5 → reduzido por 1 amostra
+    ativo: (_r, md) => {
+      const comp = (md.competition || md.league || '').toLowerCase();
+      if (!comp.includes('ligue 1')) return false;
+      const gH = md.home?.goals_scored_avg ?? null;
+      const gA = md.away?.goals_scored_avg ?? null;
+      // Proxy: ambos ofensivos (média > 1.3 gols marcados) + posições equilibradas
+      if (gH === null || gA === null) return false;
+      const posH = md.home?.position ?? 10;
+      const posA = md.away?.position ?? 10;
+      const equilibrado = Math.abs(posH - posA) <= 5;
+      return (gH + gA) >= 2.5 && equilibrado;
+    },
+  },
+  {
+    // C_E6 — Série B BR com gols esperados altos (2 amostras — bonus completo)
+    // Athletic 2-1, Internacional 1-2: Série B com 3+ gols = corners moderados-altos
+    id: 'C_E6_SERIE_B_ALTA_INTENSIDADE',
+    fator: 1.05,
+    d65: 3, d75: 4, d85: 0,
+    ativo: (_r, md) => {
+      const comp = (md.competition || md.league || '').toLowerCase();
+      const isSerieB = (comp.includes('série b') || comp.includes('serie b')) &&
+                       (comp.includes('brasil') || comp.includes('brasileir'));
+      const gH = md.home?.goals_scored_avg ?? null;
+      const gA = md.away?.goals_scored_avg ?? null;
+      if (!isSerieB) return false;
+      // 3+ gols esperados como proxy
+      if (gH !== null && gA !== null) return (gH + gA) >= 2.5;
+      return false;
+    },
+  },
+  {
+    // C_E7 — Posse dominante > 58% = corners sistemáticos (1 amostra → delta/2)
+    // Palmeiras 1-0: controle de posse gera corners mesmo sem chutes
+    id: 'C_E7_POSSE_DOMINANTE_CORNERS',
+    d65: 3, d75: 2, d85: 0, // spec: +6pp O6.5, +4pp O7.5 → metade por 1 amostra
+    ativo: (_r, md) => {
+      const posse = md.home?.possession_avg ?? md.home?.possession ?? null;
+      return posse !== null && posse >= 58;
+    },
+  },
+  {
+    // C_E8 — Serie A italiana: corners moderados (não bloquear por poucos gols)
+    // Juventus 2-0, AC Milan 1-0: poucos gols mas corners consistentes (2 amostras)
+    id: 'C_E8_SERIE_A_IT_CORNERS',
+    fator: 0.95,
+    d65: 0, d75: 0, d85: 0, // apenas fator — não adiciona pp
+    ativo: (_r, md) => {
+      const comp = (md.competition || md.league || '').toLowerCase();
+      const isIT = (comp.includes('serie a') || comp.includes('serie b')) &&
+                   !comp.includes('brasil') && !comp.includes('betano');
+      return isIT;
+    },
+  },
+  {
+    // C_E9 — Série B/C zona intermediária = baixa intensidade = corners baixos
+    // Atlético-GO 1-1, Ceará 0-0: sem urgência = Under corners provável (2 amostras)
+    id: 'C_E9_ZONA_INT_CORNERS_BAIXOS',
+    fator: 0.88,
+    d65: -5, d75: -6, d85: -4,
+    ativo: (_r, md) => {
+      const comp  = (md.competition || md.league || '').toLowerCase();
+      const isDivInf = (comp.includes('série b') || comp.includes('serie b') ||
+                        comp.includes('série c') || comp.includes('serie c')) &&
+                       (comp.includes('brasil') || comp.includes('brasileir'));
+      if (!isDivInf) return false;
+      const total = md.total_teams ?? 20;
+      const posH  = md.home?.position ?? md.home_position ?? null;
+      const posA  = md.away?.position ?? md.away_position ?? null;
+      if (posH === null || posA === null) return false;
+      const midLow  = Math.ceil(total * 0.28);
+      const midHigh = Math.ceil(total * 0.70);
+      return posH >= midLow && posH <= midHigh && posA >= midLow && posA <= midHigh;
+    },
+  },
+  {
+    // C_E10 — Derby/clássico nacional = intensidade máxima = corners altos (2 amostras)
+    // Fluminense vs Santos, Atlético-MG vs Coritiba: rivalidade = ambos atacam ao máximo
+    id: 'C_E10_DERBY_CLASSICO',
+    d65: 4, d75: 7, d85: 4,
+    ativo: (_r, md) => _isDerbyBR(md),
+  },
+];
+
+/**
+ * Aplica os padrões C_E1–C_E10 sobre uma análise de escanteios.
+ * Deve ser chamada ANTES de cornersKillSwitch() no funil.
+ *
+ * A whitelist por sub-mercado (KS2) permanece inviolável.
+ * O gate de confiança 80% (Fire Zone) é independente desta função.
+ *
+ * @param {object} result    — saída do agente (probabilidade, mercado, ...)
+ * @param {object} matchData — dados da partida
+ * @returns {{ result: object, delta_total: number, padroes_ativos: string[] }}
+ */
+export function aplicarPadroesCorners(result, matchData) {
+  const mktResult = (result.mercado || result.market || '').trim();
+  const is65 = mktResult === 'Over Corners 6.5';
+  const is75 = mktResult === 'Over Corners 7.5';
+  const is85 = mktResult === 'Over Corners 8.5';
+  if (!is65 && !is75 && !is85) return { result, delta_total: 0, padroes_ativos: [] };
+
+  let prob       = result.probabilidade ?? 0;
+  let deltaTotal = 0;
+  let bonusAcum  = 0;
+  const ativos   = [];
+  const MAX_BONUS = 20;
+
+  for (const padrao of PADROES_CORNERS) {
+    let isAtivo = false;
+    try { isAtivo = padrao.ativo(result, matchData); } catch { continue; }
+    if (!isAtivo) continue;
+
+    // Fator lambda (multiplicativo — afeta prob antes dos deltas)
+    if (padrao.fator) {
+      prob = Math.min(Math.round(prob * padrao.fator), 99);
+    }
+
+    // Delta por sub-mercado
+    const delta = is65 ? (padrao.d65 ?? 0) :
+                  is75 ? (padrao.d75 ?? 0) :
+                         (padrao.d85 ?? 0);
+
+    if (delta === 0) {
+      if (padrao.fator && padrao.fator !== 1.0) {
+        ativos.push(`${padrao.id}(λ×${padrao.fator})`);
+      }
+      continue;
+    }
+
+    if (delta > 0) {
+      const aplicar = Math.min(delta, MAX_BONUS - bonusAcum);
+      if (aplicar <= 0) { ativos.push(`${padrao.id}(cap)`); continue; }
+      bonusAcum  += aplicar;
+      deltaTotal += aplicar;
+      ativos.push(padrao.fator
+        ? `${padrao.id}(λ×${padrao.fator},+${aplicar}pp)`
+        : `${padrao.id}(+${aplicar}pp)`);
+    } else {
+      deltaTotal += delta;
+      ativos.push(padrao.fator
+        ? `${padrao.id}(λ×${padrao.fator},${delta}pp)`
+        : `${padrao.id}(${delta}pp)`);
+    }
+  }
+
+  const prob_final = Math.min(Math.max(prob + deltaTotal, 0), 99);
+  return {
+    result:         { ...result, probabilidade: Math.round(prob_final) },
+    delta_total:    deltaTotal,
+    padroes_ativos: ativos,
+  };
+}
+
 // ── Tracker ───────────────────────────────────────────────────────────────────
 function _loadTracker() {
   try { return JSON.parse(readFileSync(TRACKER, 'utf8')); }
