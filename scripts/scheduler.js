@@ -11,7 +11,7 @@
  *  ├────────────────────────────────────────────────────────────────────────────────┤
  *  │  04:00/04:30        │ pré-operacional          │ Aquecimento cache Superbet   │
  *  │  05:00/05:30        │ pré-operacional +score   │ Score preliminar (dry run)   │
- *  │  05:45 diário       │ morning-message          │ Bom dia + resumo + agenda    │
+ *  │  05:45 diário       │ morning-message + radar  │ Bom dia → Radar (3s depois)  │
  *  │  05:59              │ pré-op relatório         │ Relatório admin pré-abertura │
  *  │  06:00 diário       │ daily-pipeline           │ Coleta +24h, backfill, PIE   │
  *  │  06:00 · relatório  │ monitor início           │ Início de operação (admin)   │
@@ -115,7 +115,8 @@ console.log(chalk.bold.cyan('  ⏰ Scheduler de Análise Esportiva — Ativo'));
 console.log(chalk.bold.cyan('═'.repeat(62)));
 console.log('  Rotinas programadas:');
 console.log('  🌅 04:00-05:59      → Pré-operacional (aquecimento + score)');
-console.log('  🌅 05:45 diário     → Mensagem de bom dia');
+console.log('  🌅 05:45 diário     → Bom Dia + Radar de Jogos (sequência)');
+
 console.log('  📡 06:00 diário     → Pipeline histórico (calibração PIE)');
 console.log('  🔵 06-09h (30min)   → Varredura PRÉ-LIVE IA  ·  6 ciclos');
 console.log('  🔵 10-13h (20min)   → Varredura PRÉ-LIVE IA  ·  9 ciclos');
@@ -251,17 +252,24 @@ cron.schedule('30 23 * * *', () =>
   safeScan('Varredura PRÉ-LIVE 23:30 (última do dia)'),
   { timezone: 'America/Sao_Paulo' });
 
-// ── Mensagem de bom dia ────────────────────────────────────────────────────────
-// Enviada antes dos sinais para preparar os jogadores
+// ── Sequência matinal: Bom Dia → Radar de Jogos ───────────────────────────────
+// Enviados em ordem obrigatória: Bom Dia primeiro, Radar 3s depois.
+// Ambos possuem lock diário individual — reenvio do dia é silenciosamente ignorado.
 cron.schedule('45 5 * * *', async () => {
-  console.log(chalk.bold.yellow(`\n[${ts()}] 🌅 Enviando mensagem de bom dia...`));
+  console.log(chalk.bold.yellow(`\n[${ts()}] 🌅 Sequência matinal: Bom Dia → Radar de Jogos`));
+
+  // PASSO 1: Bom Dia
   try {
     const { sendMorningMessage } = await import('./morning-message.js');
     await sendMorningMessage();
-    console.log(chalk.green(`[${ts()}] ✅ Mensagem de bom dia enviada`));
+    console.log(chalk.green(`[${ts()}] ✅ Bom Dia enviado`));
   } catch (e) {
     console.error(chalk.red(`[${ts()}] ❌ Morning message falhou: ${e.message}`));
   }
+
+  // PASSO 2: Radar (3s após o Bom Dia)
+  await new Promise(r => setTimeout(r, 3000));
+  await safeRadar('Games Radar — Matutino (sequência pós-Bom Dia)');
 }, { timezone: 'America/Sao_Paulo' });
 
 // ── Pipeline diário ────────────────────────────────────────────────────────────
@@ -292,15 +300,9 @@ async function safeRadar(label) {
   }
 }
 
-// Radar matutino — todos os dias às 07:15 (após pipeline 06:00)
-cron.schedule('15 7 * * *', async () => {
-  await safeRadar('Games Radar — Top jogos do dia (07:15)');
-}, { timezone: 'America/Sao_Paulo' });
-
-// Radar da tarde — todos os dias às 12:30 (antes do pipeline extra das 13:00)
-cron.schedule('30 12 * * *', async () => {
-  await safeRadar('Games Radar — Atualização da tarde (12:30)');
-}, { timezone: 'America/Sao_Paulo' });
+// Radar 07:15 e 12:30 REMOVIDOS — Radar agora é enviado 1x/dia às 05:45
+// imediatamente após o "Bom Dia". Lock diário em data/radar-sent.json bloqueia
+// qualquer reenvio acidental via npm run radar ou chamadas manuais.
 
 // ── LIVE — verifica Superbet a cada 1h e analisa jogos em andamento ────────────
 const _liveNotifiedKeys = new Map();

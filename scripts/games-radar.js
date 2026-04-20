@@ -32,27 +32,30 @@ const AS_JSON = process.argv.includes('--json');
 const FORCE   = process.argv.includes('--force');
 const TOP_N   = parseInt(process.argv.find(a => a.startsWith('--top='))?.split('=')[1] || '12');
 
-// ── Lock diário — evita duplicatas se chamado mais de uma vez no mesmo slot ────
+// ── Lock diário — evita duplicatas (1x por dia, não por slot) ────────────────
+// Usa formato ISO (YYYY-MM-DD) para evitar bugs de locale no Windows
 const LOCK_FILE = join(ROOT, 'data/radar-sent.json');
 
-function _radarSentToday(slot) {
+function _todayISO() {
+  return new Date().toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })
+    .split('/').reverse().join('-'); // dd/mm/yyyy → yyyy-mm-dd
+}
+
+function _radarSentToday() {
   try {
     if (!existsSync(LOCK_FILE)) return false;
-    const db   = JSON.parse(readFileSync(LOCK_FILE, 'utf-8'));
-    const today = new Date().toLocaleDateString('pt-BR');
-    return db.date === today && db.slots?.includes(slot);
+    const db = JSON.parse(readFileSync(LOCK_FILE, 'utf-8'));
+    return db.date === _todayISO();
   } catch { return false; }
 }
 
-function _markRadarSent(slot) {
+function _markRadarSent() {
   try {
-    const today = new Date().toLocaleDateString('pt-BR');
-    let db = {};
-    if (existsSync(LOCK_FILE)) db = JSON.parse(readFileSync(LOCK_FILE, 'utf-8'));
-    if (db.date !== today) db = { date: today, slots: [] };
-    if (!db.slots.includes(slot)) db.slots.push(slot);
     mkdirSync(join(ROOT, 'data'), { recursive: true });
-    writeFileSync(LOCK_FILE, JSON.stringify(db), 'utf-8');
+    writeFileSync(LOCK_FILE, JSON.stringify({
+      date:    _todayISO(),
+      sent_at: new Date().toISOString(),
+    }), 'utf-8');
   } catch { /* silencioso */ }
 }
 
@@ -253,12 +256,8 @@ async function run() {
     weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric',
   }).toUpperCase();
 
-  // Slot baseado no horário: antes das 11h = manhã, depois = tarde
-  const hour = new Date().getHours();
-  const slot = hour < 11 ? 'manha' : 'tarde';
-
-  if (!DRY && !FORCE && _radarSentToday(slot)) {
-    console.log(chalk.yellow(`  ⚠️  Radar (${slot}) já enviado hoje — ignorando para evitar duplicata.`));
+  if (!DRY && !FORCE && _radarSentToday()) {
+    console.log(chalk.yellow(`  ⚠️  Radar já enviado hoje — ignorando para evitar duplicata.`));
     console.log(chalk.gray('     Use --force para forçar reenvio.'));
     return [];
   }
@@ -408,7 +407,7 @@ async function run() {
       );
       if (res.data?.ok) {
         console.log(chalk.green('  ✅ Radar enviado ao Telegram (msg_id: ' + res.data.result.message_id + ')'));
-        _markRadarSent(slot);
+        _markRadarSent();
       }
     } catch (e) {
       console.warn(chalk.red('  ❌ Telegram falhou: ' + e.message));
