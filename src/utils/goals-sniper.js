@@ -348,6 +348,261 @@ export function goalsMinProbability(market, competition = '') {
   return GOALS_THRESHOLDS[mkt] ?? 80;
 }
 
+// ── Padrões Over Gols (calibração 19/04/2026) ────────────────────────────────
+//
+// 12 padrões P_G1–P_G12 extraídos de 15 jogos confirmados.
+// aplicarPadroesOverGols() deve ser chamada ANTES dos Kill Switches no funil
+// para que padrões positivos possam elevar sinais borderline acima dos gates.
+//
+// Estrutura de cada padrão:
+//   id:      identificador único
+//   mercado: mercado-alvo (Over 1.5 / Over 2.5 / Over 3.5 / null = todos)
+//   ativo:   função predicado (result, matchData) → boolean
+//   delta:   ajuste em pp (positivo = bônus, negativo = penalidade)
+//   fator:   multiplicador lambda opcional (undefined = sem ajuste)
+//
+// Limite total: delta positivo ≤ +20pp | delta negativo sem limite mínimo.
+// Múltiplos padrões positivos acumulam até o limite. Negativos sempre se aplicam.
+
+const _COPA_DOMESTICA_LIGAS = [
+  'fa cup', 'copa do brasil', 'copa argentina', 'copa del rey',
+  'dfb-pokal', 'coupe de france', 'coppa italia',
+];
+
+const _SEGUNDA_DIV_OFENSIVA = [
+  'ligue 2', 'championnat national', '2. liga österreich',
+];
+
+const _SERIE_A_ITALIANA = ['serie a', 'serie b'];  // detecta cultura defensiva italiana
+
+// P_G9 lambda Ligue 2 e P_G12 lambda Serie A italiana são aplicados à probabilidade
+// via fator multiplicativo antes dos ajustes pp.
+
+const PADROES_OVER_GOLS = [
+  {
+    // P_G1 — Gate Over 1.5: penalidade universal para sinais fracos
+    // Ligas de alto volume são Tier 1 e já têm prob ≥ 80% exigida.
+    // Sinal abaixo de 78% em Over 1.5 indica jogo defensivo → penalidade.
+    id: 'P_G1_OVER15_GATE_FRACO',
+    mercado: 'Over 1.5',
+    ativo: (r, _md) => (r.probabilidade ?? 0) < 78,
+    delta: -2,
+  },
+  {
+    // P_G2 — Motivações opostas urgentes: campeão vs rebaixado → jogo aberto
+    // Ambos os times PRECISAM dos 3 pontos → alta taxa de gols histórica.
+    id: 'P_G2_MOTIVACOES_OPOSTAS',
+    mercado: 'Over 3.5',
+    ativo: (r, md) => {
+      const posC = md.home?.position ?? md.home_position ?? null;
+      const posF = md.away?.position ?? md.away_position ?? null;
+      const total = md.total_teams ?? md.teams_in_league ?? 20;
+      if (posC === null || posF === null) return false;
+      const topTier   = Math.min(posC, posF) <= 3;
+      const botTier   = Math.max(posC, posF) >= total - 2;
+      return topTier && botTier;
+    },
+    delta: 10,
+  },
+  {
+    // P_G3 — Copa doméstica: fase mata-mata → times abertos, menos cálculo
+    id: 'P_G3_COPA_DOMESTICA',
+    mercado: 'Over 3.5',
+    ativo: (_r, md) => {
+      const comp = (md.competition || md.league || '').toLowerCase();
+      return _COPA_DOMESTICA_LIGAS.some(c => comp.includes(c));
+    },
+    delta: 8,
+  },
+  {
+    // P_G4 — Mandante prolífico ≥ 2.2 gols/jogo: pressão ofensiva constante
+    id: 'P_G4_MANDANTE_PROLIFICO',
+    mercado: 'Over 3.5',
+    ativo: (_r, md) => {
+      const avg = md.home?.goals_scored_avg ?? md.home_goals_avg ?? null;
+      return avg !== null && avg >= 2.2;
+    },
+    delta: 7,
+  },
+  {
+    // P_G5 — Serie A italiana + zona de rebaixamento: desespero defensivo quebra
+    // Time em rebaixamento na Serie A abre o jogo → Over 2.5 e 3.5 sobem.
+    id: 'P_G5_SERIEA_REBAIXAMENTO',
+    mercado: null, // aplica a Over 2.5 e Over 3.5 (filtro interno)
+    ativo: (r, md) => {
+      const comp  = (md.competition || md.league || '').toLowerCase();
+      const isSerieA = comp.includes('serie a') && !comp.includes('brasileir');
+      const mkt   = (r.mercado || r.market || '').trim();
+      const valid = (mkt === 'Over 2.5' || mkt === 'Over 3.5');
+      const total = md.total_teams ?? 20;
+      const posH  = md.home?.position ?? md.home_position ?? null;
+      const posA  = md.away?.position ?? md.away_position ?? null;
+      const inRelZ = (posH !== null && posH >= total - 3) ||
+                     (posA !== null && posA >= total - 3);
+      return isSerieA && valid && inRelZ;
+    },
+    delta: (r) => {
+      const mkt = (r.mercado || r.market || '').trim();
+      return mkt === 'Over 3.5' ? 6 : 5;
+    },
+  },
+  {
+    // P_G6 — Premier League: penalidade Over 3.5
+    // PL tem estrutura defensiva sólida mesmo nos jogos ofensivos — Over 3.5 é raro.
+    id: 'P_G6_PL_PENALIDADE_OVER35',
+    mercado: 'Over 3.5',
+    ativo: (_r, md) => {
+      const comp = (md.competition || md.league || '').toLowerCase();
+      return comp.includes('premier league');
+    },
+    delta: -7,
+  },
+  {
+    // P_G7 — Championship playoff: pressão máxima → jogo aberto garantido
+    // Todos os 4 times precisam vencer → intensidade máxima → mais gols.
+    id: 'P_G7_CHAMPIONSHIP_PLAYOFF',
+    mercado: 'Over 3.5',
+    ativo: (_r, md) => {
+      const comp = (md.competition || md.league || '').toLowerCase();
+      const isChamp = comp.includes('championship');
+      const isPlayoff = comp.includes('playoff') || comp.includes('play-off') ||
+                        (md.stage || '').toLowerCase().includes('playoff');
+      return isChamp && isPlayoff;
+    },
+    delta: 7,
+  },
+  {
+    // P_G8 — Zona intermediária sem pressão: equipes sem motivação → pouco risco
+    // Posição 8–14 sem pressão por título ou rebaixamento → jogo controlado.
+    id: 'P_G8_ZONA_INTERMEDIARIA',
+    mercado: 'Over 2.5',
+    ativo: (_r, md) => {
+      const total = md.total_teams ?? 20;
+      const posH = md.home?.position ?? md.home_position ?? null;
+      const posA = md.away?.position ?? md.away_position ?? null;
+      if (posH === null || posA === null) return false;
+      const midLow  = Math.ceil(total * 0.35);
+      const midHigh = Math.ceil(total * 0.70);
+      const bothMid = posH >= midLow && posH <= midHigh &&
+                      posA >= midLow && posA <= midHigh;
+      return bothMid;
+    },
+    delta: -6,
+  },
+  {
+    // P_G9 — Ligue 2 ofensiva: menos estrutura defensiva, mais gols
+    // Calibração PIE: lambda ×1.06 eleva probabilidade base.
+    id: 'P_G9_LIGUE2_OFENSIVA',
+    mercado: 'Over 3.5',
+    ativo: (_r, md) => {
+      const comp = (md.competition || md.league || '').toLowerCase();
+      return _SEGUNDA_DIV_OFENSIVA.some(c => comp.includes(c));
+    },
+    delta: 7,
+    fator: 1.06,
+  },
+  {
+    // P_G10 — Recém-promovido vs Top 5: desequilíbrio → espaços abertos
+    // Top 5 ataca, promovido contraataca → jogo com muitos gols.
+    id: 'P_G10_RECEM_PROMOVIDO_VS_TOP5',
+    mercado: 'Over 2.5',
+    ativo: (_r, md) => {
+      const posH = md.home?.position ?? md.home_position ?? null;
+      const posA = md.away?.position ?? md.away_position ?? null;
+      const isPromH = md.home?.newly_promoted === true || md.home_newly_promoted === true;
+      const isPromA = md.away?.newly_promoted === true || md.away_newly_promoted === true;
+      const isNewlyPromoted = isPromH || isPromA;
+      const hasTop5 = (posH !== null && posH <= 5) || (posA !== null && posA <= 5);
+      return isNewlyPromoted && hasTop5;
+    },
+    delta: 6,
+  },
+  {
+    // P_G11 — Série B brasileira Over 2.5: lambda conservador 0.97
+    // Brasileirão Série B tende a ser menos goleada que Série A.
+    id: 'P_G11_SERIE_B_BRASILEIRA',
+    mercado: 'Over 2.5',
+    ativo: (_r, md) => {
+      const comp = (md.competition || md.league || '').toLowerCase();
+      return comp.includes('série b') || comp.includes('serie b') ||
+             comp.includes('brasileirao serie b') || comp.includes('brasileirão série b');
+    },
+    delta: 3,
+    fator: 0.97,
+  },
+  {
+    // P_G12 — Cultura defensiva italiana: lambda ×0.92 + penalidade Over 3.5
+    // Serie A e Serie B italiana têm os melhores sistemas defensivos da Europa.
+    id: 'P_G12_CULTURA_DEFENSIVA_IT',
+    mercado: 'Over 3.5',
+    ativo: (_r, md) => {
+      const comp = (md.competition || md.league || '').toLowerCase();
+      const isItalian = _SERIE_A_ITALIANA.some(c => comp.includes(c));
+      // exclui "Brasileirão Série A/B" e "Serie B brasileira"
+      const isBrazilian = comp.includes('brasil') || comp.includes('betano');
+      return isItalian && !isBrazilian;
+    },
+    delta: -5,
+    fator: 0.92,
+  },
+];
+
+/**
+ * Aplica os padrões P_G1–P_G12 sobre uma análise de gols.
+ * Deve ser chamada ANTES de goalsKillSwitch() no funil.
+ *
+ * @param {object} result    — saída do agente (probabilidade, mercado, ...)
+ * @param {object} matchData — dados da partida (competition, home, away, ...)
+ * @returns {{ result: object, delta_total: number, padroes_ativos: string[] }}
+ */
+export function aplicarPadroesOverGols(result, matchData) {
+  const mktResult = (result.mercado || result.market || '').trim();
+  let prob        = result.probabilidade ?? 0;
+  let deltaTotal  = 0;
+  const ativos    = [];
+
+  const MAX_BONUS = 20; // pp cap para bônus positivos
+  let bonusAcum   = 0;
+
+  for (const padrao of PADROES_OVER_GOLS) {
+    // Filtra por mercado se o padrão tem alvo específico
+    if (padrao.mercado && padrao.mercado !== mktResult) continue;
+
+    // Avalia predicado
+    let isAtivo = false;
+    try { isAtivo = padrao.ativo(result, matchData); } catch { continue; }
+    if (!isAtivo) continue;
+
+    // Calcula delta (pode ser função ou número)
+    const delta = typeof padrao.delta === 'function' ? padrao.delta(result) : padrao.delta;
+
+    // Aplica fator multiplicativo lambda se existir
+    if (padrao.fator) {
+      prob = Math.min(Math.round(prob * padrao.fator), 99);
+    }
+
+    // Acumula delta respeitando cap de bônus positivo
+    if (delta > 0) {
+      const aplicar = Math.min(delta, MAX_BONUS - bonusAcum);
+      if (aplicar <= 0) { ativos.push(`${padrao.id}(cap)`); continue; }
+      bonusAcum  += aplicar;
+      deltaTotal += aplicar;
+      ativos.push(`${padrao.id}(+${aplicar}pp)`);
+    } else {
+      // Penalidades aplicam sempre (sem limite mínimo)
+      deltaTotal += delta;
+      ativos.push(`${padrao.id}(${delta}pp)`);
+    }
+  }
+
+  const prob_final = Math.min(Math.max(prob + deltaTotal, 0), 99);
+  return {
+    result:        { ...result, probabilidade: Math.round(prob_final) },
+    delta_total:   deltaTotal,
+    padroes_ativos: ativos,
+  };
+}
+
 // ── Tracker ─────────────────────────────────────────────────────────────────────
 function _loadTracker() {
   try { return JSON.parse(readFileSync(TRACKER, 'utf8')); }

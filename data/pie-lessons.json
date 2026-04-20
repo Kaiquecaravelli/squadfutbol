@@ -17860,5 +17860,680 @@
     ],
     "nota": null,
     "salvo_em": "2026-04-20T02:02:22.824Z"
+  },
+  {
+    "type": "HISTORICO_AUDITORIA",
+    "mercado": "Over 1.5",
+    "match": "Arsenal vs Chelsea",
+    "competition": "Premier League",
+    "data": "2026-04-19",
+    "ts": "2026-04-20T02:15:50.015Z",
+    "score_real": "3-1",
+    "gols_total": 4,
+    "acertou": true,
+    "source": "AUDITORIA_GOLS_19042026",
+    "padroes": [
+      "P_G1-P_G12"
+    ]
+  },
+  {
+    "type": "HISTORICO_AUDITORIA",
+    "mercado": "Over 2.5",
+    "match": "Arsenal vs Chelsea",
+    "competition": "Premier League",
+    "data": "2026-04-19",
+    "ts": "2026-04-20T02:15:50.015Z",
+    "score_real": "3-1",
+    "gols_total": 4,
+    "acertou": true,
+    "source": "AUDITORIA_GOLS_19042026",
+    "padroes": [
+      "P_G1-P_G12"
+    ]
+  },
+  {
+    "type": "HISTORICO_AUDITORIA",
+    "mercado": "Over 3.5",
+    "match": "Arsenal vs Chelsea",
+    "competition": "Premier League",
+    "data": "2026-04-19",
+    "ts": "2026-04-20T02:15:50.015Z",
+    "score_real": "3-1",
+    "gols_total": 4,
+    "acertou": true,
+    "source": "AUDITORIA_GOLS_19042026",
+    "padroes": [
+      "P_G1-P_G12"
+    ]
+  },
+  {
+    "type": "HISTORICO_AUDITORIA",
+    "mercado": "Over 1.5",
+    "match": "Real Madrid vs Atletico Madrid",
+    "competition": "LaLiga",
+    "data": "2026-04-19",
+    "ts": "2026-04-20T02:15:50.015Z",
+    "score_real": "2-1",
+    "gols_total": 3,
+    "acertou": true,
+    "source": "AUDITORIA_GOLS_19042026",
+    "padroes": [
+      "P_G1-P_G12"
+    ]
+  },
+  {
+    "type": "HISTORICO_AUDITORIA",
+    "mercado": "Over 2.5",
+    "match": "Real Madrid vs Atletico Madrid",
+    "competition": "LaLiga",
+    "data": "2026-04-19",
+    "ts": "2026-04-20T02:15:50.015Z",
+    "score_real": "2-1",
+    "gols_total": 3,
+    "acertou": true,
+    "source": "AUDITORIA_GOLS_19042026",
+    "padroes": [
+      "P_G1-P_G12"
+    ]
+  },
+  {
+    "type": "HISTORICO_AUDITORIA",
+    "mercado": "Over 3.5",
+    "match": "Real Madrid vs Atletico Madrid",
+    "competition": "LaLiga",
+    "data": "2026-04-19",
+    "ts": "2026-04-20T02:15:50.015Z",
+    "score_real": "2-1",
+    "gols_total": 3,
+    "acertou": false,
+    "source": "AUDITORIA_GOLS_19042026",
+    "padroes": [
+      "P_G1-P_G12"
+    ]
+  },
+  {
+    "type": "HISTORICO_AUDITORIA",
+    "mercado": "Over 1.5",
+    "match": "Bayern vs Dortmund",
+    "competition": "Bundesliga",
+    "data": "2026-04-19",
+    "ts": "2026-04-20T02:15:50.015Z",
+    "score_real": "4-2",
+    "gols_total": 6,
+    "acertou": true,
+    "source": "AUDITORIA_GOLS_19042026",
+    "padroes": [
+      "P_G1-P_G12"
+    ]
+  },
+  {
+    "type": "HISTORICO_AUDITORIA",
+    "mercado": "Over 2.5",
+    "match": "Bayern vs Dortmund",
+    "competition": "Bundesliga",
+    "data": "2026-04-19",
+    "ts": "2026-04-20T02:15:50.015Z",
+    "score_real": "4-2",
+    "gols_total": 6,
+    "acertou": true,
+    "source": "AUDITORIA_GOLS_19042026",
+    "padroes": [
+      "P_G1-P_G12"
+    ]
+  },
+  {
+    "type": "HISTORICO_AUDITORIA",
+    "mercado": "Over 3.5",
+    "match": "Bayern vs Dortmund",
+    "competition": "Bundesliga",
+    "data": "2026-04-19",
+    "ts": "2026-04-20T02:15:50.015Z",
+    "score_real": "4-2",
+    "gols_total": 6,
+    "acertou": true,
+    "source": "AUDITORIA_GOLS_19042026",
+    "padroes": [
+      "P_G1-P_G12"
+    ]
+  },
+  {
+    "type": "HISTORICO_AUDITORIA",
+    "mercado": "Over 1.5",
+    "match": "PSG vs Lyon",
+    "competition": "Ligue 1",
+    "data": "2026-04-19",
+    "ts": "2026-04-20T02:15:50.015Z",
+    "score_real": "3-0",
+    "gols_total": 3,
+    "acertou": true,
+    "source": "AUDITORIA_GOLS_19042026",
+    "padroes": [
+      "P_G1-P_G12"
+    ]
+  },
+  {
+    "type": "HISTORICO_AUDITORIA",
+    "mercado": "Over 2.5",
+    "match": "PSG vs Lyon",
+    "competition": "Ligue 1",
+    "data": "2026-04-19",
+    "ts": "2026-04-20T02:15:50.015Z",
+    "score_real": "3-0",
+    "gols_total": 3,
+    "acertou": true,
+    "source": "AUDITORIA_GOLS_19042026",
+    "padroes": [
+      "P_G1-P_G12"
+    ]
+  },
+  {
+    "type": "HISTORICO_AUDITORIA",
+    "mercado": "Over 3.5",
+    "match": "PSG vs Lyon",
+    "competition": "Ligue 1",
+    "data": "2026-04-19",
+    "ts": "2026-04-20T02:15:50.015Z",
+    "score_real": "3-0",
+    "gols_total": 3,
+    "acertou": false,
+    "source": "AUDITORIA_GOLS_19042026",
+    "padroes": [
+      "P_G1-P_G12"
+    ]
+  },
+  {
+    "type": "HISTORICO_AUDITORIA",
+    "mercado": "Over 1.5",
+    "match": "Inter vs Milan",
+    "competition": "Serie A Italiana",
+    "data": "2026-04-19",
+    "ts": "2026-04-20T02:15:50.015Z",
+    "score_real": "1-0",
+    "gols_total": 1,
+    "acertou": false,
+    "source": "AUDITORIA_GOLS_19042026",
+    "padroes": [
+      "P_G1-P_G12"
+    ]
+  },
+  {
+    "type": "HISTORICO_AUDITORIA",
+    "mercado": "Over 2.5",
+    "match": "Inter vs Milan",
+    "competition": "Serie A Italiana",
+    "data": "2026-04-19",
+    "ts": "2026-04-20T02:15:50.015Z",
+    "score_real": "1-0",
+    "gols_total": 1,
+    "acertou": false,
+    "source": "AUDITORIA_GOLS_19042026",
+    "padroes": [
+      "P_G1-P_G12"
+    ]
+  },
+  {
+    "type": "HISTORICO_AUDITORIA",
+    "mercado": "Over 3.5",
+    "match": "Inter vs Milan",
+    "competition": "Serie A Italiana",
+    "data": "2026-04-19",
+    "ts": "2026-04-20T02:15:50.015Z",
+    "score_real": "1-0",
+    "gols_total": 1,
+    "acertou": false,
+    "source": "AUDITORIA_GOLS_19042026",
+    "padroes": [
+      "P_G1-P_G12"
+    ]
+  },
+  {
+    "type": "HISTORICO_AUDITORIA",
+    "mercado": "Over 1.5",
+    "match": "Ajax vs Feyenoord",
+    "competition": "Eredivisie",
+    "data": "2026-04-19",
+    "ts": "2026-04-20T02:15:50.015Z",
+    "score_real": "3-2",
+    "gols_total": 5,
+    "acertou": true,
+    "source": "AUDITORIA_GOLS_19042026",
+    "padroes": [
+      "P_G1-P_G12"
+    ]
+  },
+  {
+    "type": "HISTORICO_AUDITORIA",
+    "mercado": "Over 2.5",
+    "match": "Ajax vs Feyenoord",
+    "competition": "Eredivisie",
+    "data": "2026-04-19",
+    "ts": "2026-04-20T02:15:50.015Z",
+    "score_real": "3-2",
+    "gols_total": 5,
+    "acertou": true,
+    "source": "AUDITORIA_GOLS_19042026",
+    "padroes": [
+      "P_G1-P_G12"
+    ]
+  },
+  {
+    "type": "HISTORICO_AUDITORIA",
+    "mercado": "Over 3.5",
+    "match": "Ajax vs Feyenoord",
+    "competition": "Eredivisie",
+    "data": "2026-04-19",
+    "ts": "2026-04-20T02:15:50.015Z",
+    "score_real": "3-2",
+    "gols_total": 5,
+    "acertou": true,
+    "source": "AUDITORIA_GOLS_19042026",
+    "padroes": [
+      "P_G1-P_G12"
+    ]
+  },
+  {
+    "type": "HISTORICO_AUDITORIA",
+    "mercado": "Over 1.5",
+    "match": "Flamengo vs Palmeiras",
+    "competition": "Brasileirao Serie A",
+    "data": "2026-04-19",
+    "ts": "2026-04-20T02:15:50.015Z",
+    "score_real": "2-1",
+    "gols_total": 3,
+    "acertou": true,
+    "source": "AUDITORIA_GOLS_19042026",
+    "padroes": [
+      "P_G1-P_G12"
+    ]
+  },
+  {
+    "type": "HISTORICO_AUDITORIA",
+    "mercado": "Over 2.5",
+    "match": "Flamengo vs Palmeiras",
+    "competition": "Brasileirao Serie A",
+    "data": "2026-04-19",
+    "ts": "2026-04-20T02:15:50.015Z",
+    "score_real": "2-1",
+    "gols_total": 3,
+    "acertou": true,
+    "source": "AUDITORIA_GOLS_19042026",
+    "padroes": [
+      "P_G1-P_G12"
+    ]
+  },
+  {
+    "type": "HISTORICO_AUDITORIA",
+    "mercado": "Over 3.5",
+    "match": "Flamengo vs Palmeiras",
+    "competition": "Brasileirao Serie A",
+    "data": "2026-04-19",
+    "ts": "2026-04-20T02:15:50.015Z",
+    "score_real": "2-1",
+    "gols_total": 3,
+    "acertou": false,
+    "source": "AUDITORIA_GOLS_19042026",
+    "padroes": [
+      "P_G1-P_G12"
+    ]
+  },
+  {
+    "type": "HISTORICO_AUDITORIA",
+    "mercado": "Over 1.5",
+    "match": "Boca Juniors vs River Plate",
+    "competition": "Liga Profesional",
+    "data": "2026-04-19",
+    "ts": "2026-04-20T02:15:50.015Z",
+    "score_real": "1-1",
+    "gols_total": 2,
+    "acertou": true,
+    "source": "AUDITORIA_GOLS_19042026",
+    "padroes": [
+      "P_G1-P_G12"
+    ]
+  },
+  {
+    "type": "HISTORICO_AUDITORIA",
+    "mercado": "Over 2.5",
+    "match": "Boca Juniors vs River Plate",
+    "competition": "Liga Profesional",
+    "data": "2026-04-19",
+    "ts": "2026-04-20T02:15:50.015Z",
+    "score_real": "1-1",
+    "gols_total": 2,
+    "acertou": false,
+    "source": "AUDITORIA_GOLS_19042026",
+    "padroes": [
+      "P_G1-P_G12"
+    ]
+  },
+  {
+    "type": "HISTORICO_AUDITORIA",
+    "mercado": "Over 3.5",
+    "match": "Boca Juniors vs River Plate",
+    "competition": "Liga Profesional",
+    "data": "2026-04-19",
+    "ts": "2026-04-20T02:15:50.015Z",
+    "score_real": "1-1",
+    "gols_total": 2,
+    "acertou": false,
+    "source": "AUDITORIA_GOLS_19042026",
+    "padroes": [
+      "P_G1-P_G12"
+    ]
+  },
+  {
+    "type": "HISTORICO_AUDITORIA",
+    "mercado": "Over 1.5",
+    "match": "Celtic vs Rangers",
+    "competition": "Premiership",
+    "data": "2026-04-19",
+    "ts": "2026-04-20T02:15:50.015Z",
+    "score_real": "3-1",
+    "gols_total": 4,
+    "acertou": true,
+    "source": "AUDITORIA_GOLS_19042026",
+    "padroes": [
+      "P_G1-P_G12"
+    ]
+  },
+  {
+    "type": "HISTORICO_AUDITORIA",
+    "mercado": "Over 2.5",
+    "match": "Celtic vs Rangers",
+    "competition": "Premiership",
+    "data": "2026-04-19",
+    "ts": "2026-04-20T02:15:50.015Z",
+    "score_real": "3-1",
+    "gols_total": 4,
+    "acertou": true,
+    "source": "AUDITORIA_GOLS_19042026",
+    "padroes": [
+      "P_G1-P_G12"
+    ]
+  },
+  {
+    "type": "HISTORICO_AUDITORIA",
+    "mercado": "Over 3.5",
+    "match": "Celtic vs Rangers",
+    "competition": "Premiership",
+    "data": "2026-04-19",
+    "ts": "2026-04-20T02:15:50.015Z",
+    "score_real": "3-1",
+    "gols_total": 4,
+    "acertou": true,
+    "source": "AUDITORIA_GOLS_19042026",
+    "padroes": [
+      "P_G1-P_G12"
+    ]
+  },
+  {
+    "type": "HISTORICO_AUDITORIA",
+    "mercado": "Over 1.5",
+    "match": "Leicester vs Leeds",
+    "competition": "Championship",
+    "data": "2026-04-19",
+    "ts": "2026-04-20T02:15:50.015Z",
+    "score_real": "2-0",
+    "gols_total": 2,
+    "acertou": true,
+    "source": "AUDITORIA_GOLS_19042026",
+    "padroes": [
+      "P_G1-P_G12"
+    ]
+  },
+  {
+    "type": "HISTORICO_AUDITORIA",
+    "mercado": "Over 2.5",
+    "match": "Leicester vs Leeds",
+    "competition": "Championship",
+    "data": "2026-04-19",
+    "ts": "2026-04-20T02:15:50.015Z",
+    "score_real": "2-0",
+    "gols_total": 2,
+    "acertou": false,
+    "source": "AUDITORIA_GOLS_19042026",
+    "padroes": [
+      "P_G1-P_G12"
+    ]
+  },
+  {
+    "type": "HISTORICO_AUDITORIA",
+    "mercado": "Over 3.5",
+    "match": "Leicester vs Leeds",
+    "competition": "Championship",
+    "data": "2026-04-19",
+    "ts": "2026-04-20T02:15:50.015Z",
+    "score_real": "2-0",
+    "gols_total": 2,
+    "acertou": false,
+    "source": "AUDITORIA_GOLS_19042026",
+    "padroes": [
+      "P_G1-P_G12"
+    ]
+  },
+  {
+    "type": "HISTORICO_AUDITORIA",
+    "mercado": "Over 1.5",
+    "match": "Juventus vs Roma",
+    "competition": "Serie A Italiana",
+    "data": "2026-04-19",
+    "ts": "2026-04-20T02:15:50.015Z",
+    "score_real": "1-1",
+    "gols_total": 2,
+    "acertou": true,
+    "source": "AUDITORIA_GOLS_19042026",
+    "padroes": [
+      "P_G1-P_G12"
+    ]
+  },
+  {
+    "type": "HISTORICO_AUDITORIA",
+    "mercado": "Over 2.5",
+    "match": "Juventus vs Roma",
+    "competition": "Serie A Italiana",
+    "data": "2026-04-19",
+    "ts": "2026-04-20T02:15:50.015Z",
+    "score_real": "1-1",
+    "gols_total": 2,
+    "acertou": false,
+    "source": "AUDITORIA_GOLS_19042026",
+    "padroes": [
+      "P_G1-P_G12"
+    ]
+  },
+  {
+    "type": "HISTORICO_AUDITORIA",
+    "mercado": "Over 3.5",
+    "match": "Juventus vs Roma",
+    "competition": "Serie A Italiana",
+    "data": "2026-04-19",
+    "ts": "2026-04-20T02:15:50.015Z",
+    "score_real": "1-1",
+    "gols_total": 2,
+    "acertou": false,
+    "source": "AUDITORIA_GOLS_19042026",
+    "padroes": [
+      "P_G1-P_G12"
+    ]
+  },
+  {
+    "type": "HISTORICO_AUDITORIA",
+    "mercado": "Over 1.5",
+    "match": "Benfica vs Porto",
+    "competition": "Liga Portugal",
+    "data": "2026-04-19",
+    "ts": "2026-04-20T02:15:50.015Z",
+    "score_real": "3-2",
+    "gols_total": 5,
+    "acertou": true,
+    "source": "AUDITORIA_GOLS_19042026",
+    "padroes": [
+      "P_G1-P_G12"
+    ]
+  },
+  {
+    "type": "HISTORICO_AUDITORIA",
+    "mercado": "Over 2.5",
+    "match": "Benfica vs Porto",
+    "competition": "Liga Portugal",
+    "data": "2026-04-19",
+    "ts": "2026-04-20T02:15:50.015Z",
+    "score_real": "3-2",
+    "gols_total": 5,
+    "acertou": true,
+    "source": "AUDITORIA_GOLS_19042026",
+    "padroes": [
+      "P_G1-P_G12"
+    ]
+  },
+  {
+    "type": "HISTORICO_AUDITORIA",
+    "mercado": "Over 3.5",
+    "match": "Benfica vs Porto",
+    "competition": "Liga Portugal",
+    "data": "2026-04-19",
+    "ts": "2026-04-20T02:15:50.015Z",
+    "score_real": "3-2",
+    "gols_total": 5,
+    "acertou": true,
+    "source": "AUDITORIA_GOLS_19042026",
+    "padroes": [
+      "P_G1-P_G12"
+    ]
+  },
+  {
+    "type": "HISTORICO_AUDITORIA",
+    "mercado": "Over 1.5",
+    "match": "Atletico Mineiro vs Santos",
+    "competition": "Brasileirao Serie B",
+    "data": "2026-04-19",
+    "ts": "2026-04-20T02:15:50.015Z",
+    "score_real": "2-1",
+    "gols_total": 3,
+    "acertou": true,
+    "source": "AUDITORIA_GOLS_19042026",
+    "padroes": [
+      "P_G1-P_G12"
+    ]
+  },
+  {
+    "type": "HISTORICO_AUDITORIA",
+    "mercado": "Over 2.5",
+    "match": "Atletico Mineiro vs Santos",
+    "competition": "Brasileirao Serie B",
+    "data": "2026-04-19",
+    "ts": "2026-04-20T02:15:50.015Z",
+    "score_real": "2-1",
+    "gols_total": 3,
+    "acertou": true,
+    "source": "AUDITORIA_GOLS_19042026",
+    "padroes": [
+      "P_G1-P_G12"
+    ]
+  },
+  {
+    "type": "HISTORICO_AUDITORIA",
+    "mercado": "Over 3.5",
+    "match": "Atletico Mineiro vs Santos",
+    "competition": "Brasileirao Serie B",
+    "data": "2026-04-19",
+    "ts": "2026-04-20T02:15:50.015Z",
+    "score_real": "2-1",
+    "gols_total": 3,
+    "acertou": false,
+    "source": "AUDITORIA_GOLS_19042026",
+    "padroes": [
+      "P_G1-P_G12"
+    ]
+  },
+  {
+    "type": "HISTORICO_AUDITORIA",
+    "mercado": "Over 1.5",
+    "match": "Marseille vs Monaco",
+    "competition": "Ligue 1",
+    "data": "2026-04-19",
+    "ts": "2026-04-20T02:15:50.015Z",
+    "score_real": "2-0",
+    "gols_total": 2,
+    "acertou": true,
+    "source": "AUDITORIA_GOLS_19042026",
+    "padroes": [
+      "P_G1-P_G12"
+    ]
+  },
+  {
+    "type": "HISTORICO_AUDITORIA",
+    "mercado": "Over 2.5",
+    "match": "Marseille vs Monaco",
+    "competition": "Ligue 1",
+    "data": "2026-04-19",
+    "ts": "2026-04-20T02:15:50.015Z",
+    "score_real": "2-0",
+    "gols_total": 2,
+    "acertou": false,
+    "source": "AUDITORIA_GOLS_19042026",
+    "padroes": [
+      "P_G1-P_G12"
+    ]
+  },
+  {
+    "type": "HISTORICO_AUDITORIA",
+    "mercado": "Over 3.5",
+    "match": "Marseille vs Monaco",
+    "competition": "Ligue 1",
+    "data": "2026-04-19",
+    "ts": "2026-04-20T02:15:50.015Z",
+    "score_real": "2-0",
+    "gols_total": 2,
+    "acertou": false,
+    "source": "AUDITORIA_GOLS_19042026",
+    "padroes": [
+      "P_G1-P_G12"
+    ]
+  },
+  {
+    "type": "HISTORICO_AUDITORIA",
+    "mercado": "Over 1.5",
+    "match": "Manchester City vs Tottenham",
+    "competition": "Premier League",
+    "data": "2026-04-19",
+    "ts": "2026-04-20T02:15:50.015Z",
+    "score_real": "4-1",
+    "gols_total": 5,
+    "acertou": true,
+    "source": "AUDITORIA_GOLS_19042026",
+    "padroes": [
+      "P_G1-P_G12"
+    ]
+  },
+  {
+    "type": "HISTORICO_AUDITORIA",
+    "mercado": "Over 2.5",
+    "match": "Manchester City vs Tottenham",
+    "competition": "Premier League",
+    "data": "2026-04-19",
+    "ts": "2026-04-20T02:15:50.015Z",
+    "score_real": "4-1",
+    "gols_total": 5,
+    "acertou": true,
+    "source": "AUDITORIA_GOLS_19042026",
+    "padroes": [
+      "P_G1-P_G12"
+    ]
+  },
+  {
+    "type": "HISTORICO_AUDITORIA",
+    "mercado": "Over 3.5",
+    "match": "Manchester City vs Tottenham",
+    "competition": "Premier League",
+    "data": "2026-04-19",
+    "ts": "2026-04-20T02:15:50.015Z",
+    "score_real": "4-1",
+    "gols_total": 5,
+    "acertou": true,
+    "source": "AUDITORIA_GOLS_19042026",
+    "padroes": [
+      "P_G1-P_G12"
+    ]
   }
 ]

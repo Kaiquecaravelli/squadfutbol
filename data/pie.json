@@ -13280,6 +13280,27 @@
         "P_B10"
       ],
       "salvo_em": "2026-04-20T02:02:22.823Z"
+    },
+    {
+      "ts": "2026-04-20T02:15:31.902Z",
+      "id": "AUDITORIA_GOLS_19042026",
+      "descricao": "Calibração Over Goals: 12 padrões P_G1-P_G12 + 9 lambda fatores + 45 amostras históricas (15 jogos × 3 mercados)",
+      "padroes": [
+        "P_G1",
+        "P_G2",
+        "P_G3",
+        "P_G4",
+        "P_G5",
+        "P_G6",
+        "P_G7",
+        "P_G8",
+        "P_G9",
+        "P_G10",
+        "P_G11",
+        "P_G12"
+      ],
+      "lambda_fatores": 9,
+      "amostras_adicionadas": 45
     }
   ],
   "pattern_library": {},
@@ -15777,5 +15798,16 @@
       "salvo_em": "2026-04-20T01:10:01.224Z"
     }
   ],
-  "lessons": []
+  "lessons": [],
+  "lambdaFatoresGols": {
+    "Brasileirao Serie A": 1.02,
+    "Brasileirao Serie B": 0.97,
+    "Ligue 1": 1,
+    "Ligue 2": 1.06,
+    "Premier League": 0.96,
+    "Championship": 1.04,
+    "Serie A Italiana": 0.9,
+    "Serie B Italiana": 0.92,
+    "FA Cup": 1.15
+  }
 }
