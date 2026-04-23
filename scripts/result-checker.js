@@ -521,6 +521,17 @@ export async function runResultChecker() {
     }
 
     const label = `${entry.match} [${entry.market}]`;
+
+    // Jogo ainda não começou — pular silenciosamente (não conta como falha)
+    const kickoffMs = entry.gameTime ? new Date(entry.gameTime).getTime() : null;
+    if (kickoffMs && Date.now() < kickoffMs) {
+      process.stdout.write(`  → ${label.substring(0, 50).padEnd(50)}  `);
+      console.log(chalk.gray(`Jogo ainda não iniciou (${new Date(kickoffMs).toLocaleString('pt-BR')}) — aguardando`));
+      // Não incrementa skipped: jogo futuro não é falha de SofaScore
+      await sleep(DELAY_MS);
+      continue;
+    }
+
     process.stdout.write(`  → ${label.substring(0, 50).padEnd(50)}  `);
 
     try {

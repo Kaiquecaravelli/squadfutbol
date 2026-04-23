@@ -38,8 +38,8 @@ const TRACKER = join(__dirCS, '../../data/corners-tracker.json');
 //   Brasileirão Over 6.5: P(>6.5) sobe 79%→93% (xG=2.5)
 //   Brasileirão Over 8.5: P(>8.5) sobe 54%→79% (xG=2.5)
 //   Bundesliga  Over 8.5: P(>8.5) cai  54%→28% (evita falsos positivos)
-export const CORNERS_MIN_CONFIDENCE = 80;
-export const CORNERS_MIN_PROBABILITY = 80;
+export const CORNERS_MIN_CONFIDENCE = 75;
+export const CORNERS_MIN_PROBABILITY = 75;
 
 /**
  * Retorna threshold mínimo de confiança para o mercado de escanteios.

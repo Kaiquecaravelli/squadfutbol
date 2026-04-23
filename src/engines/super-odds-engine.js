@@ -34,13 +34,13 @@ import { calcScoreComposite } from '../utils/score-composite.js';
 import { formatSuperOddsSignal, validarMensagem, SEP, EMOJI } from '../utils/signal-formatter.js';
 
 // ── Constantes ────────────────────────────────────────────────────────────────
-const MIN_CONFIANCA      = 68;     // S1
-const MIN_ODD_INDIVIDUAL = 1.40;   // S3
-const MAX_ODD_INDIVIDUAL = 3.50;   // S3
-const MIN_SELECOES       = 3;      // G1
-const MAX_SELECOES       = 5;      // G1
-const MIN_ODD_ACUMULADA  = 10.0;   // G2
-const MIN_SCORE_MEDIO    = 0.72;   // G5
+const MIN_CONFIANCA      = 65;     // S1
+const MIN_ODD_INDIVIDUAL = 1.30;   // S3
+const MAX_ODD_INDIVIDUAL = 4.00;   // S3
+const MIN_SELECOES       = 2;      // G1
+const MAX_SELECOES       = 6;      // G1
+const MIN_ODD_ACUMULADA  = 5.0;    // G2 — fator mínimo 5x
+const MIN_SCORE_MEDIO    = 0.65;   // G5
 const MAX_MESMA_LIGA     = 2;      // G4 / S4
 
 // ── S1–S5: Coleta de candidatos ───────────────────────────────────────────────

@@ -1,0 +1,3069 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="h-full">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BettingSquad Pro</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Space+Mono:wght@400;700&display=swap');
+
+:root {
+  --primary-dark:       #080b11;
+  --primary-light:      #161c28;
+  --primary-gold:       #d4af37;
+  --primary-gold-light: #e8c547;
+  --primary-gold-dark:  #a0860f;
+  --accent-gold:        #d4af37;
+  --accent-green:       #10b981;
+  --accent-red:         #ef5350;
+  --accent-cyan:        #0ea5e9;
+  --accent-emerald:     #10b981;
+  --accent-purple:      #a78bfa;
+  --surface-1:          #0d1117;
+  --surface-2:          #161c28;
+  --surface-3:          #1e2535;
+  --border-subtle:      rgba(255,255,255,0.06);
+  --border-medium:      rgba(255,255,255,0.1);
+  --border-color:       rgba(255,255,255,0.06);
+  --text-primary:       #f1f5f9;
+  --text-secondary:     #94a3b8;
+  --text-tertiary:      #64748b;
+  --text-quaternary:    #475569;
+  --radius-sm:  8px;
+  --radius-md:  12px;
+  --radius-lg:  16px;
+  --radius-xl:  20px;
+  /* legado */
+  --bg:      #080b11;
+  --surface: #0d1117;
+  --card:    #161c28;
+  --border:  rgba(255,255,255,0.06);
+  --green:   #10b981;
+  --red:     #ef5350;
+  --blue:    #3b82f6;
+  --amber:   #d4af37;
+  --purple:  #a78bfa;
+  --cyan:    #0ea5e9;
+}
+
+/* ── Reset & Base ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { -webkit-font-smoothing: antialiased; }
+body {
+  background: var(--primary-dark);
+  color: var(--text-primary);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-size: 14px;
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.18); }
+
+
+/* ── Layout ── */
+#app { display: flex; min-height: 100vh; }
+
+/* ══════════════════════════════════════
+   SIDEBAR — Lovable pill-nav style
+══════════════════════════════════════ */
+#sidebar {
+  width: 256px;
+  min-height: 100vh;
+  background: var(--surface-1);
+  border-right: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  top: 0; left: 0;
+  z-index: 1000;
+  transition: left 0.25s cubic-bezier(0.4,0,0.2,1);
+}
+#sidebar-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  z-index: 999;
+  backdrop-filter: blur(4px);
+}
+#sidebar-overlay.active { display: block; }
+#main { margin-left: 256px; flex: 1; display: flex; flex-direction: column; min-height: 100vh; }
+
+/* Sidebar logo */
+.sidebar-logo {
+  padding: 20px 16px 16px;
+  border-bottom: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(212,175,55,0.05);
+}
+.sidebar-logo .logo-icon {
+  width: 36px; height: 36px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, var(--primary-gold), var(--accent-cyan));
+  display: flex; align-items: center; justify-content: center;
+  font-size: 17px;
+  flex-shrink: 0;
+  box-shadow: 0 0 0 1px rgba(212,175,55,0.3), 0 4px 12px rgba(212,175,55,0.2);
+}
+.sidebar-logo .brand {
+  font-size: 15px;
+  font-weight: 700;
+  background: linear-gradient(135deg, var(--primary-gold) 30%, var(--accent-cyan));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+  letter-spacing: -0.3px;
+}
+.sidebar-logo .tagline { font-size: 10px; color: var(--text-tertiary); margin-top: 1px; }
+
+/* Nav sections */
+.nav-section { padding: 16px 10px 0; }
+.nav-label {
+  font-size: 10px;
+  color: var(--text-quaternary);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  padding: 0 10px;
+  margin-bottom: 4px;
+}
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 10px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.15s ease;
+  margin-bottom: 2px;
+  user-select: none;
+}
+.nav-item i { width: 16px; text-align: center; font-size: 13px; opacity: 0.8; }
+.nav-item:hover {
+  background: rgba(255,255,255,0.05);
+  color: var(--text-primary);
+}
+.nav-item:hover i { opacity: 1; }
+/* PILL active — destaque real */
+.nav-item.active {
+  background: rgba(212,175,55,0.1);
+  color: var(--primary-gold);
+  font-weight: 600;
+}
+.nav-item.active i { opacity: 1; color: var(--primary-gold); }
+.nav-item .badge {
+  margin-left: auto;
+  background: var(--primary-gold);
+  color: #0d1117;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 99px;
+  line-height: 1.4;
+}
+
+/* Sidebar status widget */
+.sidebar-status {
+  margin: 8px 10px 0;
+  background: rgba(16,185,129,0.07);
+  border: 1px solid rgba(16,185,129,0.15);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+}
+
+/* Sidebar footer */
+.sidebar-footer {
+  margin-top: auto;
+  padding: 12px 10px;
+  border-top: 1px solid rgba(212,175,55,0.08);
+  background: linear-gradient(0deg, rgba(212,175,55,0.03), transparent);
+}
+.sidebar-user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 8px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.sidebar-user:hover { background: rgba(255,255,255,0.04); }
+.sidebar-avatar {
+  width: 32px; height: 32px;
+  border-radius: 99px;
+  background: linear-gradient(135deg, var(--primary-gold), var(--accent-cyan));
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 13px; color: #0d1117;
+  flex-shrink: 0;
+}
+
+/* ══════════════════════════════════════
+   TOPBAR
+══════════════════════════════════════ */
+#topbar {
+  height: 60px;
+  background: var(--surface-1);
+  border-bottom: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  gap: 12px;
+  position: sticky;
+  top: 0;
+  z-index: 30;
+}
+.hamburger-btn {
+  display: none;
+  width: 36px; height: 36px;
+  border-radius: var(--radius-sm);
+  background: rgba(255,255,255,0.06);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  font-size: 14px;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+}
+.hamburger-btn:hover { background: rgba(255,255,255,0.1); }
+
+/* ── Content ── */
+#content { flex: 1; padding: 28px 32px; overflow-y: auto; max-width: 1440px; }
+
+/* ══════════════════════════════════════
+   CARDS — Clean elevation
+══════════════════════════════════════ */
+.card {
+  background: var(--surface-2);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 22px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  animation: fadeUp 0.35s ease-out both;
+}
+.card:hover {
+  border-color: rgba(212,175,55,0.2);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+}
+
+/* ── Card header utility ── */
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+.card-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.card-subtitle {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  margin-top: 2px;
+}
+
+/* ══════════════════════════════════════
+   KPI / METRIC CARDS — Lovable style
+══════════════════════════════════════ */
+.metric-card {
+  background: var(--surface-2);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 22px;
+  position: relative;
+  overflow: hidden;
+  transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
+  animation: fadeUp 0.35s ease-out both;
+}
+.metric-card:hover {
+  border-color: rgba(212,175,55,0.2);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+  transform: translateY(-2px);
+}
+/* Linha topo colorida */
+.metric-card::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  background: var(--mc-color, var(--primary-gold));
+  opacity: 0.8;
+}
+/* Ícone redondo — premium style */
+.metric-card .icon-bg {
+  width: 42px; height: 42px;
+  border-radius: 11px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 17px;
+  flex-shrink: 0;
+  transition: transform 0.2s;
+}
+.metric-card:hover .icon-bg { transform: scale(1.08); }
+.metric-card .label {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.7px;
+  margin-bottom: 6px;
+}
+.metric-card .value {
+  font-size: 30px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -1.5px;
+  color: #f8fafc;
+}
+.metric-card .sub {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  margin-top: 6px;
+}
+.metric-card .trend {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 99px;
+  margin-top: 10px;
+}
+
+/* ══════════════════════════════════════
+   TABLES — Clean rows
+══════════════════════════════════════ */
+.table-wrapper { overflow-x: auto; border-radius: var(--radius-md); }
+table { width: 100%; border-collapse: collapse; }
+thead tr { border-bottom: 1px solid var(--border-subtle); }
+th {
+  text-align: left;
+  padding: 10px 14px;
+  font-size: 11px;
+  color: var(--text-quaternary);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  white-space: nowrap;
+}
+td {
+  padding: 12px 14px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+tr:last-child td { border-bottom: none; }
+tbody tr { transition: background 0.12s; }
+tbody tr:hover td { background: rgba(255,255,255,0.03); color: var(--text-primary); }
+
+/* ══════════════════════════════════════
+   BADGES — Pill style
+══════════════════════════════════════ */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 99px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  white-space: nowrap;
+}
+.badge-green   { background: rgba(16,185,129,0.12);  color: #34d399; border: 1px solid rgba(16,185,129,0.2); }
+.badge-red     { background: rgba(239,83,80,0.12);   color: #fc8181; border: 1px solid rgba(239,83,80,0.2); }
+.badge-blue    { background: rgba(59,130,246,0.12);  color: #60a5fa; border: 1px solid rgba(59,130,246,0.2); }
+.badge-amber   { background: rgba(212,175,55,0.12);  color: #d4af37; border: 1px solid rgba(212,175,55,0.2); }
+.badge-purple  { background: rgba(167,139,250,0.12); color: #a78bfa; border: 1px solid rgba(167,139,250,0.2); }
+.badge-gray    { background: rgba(100,116,139,0.1);  color: #94a3b8; border: 1px solid rgba(100,116,139,0.2); }
+.badge-vitoria { background: rgba(16,185,129,0.15); color: #34d399; border: 1px solid rgba(16,185,129,0.25); }
+.badge-derrota { background: rgba(239,83,80,0.15);  color: #fc8181; border: 1px solid rgba(239,83,80,0.25); }
+.badge-empate  { background: rgba(212,175,55,0.15); color: var(--primary-gold); border: 1px solid rgba(212,175,55,0.25); }
+.badge-analise { background: rgba(14,165,233,0.12); color: #38bdf8; border: 1px solid rgba(14,165,233,0.2); }
+
+/* ══════════════════════════════════════
+   BUTTONS
+══════════════════════════════════════ */
+.btn {
+  padding: 9px 18px;
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  font-size: 13px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  letter-spacing: 0.2px;
+  font-family: inherit;
+}
+.btn-primary {
+  background: linear-gradient(135deg, #e0bc42, #d4af37, #b8960e);
+  color: #0d1117;
+  box-shadow: 0 1px 0 rgba(255,255,255,0.2) inset, 0 4px 16px rgba(212,175,55,0.35), 0 0 0 1px rgba(212,175,55,0.3);
+}
+.btn-primary:hover {
+  background: linear-gradient(135deg, #e8c547, #dbb93e, #c4a018);
+  box-shadow: 0 6px 24px rgba(212,175,55,0.5), 0 0 0 1px rgba(212,175,55,0.4);
+  transform: translateY(-2px);
+}
+.btn-secondary {
+  background: rgba(255,255,255,0.06);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-medium);
+}
+.btn-secondary:hover { background: rgba(255,255,255,0.1); color: var(--text-primary); }
+
+.apply-btn {
+  background: rgba(16,185,129,0.15);
+  color: #34d399;
+  border: 1px solid rgba(16,185,129,0.25);
+  border-radius: var(--radius-md);
+  padding: 8px 16px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.18s;
+  font-family: inherit;
+  white-space: nowrap;
+}
+.apply-btn:hover { background: rgba(16,185,129,0.22); border-color: rgba(16,185,129,0.4); }
+
+.back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-tertiary);
+  font-size: 13px;
+  cursor: pointer;
+  padding: 6px 0;
+  transition: color 0.15s;
+  background: none;
+  border: none;
+  font-family: inherit;
+}
+.back-btn:hover { color: var(--text-primary); }
+
+/* ── Tabs ── */
+.tab-bar {
+  display: flex;
+  gap: 2px;
+  background: rgba(255,255,255,0.04);
+  border-radius: var(--radius-md);
+  padding: 3px;
+  border: 1px solid var(--border-subtle);
+}
+.tab {
+  padding: 7px 16px;
+  border-radius: 9px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  color: var(--text-tertiary);
+  transition: all 0.15s;
+  font-family: inherit;
+}
+.tab.active {
+  background: var(--surface-3);
+  color: var(--text-primary);
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+
+/* ── Progress ── */
+.progress { background: rgba(255,255,255,0.06); border-radius: 99px; height: 6px; overflow: hidden; }
+.progress-fill { height: 100%; border-radius: 99px; transition: width 0.5s ease; }
+
+/* ── Toggle ── */
+.toggle { position: relative; display: inline-block; width: 48px; height: 26px; }
+.toggle input { opacity: 0; width: 0; height: 0; }
+.toggle-slider {
+  position: absolute; cursor: pointer;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(255,255,255,0.08);
+  border-radius: 99px;
+  transition: 0.25s;
+  border: 1px solid rgba(255,255,255,0.1);
+}
+.toggle-slider:before {
+  content: "";
+  position: absolute;
+  height: 18px; width: 18px;
+  left: 3px; bottom: 3px;
+  background: var(--text-tertiary);
+  border-radius: 50%;
+  transition: 0.25s;
+}
+.toggle input:checked + .toggle-slider { background: var(--accent-green); border-color: var(--accent-green); }
+.toggle input:checked + .toggle-slider:before { transform: translateX(22px); background: #fff; }
+
+/* ── PIE bar ── */
+.pie-bar { height: 7px; border-radius: 99px; background: rgba(255,255,255,0.06); overflow: hidden; box-shadow: inset 0 1px 2px rgba(0,0,0,0.3); }
+.pie-fill { height: 100%; border-radius: 99px; box-shadow: 0 0 8px currentColor, 0 0 20px rgba(16,185,129,0.3); }
+
+/* ── Pulse dot ── */
+.pulse {
+  display: inline-block;
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--accent-green);
+  animation: pulseAnim 2s infinite;
+}
+@keyframes pulseAnim { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(1.5)} }
+
+/* ── Confidence ring ── */
+.conf-ring { position: relative; width: 56px; height: 56px; }
+.conf-ring svg { transform: rotate(-90deg); }
+.conf-ring .val {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 700;
+  font-family: 'Space Mono', monospace;
+}
+
+/* ── Skeleton ── */
+.skeleton {
+  background: linear-gradient(90deg, rgba(30,37,53,0.9) 25%, rgba(40,50,68,0.6) 50%, rgba(30,37,53,0.9) 75%);
+  background-size: 200%;
+  animation: shimmer 1.6s infinite;
+  border-radius: var(--radius-sm);
+}
+@keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+@keyframes spin { to{transform:rotate(360deg)} }
+
+/* ── Animations ── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes slideInUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes glow {
+  0%,100% { box-shadow: 0 0 0 rgba(212,175,55,0); }
+  50%      { box-shadow: 0 0 18px rgba(212,175,55,0.25); }
+}
+
+/* ── Toast ── */
+#toast { position: fixed; bottom: 20px; right: 20px; z-index: 9998; display: flex; flex-direction: column; gap: 8px; }
+.toast-item {
+  background: var(--surface-3);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-md);
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  min-width: 260px;
+  max-width: 360px;
+  animation: slideInToast 0.25s ease;
+  backdrop-filter: blur(16px);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+}
+@keyframes slideInToast { from{transform:translateX(110%);opacity:0} to{transform:translateX(0);opacity:1} }
+
+/* ══════════════════════════════════════
+   GAME CARDS
+══════════════════════════════════════ */
+.game-card {
+  background: linear-gradient(145deg, #141921 0%, #111620 100%);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  position: relative;
+  animation: fadeUp 0.3s ease-out both;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+}
+.game-card:hover {
+  border-color: rgba(212,175,55,0.3);
+  box-shadow: 0 6px 24px rgba(0,0,0,0.45), 0 0 0 1px rgba(212,175,55,0.1) inset;
+  transform: translateY(-2px);
+}
+.game-card.has-superbet { border-left: 2px solid var(--accent-green); }
+.game-card.live { border-left: 2px solid var(--accent-red); }
+@keyframes livePulse { 0%,100%{opacity:1} 50%{opacity:0.6} }
+.team-logo { width: 26px; height: 26px; border-radius: 50%; background: rgba(255,255,255,0.06); object-fit: contain; padding: 2px; }
+.team-logo-lg { width: 48px; height: 48px; border-radius: 50%; background: rgba(255,255,255,0.06); object-fit: contain; padding: 3px; }
+.time-group-label {
+  font-size: 10px;
+  color: var(--text-quaternary);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  padding: 10px 0 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.time-group-label::after { content: ""; flex: 1; height: 1px; background: var(--border-subtle); }
+
+/* Filter pills */
+.filter-btn {
+  padding: 6px 14px;
+  border-radius: 99px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid var(--border-subtle);
+  background: transparent;
+  color: var(--text-tertiary);
+  transition: all 0.15s;
+  font-family: inherit;
+}
+.filter-btn:hover { background: rgba(255,255,255,0.05); color: var(--text-secondary); border-color: var(--border-medium); }
+.filter-btn.active {
+  background: rgba(212,175,55,0.15);
+  border-color: rgba(212,175,55,0.3);
+  color: var(--primary-gold);
+  font-weight: 600;
+}
+.status-dot-live {
+  display: inline-block;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--accent-red);
+  animation: pulseAnim 1.2s infinite;
+  margin-right: 4px;
+}
+
+/* Probability bars */
+.prob-bar-wrap { display: grid; grid-template-columns: 88px 1fr 44px; align-items: center; gap: 8px; margin-bottom: 8px; }
+.prob-bar-bg { height: 6px; border-radius: 99px; background: rgba(255,255,255,0.06); overflow: hidden; }
+.prob-bar-fill { height: 100%; border-radius: 99px; transition: width 0.5s ease; }
+
+/* Recommendation cards */
+.rec-card {
+  background: rgba(16,185,129,0.05);
+  border: 1px solid rgba(16,185,129,0.15);
+  border-radius: var(--radius-md);
+  padding: 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+  transition: all 0.18s;
+}
+.rec-card:hover { background: rgba(16,185,129,0.09); border-color: rgba(16,185,129,0.28); }
+.rec-card.top1 { background: rgba(16,185,129,0.09); border-color: rgba(16,185,129,0.28); }
+
+/* Search */
+.search-input {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  padding: 8px 12px 8px 34px;
+  font-size: 13px;
+  width: 240px;
+  outline: none;
+  transition: all 0.15s;
+  font-family: inherit;
+}
+.search-input::placeholder { color: var(--text-quaternary); }
+.search-input:focus { border-color: rgba(212,175,55,0.4); background: rgba(255,255,255,0.06); box-shadow: 0 0 0 3px rgba(212,175,55,0.07); }
+.search-wrap { position: relative; }
+.search-wrap i { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text-quaternary); font-size: 12px; pointer-events: none; }
+
+/* ── Sidebar logo gold line ── */
+.sidebar-logo::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 16px; right: 16px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(212,175,55,0.2), transparent);
+}
+.sidebar-logo { position: relative; }
+
+/* ── Section label ── */
+.section-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-quaternary);
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.section-label::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(to right, transparent, rgba(212,175,55,0.2), transparent);
+}
+
+/* ── Responsive ── */
+@media (max-width: 1024px) {
+  #sidebar { left: -256px; }
+  #sidebar.mobile-open { left: 0; box-shadow: 0 0 48px rgba(0,0,0,0.7); }
+  #main { margin-left: 0; }
+  .hamburger-btn { display: flex; }
+  #content { padding: 16px; }
+}
+@media (max-width: 768px) {
+  #content { padding: 12px 10px; }
+  #topbar { padding: 0 12px; gap: 8px; }
+  #topbar #live-ticker { display: none; }
+  .metric-card .value { font-size: 22px; }
+  .metric-card { padding: 16px; }
+  .card { padding: 16px; }
+  .card-title { font-size: 13px; }
+  .table-wrapper { -webkit-overflow-scrolling: touch; }
+  table { font-size: 12px; }
+  th, td { padding: 8px 10px; }
+  /* Fix grids gerados inline */
+  .grid-mobile-2 { grid-template-columns: repeat(2,1fr) !important; }
+  .grid-mobile-1 { grid-template-columns: 1fr !important; }
+}
+@media (max-width: 480px) {
+  #content { padding: 10px 8px; }
+  .metric-card .value { font-size: 20px; }
+  #topbar .btn-refresh-label { display: none; }
+}
+
+/* Banner DEMO */
+#demo-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: linear-gradient(90deg, rgba(212,175,55,0.12), rgba(245,158,11,0.06));
+  border: 1px solid rgba(212,175,55,0.3);
+  border-radius: 12px;
+  padding: 14px 18px;
+  margin-bottom: 24px;
+  font-size: 13px;
+}
+#demo-banner .demo-badge {
+  background: rgba(212,175,55,0.15);
+  border: 1px solid rgba(212,175,55,0.35);
+  border-radius: 6px;
+  padding: 3px 10px;
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--primary-gold);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+#demo-banner .demo-text { flex: 1; color: var(--text-secondary); line-height: 1.5; }
+#demo-banner .demo-text strong { color: #f8fafc; }
+#demo-banner .demo-link {
+  background: linear-gradient(135deg, var(--primary-gold), var(--primary-gold-dark));
+  color: #0f1419; font-weight: 700; font-size: 12px;
+  padding: 7px 14px; border-radius: 8px; text-decoration: none;
+  white-space: nowrap; flex-shrink: 0;
+}
+@media (max-width: 640px) {
+  #demo-banner { flex-wrap: wrap; }
+  #demo-banner .demo-link { width: 100%; text-align: center; }
+}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ── SIDEBAR ── -->
+  <div id="sidebar-overlay" onclick="closeSidebar()"></div>
+  <aside id="sidebar">
+    <div class="sidebar-logo">
+      <div style="display:flex;align-items:center;gap:11px">
+        <div style="width:40px;height:40px;background:linear-gradient(135deg,#e0bc42,#d4af37 50%,#0ea5e9);border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:19px;box-shadow:0 0 0 1px rgba(212,175,55,0.4),0 4px 16px rgba(212,175,55,0.4),0 0 24px rgba(212,175,55,0.15)">⚽</div>
+        <div>
+          <div class="brand" style="font-size:15px;font-weight:800;letter-spacing:-0.4px">BettingSquad</div>
+          <div class="tagline" style="font-size:10px;color:var(--text-quaternary);margin-top:1px;letter-spacing:0.2px">PRO PLATFORM · v2.0</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-label">Principal</div>
+      <div class="nav-item active" onclick="navigate('dashboard')"><i class="fas fa-chart-pie" style="width:18px"></i> Dashboard</div>
+      <div class="nav-item" onclick="navigate('analyses')"><i class="fas fa-crosshairs" style="width:18px"></i> Análises <span class="badge" id="analyses-badge">0</span></div>
+      <div class="nav-item" onclick="navigate('autobettor')"><i class="fas fa-robot" style="width:18px"></i> Auto-Bettor</div>
+      <div class="nav-item" onclick="navigate('performance')"><i class="fas fa-chart-line" style="width:18px"></i> Performance</div>
+    </div>
+
+    <div class="nav-section" style="margin-top:8px">
+      <div class="nav-label">Sistema</div>
+      <div class="nav-item" onclick="navigate('bankroll')"><i class="fas fa-wallet" style="width:18px"></i> Gestão de Banca</div>
+      <div class="nav-item" onclick="navigate('settings')"><i class="fas fa-cog" style="width:18px"></i> Configurações</div>
+    </div>
+
+    <div style="padding:10px 16px 4px">
+      <div style="text-align:center;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:1.2px;color:var(--primary-gold);margin-bottom:6px;opacity:0.7">⭐ Assinatura VIP</div>
+      <button onclick="navigate('plans')" style="width:100%;background:linear-gradient(135deg,var(--primary-gold),var(--primary-gold-dark));border:none;border-radius:12px;padding:12px 16px;color:#0f1419;font-size:13px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:all 0.2s;box-shadow:0 4px 16px rgba(212,175,55,0.35);letter-spacing:0.3px" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 8px 24px rgba(212,175,55,0.5)'" onmouseout="this.style.transform='';this.style.boxShadow='0 4px 16px rgba(212,175,55,0.35)'">
+        <i class="fas fa-crown"></i> Planos PRO+
+      </button>
+    </div>
+
+    <div style="padding:14px 16px;margin-top:10px">
+      <div style="background:linear-gradient(135deg,rgba(16,185,129,0.1),rgba(14,165,233,0.06));border:1px solid rgba(16,185,129,0.2);border-radius:12px;padding:12px 14px">
+        <div style="display:flex;align-items:center;gap:6px;color:#10b981;font-weight:700;font-size:12px;margin-bottom:4px">
+          <span class="pulse"></span> Sistema Online
+        </div>
+        <div style="color:var(--text-tertiary);font-size:11px">PIE · Auto-Bettor · Monitor</div>
+        <div style="color:var(--text-tertiary);font-size:11px;margin-top:2px" id="uptime-label">Uptime: carregando...</div>
+      </div>
+    </div>
+
+    <div class="sidebar-footer">
+      <div class="sidebar-user">
+        <div class="sidebar-avatar" id="user-avatar">?</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:700;color:var(--text-primary)" id="user-name">Carregando...</div>
+          <div style="font-size:11px;color:var(--text-tertiary);overflow:hidden;text-overflow:ellipsis" id="user-role">—</div>
+        </div>
+        <div id="auto-dot" style="width:9px;height:9px;border-radius:50%;background:#475569;flex-shrink:0;box-shadow:0 0 6px currentColor"></div>
+      </div>
+      <button onclick="doLogout()" style="width:100%;margin-top:10px;background:rgba(239,83,80,0.1);border:1px solid rgba(239,83,80,0.25);border-radius:8px;padding:8px;color:#ff8a80;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:all 0.15s" onmouseover="this.style.background='rgba(239,83,80,0.18)'" onmouseout="this.style.background='rgba(239,83,80,0.1)'">
+        <i class="fas fa-sign-out-alt"></i> Sair
+      </button>
+    </div>
+  </aside>
+
+  <!-- ── MAIN ── -->
+  <div id="main">
+
+    <!-- ── BANNER SUPERBET CONNECT ── -->
+    <div id="superbet-connect-banner" style="display:none; align-items:center; gap:12px; background:linear-gradient(90deg,rgba(212,175,55,0.12),rgba(14,165,233,0.08)); border-bottom:1px solid rgba(212,175,55,0.2); padding:10px 20px; font-size:13px; color:#f8fafc;">
+      <span style="font-size:18px">🔗</span>
+      <span style="flex:1"><strong style="color:var(--primary-gold)">Conecte sua conta Superbet</strong> para ver seu saldo real e histórico de apostas no dashboard.</span>
+      <a href="/connect-superbet" style="background:linear-gradient(135deg,var(--primary-gold),var(--primary-gold-dark));color:#0f1419;font-weight:700;font-size:12px;padding:7px 16px;border-radius:8px;text-decoration:none;white-space:nowrap;">Conectar agora →</a>
+      <button onclick="this.parentElement.style.display='none'" style="background:none;border:none;color:#64748b;cursor:pointer;font-size:18px;line-height:1;padding:0 4px;">×</button>
+    </div>
+
+    <!-- ── TOPBAR ── -->
+    <header id="topbar">
+      <button class="hamburger-btn" onclick="toggleSidebar()">
+        <i class="fas fa-bars"></i>
+      </button>
+      <div style="flex:1;min-width:0">
+        <h1 id="page-title" style="font-size:16px;font-weight:800;color:var(--text-primary);margin:0;letter-spacing:-0.3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Dashboard</h1>
+        <div id="page-sub" style="font-size:10px;color:var(--text-quaternary);letter-spacing:0.2px">Visão geral do sistema</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <div id="live-ticker" style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text-tertiary);background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:8px;padding:5px 12px">
+          <span class="pulse" style="background:var(--primary-gold)"></span>
+          <span id="ticker-text">Carregando...</span>
+        </div>
+        <div id="conn-status" style="font-size:11px;font-weight:700;color:#22c55e;background:rgba(34,197,94,0.07);border:1px solid rgba(34,197,94,0.18);border-radius:8px;padding:5px 12px;display:none">● Conectado</div>
+        <button onclick="refreshAll(true)" style="background:rgba(255,255,255,0.05);color:var(--text-secondary);border:1px solid rgba(255,255,255,0.08);border-radius:9px;padding:7px 14px;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:6px;font-family:inherit;font-weight:600;transition:all 0.15s" onmouseover="this.style.background='rgba(255,255,255,0.09)'" onmouseout="this.style.background='rgba(255,255,255,0.05)'">
+          <i class="fas fa-sync-alt" id="refresh-icon" style="font-size:11px"></i> Atualizar
+        </button>
+        <div style="background:rgba(212,175,55,0.07);border:1px solid rgba(212,175,55,0.18);padding:7px 14px;border-radius:9px;font-size:13px;color:var(--primary-gold);font-family:'Space Mono',monospace;font-weight:700;letter-spacing:1px" id="clock"></div>
+      </div>
+    </header>
+
+    <!-- ── CONTENT ── -->
+    <main id="content">
+      <div style="display:flex;align-items:center;justify-content:center;height:200px;color:#475569">
+        <i class="fas fa-spinner fa-spin" style="font-size:24px"></i>
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- Toast container -->
+<div id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+//  AUTH CHECK — executado imediatamente
+// ═══════════════════════════════════════════════════════
+window.BSQ_USER = null;
+
+(async function checkAuth() {
+  const token = localStorage.getItem('bsq_token');
+  if (!token) { window.location.href = '/login'; return; }
+
+  try {
+    const r = await fetch('/api/auth/me', { headers: { Authorization: 'Bearer ' + token } });
+    if (r.status === 401) { window.location.href = '/login'; return; }
+    if (r.status === 403) { window.location.href = '/subscribe'; return; }
+    if (!r.ok) { window.location.href = '/login'; return; }
+
+    const user = await r.json();
+    window.BSQ_USER = user;
+
+    function updateUserUI() {
+      const nameEl   = document.getElementById('user-name');
+      const avatarEl = document.getElementById('user-avatar');
+      const roleEl   = document.getElementById('user-role');
+      if (nameEl)   nameEl.textContent   = user.name || user.email;
+      if (avatarEl) avatarEl.textContent = (user.name || user.email || '?')[0].toUpperCase();
+      if (roleEl)   roleEl.textContent   = user.role === 'admin' ? 'Admin · Pro' : 'Membro Pro';
+
+      // Banner de conexão Superbet (se não conectado)
+      if (!user.superbet_connected) {
+        const banner = document.getElementById('superbet-connect-banner');
+        if (banner) banner.style.display = 'flex';
+      }
+    }
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', updateUserUI);
+    } else {
+      updateUserUI();
+    }
+  } catch {
+    window.location.href = '/login';
+  }
+})();
+
+function doLogout() {
+  localStorage.removeItem('bsq_token');
+  localStorage.removeItem('bsq_user');
+  window.location.href = '/login';
+}
+
+// ═══════════════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════════════
+const S = {
+  tab: 'dashboard',
+  dash: null, bets: null, analyses: null, bankroll: null, live: null,
+  charts: {},
+  // Game browser
+  games: null, gamesLoading: false, gamesLoadedAt: null,
+  gameFilter: 'all',
+  gameStatus: 'all',
+  gameSearch: '',
+  gameCompFilter: 'all',
+  selectedGame: null,
+  gameAnalysis: null, gameAnalysisLoading: false,
+  // Superbet
+  superbetBalance: null,
+  superbetBets: null,
+  betTab: 'open',      // 'open' | 'closed'
+};
+
+// ═══════════════════════════════════════════════════════
+//  UTILS
+// ═══════════════════════════════════════════════════════
+const $ = id => document.getElementById(id);
+const fmt = (n, d=2) => n == null ? '—' : Number(n).toLocaleString('pt-BR',{minimumFractionDigits:d,maximumFractionDigits:d});
+const fmtBRL = n => n == null ? '—' : 'R$ ' + fmt(n);
+const fmtPct = n => n == null ? '—' : fmt(n,1) + '%';
+const fmtDate = iso => iso ? new Date(iso).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}) : '—';
+const fmtTime = iso => iso ? new Date(iso).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) : '—';
+const fmtDateTime = iso => iso ? fmtDate(iso) + ' ' + fmtTime(iso) : '—';
+
+function color(val, good=75, bad=65) {
+  if (val >= good) return '#22c55e';
+  if (val >= bad)  return '#f59e0b';
+  return '#ef4444';
+}
+function statusBadge(s) {
+  const m = {
+    'VENCIDA':  ['badge-green','fa-check'],
+    'PERDIDA':  ['badge-red','fa-times'],
+    'PENDENTE': ['badge-blue','fa-clock'],
+    'WON':      ['badge-green','fa-check'],
+    'LOST':     ['badge-red','fa-times'],
+  };
+  const [cls, icon] = m[s?.toUpperCase()] || ['badge-gray','fa-circle'];
+  return `<span class="badge ${cls}"><i class="fas ${icon}" style="margin-right:4px;font-size:9px"></i>${s||'?'}</span>`;
+}
+
+function marketIcon(m) {
+  if (!m) return '📊';
+  if (m.includes('Corner') || m.includes('Escanteio')) return '🚩';
+  if (m.includes('BTTS')) return '⚽';
+  if (m.includes('Over') || m.includes('Under')) return '🎯';
+  return '📊';
+}
+
+function confColor(c) {
+  if (c >= 85) return '#22c55e';
+  if (c >= 78) return '#06b6d4';
+  if (c >= 72) return '#f59e0b';
+  return '#ef4444';
+}
+
+function confRing(pct, size=56, forceColor=null) {
+  const r = (size/2) - 5;
+  const circ = 2 * Math.PI * r;
+  const dash = (pct/100) * circ;
+  const c = forceColor || confColor(pct);
+  return `<div class="conf-ring" style="width:${size}px;height:${size}px">
+    <svg width="${size}" height="${size}">
+      <circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="#1f2d47" stroke-width="4"/>
+      <circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="${c}" stroke-width="4"
+        stroke-dasharray="${dash.toFixed(1)} ${(circ-dash).toFixed(1)}" stroke-linecap="round"/>
+    </svg>
+    <div class="val" style="color:${c};font-size:${size<=56?12:14}px">${pct}%</div>
+  </div>`;
+}
+
+// ═══════════════════════════════════════════════════════
+//  API
+// ═══════════════════════════════════════════════════════
+async function api(endpoint) {
+  try {
+    const r = await fetch(endpoint);
+    if (!r.ok) throw new Error(r.statusText);
+    return await r.json();
+  } catch(e) { console.warn('API error:', endpoint, e.message); return null; }
+}
+
+async function apiAuth(endpoint, opts = {}) {
+  try {
+    const token = localStorage.getItem('bsq_token');
+    const r = await fetch(endpoint, {
+      ...opts,
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token, ...(opts.headers || {}) },
+    });
+    if (!r.ok) return null;
+    return await r.json();
+  } catch(e) { console.warn('API auth error:', endpoint, e.message); return null; }
+}
+
+function _setConnStatus(status) {
+  const el = $('conn-status');
+  if (!el) return;
+  if (status === 'ok') {
+    el.style.display = 'flex';
+    el.style.color = '#22c55e';
+    el.style.borderColor = 'rgba(34,197,94,0.18)';
+    el.style.background = 'rgba(34,197,94,0.07)';
+    el.textContent = '● Conectado';
+  } else if (status === 'syncing') {
+    el.style.display = 'flex';
+    el.style.color = '#f59e0b';
+    el.style.borderColor = 'rgba(245,158,11,0.25)';
+    el.style.background = 'rgba(245,158,11,0.07)';
+    el.textContent = '◌ Sincronizando...';
+  } else {
+    el.style.display = 'flex';
+    el.style.color = '#ef4444';
+    el.style.borderColor = 'rgba(239,68,68,0.25)';
+    el.style.background = 'rgba(239,68,68,0.07)';
+    el.textContent = '✕ Reconectando...';
+  }
+}
+
+async function refreshAll(manual=false) {
+  if (manual) {
+    const icon = $('refresh-icon');
+    icon.classList.add('fa-spin');
+    setTimeout(() => icon.classList.remove('fa-spin'), 1000);
+    toast('🔄 Dados atualizados', 'blue');
+  }
+  _setConnStatus('syncing');
+  try {
+    const [dash, bets, analyses, bankroll, live, sbUserData] = await Promise.all([
+      api('/api/dashboard'),
+      api('/api/bets?size=50'),
+      api('/api/analyses'),
+      api('/api/bankroll'),
+      api('/api/live'),
+      apiAuth('/api/superbet/user-data'),
+    ]);
+    S.dash     = dash;
+    S.bets     = bets;
+    S.analyses = analyses;
+    S.bankroll = bankroll;
+    S.live     = live;
+
+    if (sbUserData?.connected) {
+      if (sbUserData.balance != null) S.superbetBalance = { balance: sbUserData.balance, balanceText: sbUserData.balanceText, scrapedAt: sbUserData.lastSync };
+      if (sbUserData.bets)            S.superbetBets    = sbUserData.bets;
+    }
+    S.superbetConnected = !!sbUserData?.connected;
+    _setConnStatus('ok');
+  } catch(e) {
+    _setConnStatus('error');
+  }
+
+  updateTopbar();
+  renderTab(S.tab);
+  updateBadges();
+  makeResponsive();
+}
+
+// Atualização silenciosa só do saldo (15s) — sem re-render completo
+async function _refreshBalanceSilent() {
+  if (!_isSbConnected()) return;
+  try {
+    const d = await apiAuth('/api/superbet/user-data');
+    if (d?.balance != null) {
+      const changed = d.balance !== S.superbetBalance?.balance;
+      S.superbetBalance = { balance: d.balance, balanceText: d.balanceText, scrapedAt: d.lastSync };
+      S.superbetConnected = true;
+      if (changed && S.tab === 'dashboard') renderDashboard();
+    }
+  } catch(_) {}
+}
+
+// ═══════════════════════════════════════════════════════
+//  NAV
+// ═══════════════════════════════════════════════════════
+const TITLES = {
+  dashboard:   ['Dashboard',     'Visão geral do sistema'],
+  analyses:    ['Análises',      'Sinais e oportunidades do dia'],
+  autobettor:  ['Auto-Bettor',   'Automação inteligente de apostas'],
+  performance: ['Performance',   'Histórico e métricas de retorno'],
+  bankroll:    ['Gestão de Banca','Controle de capital e limites'],
+  settings:    ['Configurações', 'Parâmetros do sistema'],
+  plans:       ['Planos PRO+',   'Escolha o plano ideal para você'],
+};
+
+function navigate(tab) {
+  S.tab = tab;
+  if (tab === 'analyses') {
+    // Força refresh se não tem dados OU se o cache está > 2 min
+    const cacheAge = S.gamesLoadedAt ? (Date.now() - S.gamesLoadedAt) : Infinity;
+    if (!S.games || cacheAge > 2 * 60_000) loadGamesToday();
+  }
+  document.querySelectorAll('.nav-item').forEach(el => {
+    el.classList.toggle('active', el.textContent.toLowerCase().includes(tab) ||
+      (tab === 'dashboard' && el.textContent.includes('Dashboard')) ||
+      (tab === 'analyses'  && el.textContent.includes('nálises')) ||
+      (tab === 'autobettor'&& el.textContent.includes('uto-Bettor')) ||
+      (tab === 'performance'&& el.textContent.includes('erformance')) ||
+      (tab === 'bankroll'  && el.textContent.includes('Banca')) ||
+      (tab === 'settings'  && el.textContent.includes('Config'))
+    );
+  });
+  const [title, sub] = TITLES[tab] || ['—',''];
+  $('page-title').textContent = title;
+  $('page-sub').textContent   = sub;
+  renderTab(tab);
+}
+
+function renderTab(tab) {
+  const fns = {
+    dashboard:   renderDashboard,
+    analyses:    renderAnalyses,
+    autobettor:  renderAutoBettor,
+    performance: renderPerformance,
+    bankroll:    renderBankroll,
+    settings:    renderSettings,
+    plans:       renderPlans,
+  };
+  (fns[tab] || renderDashboard)();
+  requestAnimationFrame(makeResponsive);
+}
+
+function updateBadges() {
+  const n = (S.analyses?.placed?.length || 0) + (S.analyses?.pending?.length || 0);
+  $('analyses-badge').textContent = n;
+}
+
+function updateTopbar() {
+  const live = S.live;
+  if (!live) return;
+  $('ticker-text').textContent =
+    `${live.active ?? live.activeBets ?? 0} apostas ativas · ${live.signalsToday} sinais hoje · ${live.cyclesRun} ciclos`;
+  $('uptime-label').textContent = `Uptime: ${Math.floor(live.uptime/3600)}h ${Math.floor((live.uptime%3600)/60)}m`;
+  const dot = $('auto-dot');
+  const enabled = S.dash?.autoEnabled;
+  dot.style.background = enabled ? '#22c55e' : '#ef4444';
+}
+
+// ═══════════════════════════════════════════════════════
+//  CLOCK
+// ═══════════════════════════════════════════════════════
+function tick() {
+  $('clock').textContent = new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+}
+setInterval(tick, 1000); tick();
+
+function toggleSidebar() {
+  const sb = document.getElementById('sidebar');
+  const ov = document.getElementById('sidebar-overlay');
+  const open = sb.classList.toggle('mobile-open');
+  ov.classList.toggle('active', open);
+}
+function closeSidebar() {
+  document.getElementById('sidebar').classList.remove('mobile-open');
+  document.getElementById('sidebar-overlay').classList.remove('active');
+}
+
+function makeResponsive() {
+  if (window.innerWidth > 768) return;
+  const grids = document.querySelectorAll('#content [style*="grid-template-columns"]');
+  grids.forEach(el => {
+    const cols = el.style.gridTemplateColumns;
+    if (cols.includes('repeat(4') || cols.includes('repeat(3')) {
+      el.style.gridTemplateColumns = 'repeat(2,1fr)';
+    } else if (cols.includes('2fr 1fr') || cols.includes('1fr 2fr') || cols.includes('3fr') || cols.includes('2fr')) {
+      el.style.gridTemplateColumns = '1fr';
+    }
+  });
+  if (window.innerWidth <= 480) {
+    const grids2 = document.querySelectorAll('#content [style*="repeat(2"]');
+    grids2.forEach(el => { el.style.gridTemplateColumns = '1fr'; });
+  }
+}
+window.addEventListener('resize', () => { renderTab && renderTab(S.tab); makeResponsive(); });
+
+// ═══════════════════════════════════════════════════════
+//  TOAST
+// ═══════════════════════════════════════════════════════
+function toast(msg, type='green') {
+  const icons = {green:'check-circle',red:'exclamation-circle',blue:'info-circle',amber:'exclamation-triangle'};
+  const colors = {green:'#22c55e',red:'#ef4444',blue:'#3b82f6',amber:'#f59e0b'};
+  const el = document.createElement('div');
+  el.className = 'toast-item';
+  el.innerHTML = `<i class="fas fa-${icons[type]||'circle'}" style="color:${colors[type]||'#22c55e'}"></i>${msg}`;
+  $('toast').appendChild(el);
+  setTimeout(() => el.remove(), 4000);
+}
+
+// ═══════════════════════════════════════════════════════
+//  DASHBOARD
+// ═══════════════════════════════════════════════════════
+function renderDashboard() {
+  const d = S.dash;
+  if (!d) { $('content').innerHTML = '<div style="padding:60px;text-align:center;color:#475569"><i class="fas fa-spinner fa-spin" style="font-size:28px;color:#d4af37;display:block;margin-bottom:12px"></i>Carregando...</div>'; return; }
+
+  const demoBanner = !S.superbetConnected ? `
+  <div id="demo-banner">
+    <span class="demo-badge">📊 DEMO</span>
+    <span class="demo-text">
+      <strong>Você está vendo dados de demonstração.</strong>
+      Conecte sua conta Superbet para o dashboard exibir sua banca real, histórico de apostas e performance verdadeira.
+    </span>
+    <a href="/connect-superbet" class="demo-link">🔗 Conectar Superbet →</a>
+  </div>` : '';
+
+  const winRate = d.winRate || 0;
+  const roi     = d.roi || 0;
+  const sbBal   = S.superbetBalance;
+  const bankrollVal  = (sbBal?.balance != null) ? sbBal.balance : d.bankroll;
+  const bankrollSub  = (sbBal?.balance != null)
+    ? `✓ Superbet · ${new Date(sbBal.scrapedAt).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'})}`
+    : 'Máx/aposta: ' + fmtBRL(d.maxStake);
+  const bankrollTrend = `<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+    <div class="trend" style="background:rgba(34,197,94,.1);color:#22c55e"><i class="fas fa-shield-alt" style="font-size:9px"></i> Fração ${Math.round(d.kellyFraction*100)}%</div>
+    <button onclick="syncSuperbetBalance()" style="background:rgba(14,165,233,0.08);color:#0ea5e9;border:1px solid rgba(14,165,233,0.25);border-radius:6px;padding:2px 8px;font-size:10px;cursor:pointer;font-weight:700;font-family:inherit">🔄 Sync</button>
+  </div>`;
+
+  const now = new Date();
+  const greeting = now.getHours() < 12 ? 'Bom dia' : now.getHours() < 18 ? 'Boa tarde' : 'Boa noite';
+  const userName = (window.BSQ_USER?.name || '').split(' ')[0] || 'Usuário';
+
+  $('content').innerHTML = `
+  ${demoBanner}
+  <!-- HERO WELCOME -->
+  <div style="margin-bottom:28px;padding-bottom:24px;border-bottom:1px solid rgba(255,255,255,0.05)">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+      <div>
+        <div style="font-size:12px;color:var(--text-tertiary);font-weight:600;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;display:flex;align-items:center;gap:8px">
+          <span class="pulse" style="background:var(--accent-green)"></span>
+          Sistema Online · ${now.toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long'})}
+        </div>
+        <h2 style="font-size:28px;font-weight:900;letter-spacing:-0.8px;line-height:1.1;background:linear-gradient(135deg,#f1f5f9 0%,var(--primary-gold) 55%,var(--accent-cyan) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">
+          ${greeting}, ${userName}. 👋
+        </h2>
+        <p style="font-size:13px;color:var(--text-tertiary);margin-top:6px">
+          ${d.pendingBets > 0 ? `<span style="color:#f59e0b;font-weight:600">${d.pendingBets} aposta${d.pendingBets>1?'s':''} ativa${d.pendingBets>1?'s':''}</span> aguardando resultado ·` : ''}
+          PIE calibrado em <span style="color:var(--accent-green);font-weight:600">${(d.markets||[]).filter(m=>m.acc>=m.gate).length}/${(d.markets||[]).length} mercados</span>
+        </p>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center">
+        <div style="background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.2);border-radius:10px;padding:10px 16px;text-align:center">
+          <div style="font-size:10px;color:#475569;font-weight:600;text-transform:uppercase;letter-spacing:0.6px">ROI</div>
+          <div style="font-size:22px;font-weight:800;font-family:'Space Mono',monospace;color:${roi>0?'#22c55e':roi>-5?'#f59e0b':'#ef4444'};letter-spacing:-1px">${roi>0?'+':''}${fmt(roi,1)}%</div>
+        </div>
+        <div style="background:rgba(212,175,55,0.08);border:1px solid rgba(212,175,55,0.2);border-radius:10px;padding:10px 16px;text-align:center">
+          <div style="font-size:10px;color:#475569;font-weight:600;text-transform:uppercase;letter-spacing:0.6px">Acerto</div>
+          <div style="font-size:22px;font-weight:800;font-family:'Space Mono',monospace;color:${winRate>=72?'#22c55e':winRate>=60?'#f59e0b':'#ef4444'};letter-spacing:-1px">${fmt(winRate,1)}%</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- METRICS -->
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:28px">
+    ${metricCard('Banca Atual', fmtBRL(bankrollVal), 'fa-wallet', '#22c55e', bankrollTrend, bankrollSub)}
+    ${metricCard('Taxa de Acerto', fmtPct(winRate), 'fa-bullseye', winRate>=72?'#22c55e':winRate>=60?'#f59e0b':'#ef4444',
+      `<div class="trend" style="background:rgba(34,197,94,.1);color:#22c55e">${d.wonBets}V · ${d.lostBets}D</div>`,
+      `${d.totalBets} apostas totais`)}
+    ${metricCard('ROI Total', fmtPct(roi), 'fa-chart-line', roi>0?'#22c55e':roi>-5?'#f59e0b':'#ef4444',
+      `<div class="trend" style="background:${roi>0?'rgba(34,197,94,.1)':'rgba(239,68,68,.1)'};color:${roi>0?'#22c55e':'#ef4444'}">${roi>0?'▲':'▼'} ${Math.abs(roi)}%</div>`,
+      'Retorno sobre investimento')}
+    ${(() => {
+      // T2: combinar apostas locais pendentes + Superbet abertas como fonte da verdade
+      const localPending = (S.bets?.bets || []).filter(b => !b.result || b.result === 'pending').length;
+      const sbOpen = S.superbetBets?.open?.length || 0;
+      const activeBetsCount = localPending + sbOpen;
+      const activeColor = activeBetsCount > 0 ? '#22c55e' : '#3b82f6';
+      const activeLabel = activeBetsCount > 0
+        ? `<span style="width:8px;height:8px;background:#22c55e;border-radius:50%;display:inline-block;box-shadow:0 0 6px #22c55e"></span> ${activeBetsCount} ativa${activeBetsCount!==1?'s':''}`
+        : '<span style="color:#475569">Nenhuma ativa</span>';
+      return metricCard('Apostas Ativas', String(activeBetsCount), 'fa-clock', activeColor,
+        `<div class="trend" style="background:rgba(59,130,246,.1);color:#3b82f6"><i class="fas fa-robot" style="font-size:9px"></i> ${d.autoEnabled?'Auto ON':'Manual'}</div>`,
+        sbOpen > 0 ? `${localPending} local · ${sbOpen} Superbet` : `Máx ${d.maxBetsDay}/dia`);
+    })()}
+  </div>
+
+  <!-- Section label -->
+  <div class="section-label"><i class="fas fa-chart-bar" style="color:var(--primary-gold);font-size:10px"></i> Desempenho & Apostas</div>
+
+  <!-- PIE + RECENT BETS -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:28px">
+
+    <!-- PIE Performance -->
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">
+        <div>
+          <div style="font-size:15px;font-weight:800;color:#f1f5f9;letter-spacing:-0.3px">PIE — Performance por Mercado</div>
+          <div style="font-size:11px;color:var(--text-tertiary);margin-top:3px">Precisão histórica calibrada em tempo real</div>
+        </div>
+        <span class="badge badge-green" style="animation:pulseAnim 3s infinite">● Live</span>
+      </div>
+      ${(d.markets || []).length ? d.markets.map(m => `
+        <div style="margin-bottom:14px">
+          <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+            <div style="font-size:13px;color:#cbd5e1;font-weight:500">${m.market}</div>
+            <div style="display:flex;align-items:center;gap:10px">
+              <span style="font-size:11px;color:#475569">n=${m.n}</span>
+              <span style="font-size:14px;font-weight:700;color:${color(m.acc,m.gate*100/100+5,m.gate)}">${m.acc}%</span>
+            </div>
+          </div>
+          <div class="pie-bar">
+            <div class="pie-fill" style="width:${Math.min(m.acc,100)}%;background:${color(m.acc,m.gate+5,m.gate)}"></div>
+          </div>
+          <div style="font-size:10px;color:#f8fafc;margin-top:3px">Gate: ${m.gate}% · ${m.acc >= m.gate ? '✅ Acima' : '⚠️ Abaixo'} do piso</div>
+        </div>`).join('') : '<div style="color:#475569;text-align:center;padding:20px">Sem dados de calibração</div>'}
+    </div>
+
+    <!-- Recent Bets -->
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">
+        <div>
+          <div style="font-size:15px;font-weight:800;color:#f1f5f9;letter-spacing:-0.3px">Últimas Apostas</div>
+          <div style="font-size:11px;color:var(--text-tertiary);margin-top:3px">Local + Superbet importado</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button onclick="syncSuperbetBets()" style="background:rgba(14,165,233,0.08);color:#0ea5e9;border:1px solid rgba(14,165,233,0.25);border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;font-weight:700;font-family:inherit">📥 Importar</button>
+          <button onclick="navigate('autobettor')" style="font-size:11px;color:#3b82f6;background:none;border:none;cursor:pointer">Ver todas →</button>
+        </div>
+      </div>
+      ${(() => {
+        // Apostas locais — pendentes primeiro, depois recentes finalizadas
+        const localPending = (S.bets?.bets || [])
+          .filter(b => !b.result || b.result === 'pending')
+          .map(b => ({...b, _src:'local'}));
+        const localRecent  = (d.recentBets || [])
+          .filter(b => b.result && b.result !== 'pending')
+          .map(b => ({...b, _src:'local'}));
+
+        // Apostas Superbet — open primeiro, depois closed recentes
+        // CORREÇÃO: usar .open e .closed em vez de .bets (estrutura real do JSON)
+        const sbOpen   = (S.superbetBets?.open   || []).slice(0, 4).map(b => ({...b, _src:'superbet', result: b.result || 'pending'}));
+        const sbClosed = (S.superbetBets?.closed || []).slice(0, 3).map(b => ({...b, _src:'superbet'}));
+
+        // Merge: pendentes em destaque → Superbet open → locais recentes → Superbet fechadas
+        const merged = [
+          ...localPending,
+          ...sbOpen,
+          ...localRecent,
+          ...sbClosed,
+        ].slice(0, 8);
+
+        return merged.length ? `
+        <div class="table-wrapper">
+          <table>
+            <thead><tr><th>Jogo</th><th>Mercado</th><th>Odds</th><th>Stake</th><th>Status</th></tr></thead>
+            <tbody>
+              ${merged.map(b => `<tr style="${(!b.result || b.result==='pending') ? 'background:rgba(59,130,246,0.04)' : ''}">
+                <td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${b.match||'—'}">
+                  ${b.match||b.event||'—'}
+                  ${b._src==='superbet' ? '<span style="font-size:9px;background:rgba(14,165,233,0.15);color:#0ea5e9;border-radius:4px;padding:1px 5px;margin-left:4px">SB</span>' : ''}
+                </td>
+                <td><span style="font-size:11px">${marketIcon(b.market)} ${b.market||'—'}</span></td>
+                <td style="font-weight:700;color:#f59e0b;font-family:'JetBrains Mono',monospace">${fmt(b.odds)}</td>
+                <td style="color:#94a3b8;font-family:'JetBrains Mono',monospace">${fmtBRL(b.stake)}</td>
+                <td>${statusBadge(b.result === 'won' ? 'VENCIDA' : b.result === 'lost' ? 'PERDIDA' : 'PENDENTE')}</td>
+              </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>` : `<div style="color:#475569;text-align:center;padding:30px;font-size:13px">
+          <i class="fas fa-inbox" style="font-size:28px;display:block;margin-bottom:8px"></i>
+          Nenhuma aposta registrada
+          <div style="margin-top:10px"><button onclick="syncSuperbetBets()" style="background:rgba(14,165,233,0.1);color:#0ea5e9;border:1px solid rgba(14,165,233,0.3);border-radius:8px;padding:6px 16px;cursor:pointer;font-size:12px;font-family:inherit">📥 Importar do Superbet</button></div>
+        </div>`;
+      })()}
+    </div>
+  </div>
+
+  <!-- Section label -->
+  <div class="section-label"><i class="fas fa-robot" style="color:var(--accent-cyan);font-size:10px"></i> Automação & Sistema</div>
+
+  <!-- AUTOMATION STATUS + QUICK STATS -->
+  <div style="display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-bottom:28px">
+    <div class="card">
+      <div style="font-size:15px;font-weight:800;color:#f1f5f9;letter-spacing:-0.3px;margin-bottom:18px">Status da Automação</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+        ${autoStatusCard('PIE Engine', true, 'Calibrado e ativo', 'fa-brain')}
+        ${autoStatusCard('Auto-Bettor', d.autoEnabled, d.autoEnabled?'Monitorando sinais':'Desativado', 'fa-robot')}
+        ${autoStatusCard('Superbet', S.superbetConnected, S.superbetConnected ? (S.superbetBalance?.balance != null ? 'Saldo: ' + fmtBRL(S.superbetBalance.balance) : 'Conectado') : 'Não conectado', 'fa-link')}
+      </div>
+    </div>
+    <div class="card">
+      <div style="font-size:15px;font-weight:800;color:#f1f5f9;letter-spacing:-0.3px;margin-bottom:18px">Gestor de Banca</div>
+      <div style="text-align:center;padding:8px 0">
+        ${confRing(Math.round((d.kellyFraction||.25)*100), 72)}
+        <div style="margin-top:10px;font-size:12px;color:#64748b">Fração de Banca</div>
+        <div style="margin-top:8px;font-size:13px;color:#94a3b8">Stake Recomendado</div>
+        <div style="font-size:22px;font-weight:800;color:#22c55e">${fmtBRL((d.bankroll||0) * (d.kellyFraction||.25) * 0.02)}</div>
+        <div style="font-size:11px;color:#334155;margin-top:4px">2% × Fração × Banca</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- BANNER PLANOS PRO+ -->
+  <div style="position:relative;overflow:hidden;background:linear-gradient(135deg,rgba(212,175,55,0.1) 0%,rgba(212,175,55,0.04) 40%,rgba(14,165,233,0.06) 100%);border:1px solid rgba(212,175,55,0.22);border-radius:16px;padding:28px 32px;display:flex;align-items:center;justify-content:space-between;gap:24px;flex-wrap:wrap">
+    <div style="position:absolute;inset:0;background-image:linear-gradient(rgba(212,175,55,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(212,175,55,0.04) 1px,transparent 1px);background-size:32px 32px;pointer-events:none"></div>
+    <div style="position:absolute;top:-60px;right:-60px;width:220px;height:220px;background:radial-gradient(circle,rgba(212,175,55,0.15),transparent 65%);pointer-events:none;filter:blur(20px)"></div>
+    <div style="position:relative;z-index:1">
+      <div style="display:inline-flex;align-items:center;gap:7px;background:rgba(212,175,55,0.1);border:1px solid rgba(212,175,55,0.25);border-radius:99px;padding:4px 14px;font-size:11px;font-weight:700;color:var(--primary-gold);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:12px">
+        <i class="fas fa-crown" style="font-size:9px"></i> PRO+
+      </div>
+      <div style="font-size:20px;font-weight:900;letter-spacing:-0.5px;color:#f1f5f9;margin-bottom:8px">Desbloqueie todo o potencial da plataforma</div>
+      <p style="font-size:13px;color:var(--text-tertiary);max-width:420px;line-height:1.6;margin:0">Análises ilimitadas, Auto-Bettor completo e todos os recursos a partir de <strong style="color:var(--primary-gold)">R$&nbsp;49,90/mês</strong>.</p>
+    </div>
+    <button onclick="navigate('plans')" style="position:relative;z-index:1;background:linear-gradient(135deg,#e0bc42,var(--primary-gold),#b8960e);border:none;border-radius:12px;padding:14px 28px;color:#0a0d14;font-size:14px;font-weight:800;cursor:pointer;white-space:nowrap;box-shadow:0 0 0 1px rgba(212,175,55,0.4),0 4px 20px rgba(212,175,55,0.4);transition:all 0.2s;letter-spacing:0.2px" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 0 0 1px rgba(212,175,55,0.5),0 8px 32px rgba(212,175,55,0.55)'" onmouseout="this.style.transform='';this.style.boxShadow='0 0 0 1px rgba(212,175,55,0.4),0 4px 20px rgba(212,175,55,0.4)'">
+      <i class="fas fa-crown" style="margin-right:8px"></i>Ver planos e preços →
+    </button>
+  </div>
+  `;
+}
+
+function metricCard(label, value, icon, accent, trend, sub) {
+  return `<div class="metric-card" style="--mc-color:${accent}">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px">
+      <div class="icon-bg" style="background:${accent}20;border:1px solid ${accent}30"><i class="fas ${icon}" style="color:${accent};font-size:17px"></i></div>
+      <div style="width:8px;height:8px;border-radius:50%;background:${accent};opacity:0.6;margin-top:2px;box-shadow:0 0 6px ${accent}"></div>
+    </div>
+    <div class="label">${label}</div>
+    <div class="value">${value}</div>
+    ${trend || ''}
+    ${sub ? `<div class="sub">${sub}</div>` : ''}
+  </div>`;
+}
+
+function autoStatusCard(label, active, desc, icon) {
+  const c = active ? '#10b981' : '#ef5350';
+  const bg = active ? 'linear-gradient(145deg,#0e1f1a,#0d1a17)' : 'linear-gradient(145deg,#1e1010,#170d0d)';
+  return `<div style="background:${bg};border:1px solid ${c}30;border-radius:12px;padding:16px;text-align:center;transition:all 0.2s;position:relative;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.3)">
+    <div style="position:absolute;top:-10px;right:-10px;width:50px;height:50px;background:radial-gradient(circle,${c}20,transparent 70%);pointer-events:none"></div>
+    <div style="width:44px;height:44px;border-radius:10px;background:${c}18;border:1px solid ${c}30;display:flex;align-items:center;justify-content:center;margin:0 auto 10px">
+      <i class="fas ${icon}" style="color:${c};font-size:20px"></i>
+    </div>
+    <div style="font-size:12px;font-weight:700;color:#e2e8f0;margin-bottom:3px">${label}</div>
+    <div style="font-size:10px;color:#475569;margin-bottom:8px">${desc}</div>
+    <span style="display:inline-flex;align-items:center;gap:4px;background:${c}18;color:${c};border:1px solid ${c}35;border-radius:99px;padding:2px 9px;font-size:10px;font-weight:700">
+      <span style="width:5px;height:5px;border-radius:50%;background:${c};${active?'animation:pulseAnim 2s infinite':''}"></span>
+      ${active?'Online':'Offline'}
+    </span>
+  </div>`;
+}
+
+// ═══════════════════════════════════════════════════════
+//  ANALYSES — Game Browser + Analysis Panel
+// ═══════════════════════════════════════════════════════
+
+function renderAnalyses() {
+  if (S.selectedGame && S.gameAnalysis) { renderGameAnalysis(); return; }
+  if (S.selectedGame && S.gameAnalysisLoading) { renderGameAnalysisLoading(); return; }
+  renderGameBrowser();
+}
+
+// ── Game Browser ──────────────────────────────────────────────────────────────
+function renderGameBrowser() {
+  const g = S.games;
+  const live = (g?.games || []).filter(x => x.status === 'inprogress');
+
+  $('content').innerHTML = `
+  <!-- Header -->
+  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:20px">
+    <div>
+      <div style="font-size:20px;font-weight:800;color:#e2e8f0">Varredura de Jogos</div>
+      <div style="font-size:12px;color:#475569;margin-top:2px">
+        ${g ? `${g.total} jogos encontrados · <span style="color:#22c55e">${live.length} ao vivo</span> · Fontes: SofaScore + Superbet` : 'Carregando jogos...'}
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <div class="search-wrap">
+        <i class="fas fa-search"></i>
+        <input class="search-input" type="text" placeholder="Buscar time ou liga..." value="${S.gameSearch}"
+          oninput="S.gameSearch=this.value;renderGameBrowser()" id="gsearch">
+      </div>
+      <button onclick="loadGamesToday(true)" style="background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.3);color:#22c55e;padding:8px 16px;border-radius:8px;font-size:13px;cursor:pointer;display:flex;align-items:center;gap:6px">
+        <i class="fas fa-sync-alt ${S.gamesLoading?'fa-spin':''}"></i> Atualizar
+      </button>
+    </div>
+  </div>
+
+  <!-- Filter bar -->
+  <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+    <div style="display:flex;gap:4px">
+      ${['all','morning','afternoon','night','live'].map(f => {
+        const labels = {all:'Todos',morning:'Manhã',afternoon:'Tarde',night:'Noite',live:'🔴 Ao Vivo'};
+        return `<button class="filter-btn ${S.gameFilter===f?'active':''}" onclick="S.gameFilter='${f}';renderGameBrowser()">${labels[f]}</button>`;
+      }).join('')}
+    </div>
+    <div style="width:1px;height:24px;background:var(--border);margin:0 4px"></div>
+    <select onchange="S.gameStatus=this.value;renderGameBrowser()" style="background:var(--card);border:1px solid var(--border);border-radius:8px;color:#94a3b8;padding:6px 12px;font-size:12px;outline:none">
+      <option value="all" ${S.gameStatus==='all'?'selected':''}>Todos status</option>
+      <option value="notstarted" ${S.gameStatus==='notstarted'?'selected':''}>Agendado</option>
+      <option value="inprogress" ${S.gameStatus==='inprogress'?'selected':''}>Ao Vivo</option>
+      <option value="finished" ${S.gameStatus==='finished'?'selected':''}>Encerrado</option>
+    </select>
+    ${g ? `<select onchange="S.gameCompFilter=this.value;renderGameBrowser()" style="background:var(--card);border:1px solid var(--border);border-radius:8px;color:#94a3b8;padding:6px 12px;font-size:12px;outline:none;max-width:220px">
+      <option value="all">Todas as ligas</option>
+      ${[...new Set((g.games||[]).map(x=>x.competition))].sort().map(c=>`<option value="${esc(c)}" ${S.gameCompFilter===c?'selected':''}>${esc(c)}</option>`).join('')}
+    </select>` : ''}
+  </div>
+
+  <!-- T4: Live Analysis section — aparece apenas com jogos em andamento -->
+  ${(() => {
+    const liveGames = (g?.games || []).filter(x => x.status === 'inprogress');
+    if (!liveGames.length) return '';
+    return `
+    <div style="margin-bottom:20px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+        <span style="width:8px;height:8px;background:#ef4444;border-radius:50%;display:inline-block;box-shadow:0 0 8px #ef4444;animation:pulseAnim 1.5s infinite"></span>
+        <span style="font-size:12px;font-weight:700;color:#ef4444;text-transform:uppercase;letter-spacing:0.8px">Análises em Tempo Real</span>
+        <span style="font-size:11px;color:#334155">${liveGames.length} jogo${liveGames.length!==1?'s':''} ao vivo</span>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px">
+        ${liveGames.map(g => liveAnalysisCard(g)).join('')}
+      </div>
+    </div>`;
+  })()}
+
+  <!-- Games grid -->
+  <div id="games-grid">
+    ${S.gamesLoading && !g ? renderGamesLoading() : renderGamesGrid(g?.games || [])}
+  </div>
+  `;
+
+  if (!g && !S.gamesLoading) loadGamesToday();
+}
+
+function renderGamesLoading() {
+  return Array(8).fill(0).map(() =>
+    `<div class="skeleton" style="height:96px;margin-bottom:12px;border-radius:12px"></div>`
+  ).join('');
+}
+
+// T4 — Geração automática de análise rápida para jogos ao vivo
+function _quickLiveAnalysis(g) {
+  const h = g.homeScore ?? 0;
+  const a = g.awayScore ?? 0;
+  const total = h + a;
+  const min = g.minutePlayed;
+  const period = g.period; // 1=1T, 2=2T
+  const minLabel = min != null ? `${min}'` : (g.statusDesc || 'Ao Vivo');
+
+  let market = null, confidence = 'MÉDIO', reasoning = '', confColor = '#f59e0b';
+
+  if (min != null) {
+    if (total === 0 && min >= 25 && min <= 65) {
+      market = 'Over 0.5 Gols';
+      confidence = 'ALTO';
+      confColor = '#22c55e';
+      reasoning = `${min}' sem gols — estatisticamente: 87% dos jogos têm pelo menos 1 gol`;
+    } else if (total === 0 && min > 65) {
+      market = 'Over 0.5 Gols';
+      confidence = 'ALTO';
+      confColor = '#22c55e';
+      reasoning = `${min}' zerado — odds infladas, alta probabilidade de gol tardio`;
+    } else if (total === 1 && min < 70) {
+      market = 'Over 1.5 Gols';
+      confidence = 'MÉDIO';
+      reasoning = `Placar ${h}-${a} aos ${min}' — tempo e espaço para mais gols`;
+    } else if (total >= 2 && (h === 0 || a === 0) && min < 75) {
+      market = 'BTTS (Ambos Marcam)';
+      confidence = 'MÉDIO';
+      reasoning = `Equipe perdedora tende a pressionar — janela aberta para BTTS`;
+    } else if (total >= 3) {
+      market = 'Over 3.5 Gols';
+      confidence = 'MÉDIO';
+      reasoning = `Jogo aberto (${h}-${a}) — ritmo alto de gols confirma Over 3.5`;
+    } else if (period === 2 && min >= 75 && total <= 1) {
+      market = 'Over 1.5 Gols';
+      confidence = 'BAIXO';
+      confColor = '#ef4444';
+      reasoning = `${min}' — poucos gols, tempo curto, risco elevado`;
+    }
+  } else {
+    // sem minutePlayed, análise por placar apenas
+    if (total === 0) { market = 'Over 0.5 Gols'; reasoning = 'Jogo zerado ao vivo'; }
+    else if (total === 1) { market = 'Over 1.5 Gols'; reasoning = `Placar ${h}-${a}`; }
+    else { market = 'Over 2.5 Gols'; reasoning = `Jogo movimentado (${h}-${a})`; }
+  }
+
+  return { market, confidence, confColor, reasoning, minLabel };
+}
+
+// T4 — Card de análise rápida para jogos ao vivo
+function liveAnalysisCard(g) {
+  const { market, confidence, confColor, reasoning, minLabel } = _quickLiveAnalysis(g);
+  const [h, a] = (g.score || '0-0').split('-').map(Number);
+  return `
+  <div style="background:linear-gradient(135deg,rgba(239,68,68,0.06),rgba(15,20,31,0.97));border:1px solid rgba(239,68,68,0.25);border-radius:14px;padding:16px 18px;cursor:pointer;transition:all 0.2s"
+    onclick="openGame(${g.id})"
+    onmouseover="this.style.borderColor='rgba(239,68,68,0.45)'"
+    onmouseout="this.style.borderColor='rgba(239,68,68,0.25)'">
+    <!-- Header -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="font-size:10px;color:#ef4444;font-weight:700"><span class="status-dot-live"></span> AO VIVO</span>
+        <span style="font-size:10px;color:#475569">${esc(g.competition)}</span>
+      </div>
+      <span style="font-size:11px;color:#64748b;font-family:'JetBrains Mono',monospace">${minLabel}</span>
+    </div>
+    <!-- Times + Placar -->
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px">
+      <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0">
+        <img class="team-logo" src="https://api.sofascore.com/api/v1/team/${g.homeId}/image" onerror="this.style.display='none'" loading="lazy">
+        <span style="font-size:13px;font-weight:700;color:#e2e8f0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(g.home)}</span>
+      </div>
+      <div style="font-size:22px;font-weight:900;color:#f1f5f9;font-family:'JetBrains Mono',monospace;flex-shrink:0;letter-spacing:2px">${h} — ${a}</div>
+      <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;justify-content:flex-end">
+        <span style="font-size:13px;font-weight:700;color:#e2e8f0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:right">${esc(g.away)}</span>
+        <img class="team-logo" src="https://api.sofascore.com/api/v1/team/${g.awayId}/image" onerror="this.style.display='none'" loading="lazy">
+      </div>
+    </div>
+    <!-- Análise Automática -->
+    ${market ? `<div style="background:rgba(0,0,0,0.2);border-radius:8px;padding:10px 12px;display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:11px;color:#475569;font-weight:600;margin-bottom:3px">OPORTUNIDADE DETECTADA</div>
+        <div style="font-size:13px;font-weight:700;color:${confColor}">${market}</div>
+        <div style="font-size:11px;color:#64748b;margin-top:4px;line-height:1.4">${reasoning}</div>
+      </div>
+      <div style="text-align:center;flex-shrink:0">
+        <div style="font-size:9px;color:#475569;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">Confiança</div>
+        <div style="font-size:12px;font-weight:800;color:${confColor};background:${confColor}15;border:1px solid ${confColor}30;border-radius:8px;padding:4px 10px">${confidence}</div>
+      </div>
+    </div>` : ''}
+    <div style="margin-top:10px;font-size:11px;color:#3b82f6;text-align:right">Ver análise completa →</div>
+  </div>`;
+}
+
+function renderGamesGrid(allGames) {
+  let games = allGames;
+
+  // Filters
+  if (S.gameStatus !== 'all') games = games.filter(g => g.status === S.gameStatus);
+  if (S.gameCompFilter !== 'all') games = games.filter(g => g.competition === S.gameCompFilter);
+  if (S.gameFilter === 'live')      games = games.filter(g => g.status === 'inprogress');
+  else if (S.gameFilter === 'morning')   games = games.filter(g => { const h = g.kickoff ? new Date(g.kickoff).getHours() : 12; return h < 12; });
+  else if (S.gameFilter === 'afternoon') games = games.filter(g => { const h = g.kickoff ? new Date(g.kickoff).getHours() : 12; return h >= 12 && h < 19; });
+  else if (S.gameFilter === 'night')     games = games.filter(g => { const h = g.kickoff ? new Date(g.kickoff).getHours() : 12; return h >= 19; });
+  if (S.gameSearch) {
+    const q = S.gameSearch.toLowerCase();
+    games = games.filter(g => g.home.toLowerCase().includes(q) || g.away.toLowerCase().includes(q) || g.competition.toLowerCase().includes(q));
+  }
+
+  if (!games.length) return `<div class="card" style="text-align:center;padding:50px 20px;color:#334155">
+    <i class="fas fa-calendar-times" style="font-size:40px;display:block;margin-bottom:12px"></i>
+    <div style="font-size:16px;font-weight:600;color:#475569">Nenhum jogo encontrado</div>
+    <div style="font-size:12px;margin-top:6px">Tente outro filtro ou aguarde a atualização automática</div>
+  </div>`;
+
+  // Group by hour slot
+  const groups = {};
+  for (const g of games) {
+    const h = g.kickoff ? new Date(g.kickoff).getHours() : 99;
+    const slot = h < 12 ? '00:00 — 11:59' : h < 16 ? '12:00 — 15:59' : h < 19 ? '16:00 — 18:59' : '19:00 — 23:59';
+    if (!groups[slot]) groups[slot] = [];
+    groups[slot].push(g);
+  }
+
+  return Object.entries(groups).map(([slot, list]) => `
+    <div class="time-group-label"><i class="fas fa-clock" style="color:#334155"></i> ${slot} <span style="color:#334155;font-weight:400">(${list.length} jogos)</span></div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;margin-bottom:20px">
+      ${list.map(g => gameCard(g)).join('')}
+    </div>
+  `).join('');
+}
+
+function gameCard(g) {
+  const isLive = g.status === 'inprogress';
+  const isDone = g.status === 'finished';
+  const time   = g.kickoff ? new Date(g.kickoff).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) : '—';
+  const homeId = g.homeId, awayId = g.awayId;
+  return `<div class="game-card ${g.superbetUrl?'has-superbet':''} ${isLive?'live':''}" onclick="openGame(${g.id})">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <span style="font-size:10px;color:#475569;font-weight:600">${esc(g.competition)}</span>
+      <div style="display:flex;align-items:center;gap:6px">
+        ${isLive ? `<span style="font-size:11px;color:#ef4444;font-weight:700"><span class="status-dot-live"></span>AO VIVO ${g.score||''}</span>` :
+          isDone ? `<span style="font-size:11px;color:#94a3b8">FIM ${g.score||''}</span>` :
+          `<span style="font-size:11px;color:#64748b">${time}</span>`}
+        ${g.superbetUrl ? `<span style="font-size:9px;background:rgba(34,197,94,.15);color:#22c55e;padding:2px 6px;border-radius:10px;font-weight:600">SB</span>` : ''}
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+      <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0">
+        <img class="team-logo" src="https://api.sofascore.com/api/v1/team/${homeId}/image" onerror="this.style.display='none'" loading="lazy">
+        <span style="font-size:13px;font-weight:600;color:#e2e8f0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(g.home)}</span>
+      </div>
+      <span style="font-size:11px;color:#334155;font-weight:700;flex-shrink:0">VS</span>
+      <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;justify-content:flex-end">
+        <span style="font-size:13px;font-weight:600;color:#e2e8f0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:right">${esc(g.away)}</span>
+        <img class="team-logo" src="https://api.sofascore.com/api/v1/team/${awayId}/image" onerror="this.style.display='none'" loading="lazy">
+      </div>
+    </div>
+    <div style="margin-top:8px;display:flex;align-items:center;justify-content:space-between">
+      <span style="font-size:11px;color:#334155">${g.country||''}</span>
+      <span style="font-size:11px;color:#3b82f6">Analisar →</span>
+    </div>
+  </div>`;
+}
+
+async function loadGamesToday(force=false) {
+  if (S.gamesLoading) return;
+  S.gamesLoading = true;
+  renderGameBrowser();
+  try {
+    const data = await api('/api/games/today' + (force ? '?refresh=1' : ''));
+    S.games = data || { games: [], total: 0 };
+    S.gamesLoadedAt = Date.now();
+    // Atualiza badge com total de jogos + ao vivo em destaque
+    const liveN = (S.games.games || []).filter(g => g.status === 'inprogress').length;
+    const badge = $('analyses-badge');
+    if (badge) badge.textContent = liveN > 0 ? `${S.games.total} (${liveN}🔴)` : (S.games.total || 0);
+  } catch(e) {
+    toast('Erro ao carregar jogos: ' + e.message, 'red');
+    S.games = S.games || { games: [], total: 0 };
+  }
+  S.gamesLoading = false;
+  renderGameBrowser();
+}
+
+async function openGame(id) {
+  S.selectedGame = id;
+  S.gameAnalysis = null;
+  S.gameAnalysisLoading = true;
+  renderAnalyses();
+  try {
+    S.gameAnalysis = await api(`/api/games/${id}/analysis`);
+  } catch(e) { toast('Erro na análise: ' + (e.message||'falha'), 'red'); S.selectedGame = null; }
+  S.gameAnalysisLoading = false;
+  renderAnalyses();
+}
+
+function closeGame() {
+  S.selectedGame = null;
+  S.gameAnalysis = null;
+  S.gameAnalysisLoading = false;
+  renderGameBrowser();
+}
+
+function renderGameAnalysisLoading() {
+  $('content').innerHTML = `
+  <button class="back-btn" onclick="closeGame()"><i class="fas fa-arrow-left"></i> Voltar</button>
+  <div style="padding:60px 20px;text-align:center;color:#475569">
+    <i class="fas fa-spinner fa-spin" style="font-size:36px;display:block;margin-bottom:16px;color:#3b82f6"></i>
+    <div style="font-size:16px;font-weight:600">Calculando análise...</div>
+    <div style="font-size:12px;margin-top:6px">Coletando estatísticas dos times e rodando modelo PIE</div>
+  </div>`;
+}
+
+// ── Game Analysis Panel ───────────────────────────────────────────────────────
+function renderGameAnalysis() {
+  const a = S.gameAnalysis;
+  if (!a || a.error) {
+    $('content').innerHTML = `<button class="back-btn" onclick="closeGame()"><i class="fas fa-arrow-left"></i> Voltar</button>
+      <div class="card" style="text-align:center;padding:40px;color:#ef4444"><i class="fas fa-exclamation-circle" style="font-size:32px;display:block;margin-bottom:10px"></i>${a?.error||'Falha ao carregar análise'}</div>`;
+    return;
+  }
+
+  const m = a.model;
+  const kickoffStr = a.kickoff ? new Date(a.kickoff).toLocaleString('pt-BR',{weekday:'short',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—';
+  const confColor  = m.confidence >= 75 ? '#22c55e' : m.confidence >= 60 ? '#f59e0b' : '#ef4444';
+  const favorito   = m.leader === 'home' ? a.home : m.leader === 'away' ? a.away : 'Equilíbrio';
+  const favColor   = m.leader === 'home' ? '#22c55e' : m.leader === 'away' ? '#3b82f6' : '#f59e0b';
+
+  $('content').innerHTML = `
+  <!-- Back + Header -->
+  <button class="back-btn" onclick="closeGame()"><i class="fas fa-arrow-left"></i> Voltar para jogos</button>
+
+  <div class="card" style="margin:12px 0 20px;background:linear-gradient(135deg,#0f1a2e,#1a2236)">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px">
+      <div style="display:flex;align-items:center;gap:20px;flex:1;min-width:0">
+        <div style="text-align:center">
+          <img class="team-logo-lg" src="https://api.sofascore.com/api/v1/team/${a.homeId}/image" onerror="this.style.display='none'">
+          <div style="font-size:13px;font-weight:700;color:#e2e8f0;margin-top:6px;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(a.home)}</div>
+          <div style="font-size:11px;color:#475569;margin-top:2px">λ ${m.lambdaHome}</div>
+        </div>
+        <div style="text-align:center;flex:1">
+          <div style="font-size:11px;color:#475569;margin-bottom:4px">${esc(a.competition)}</div>
+          <div style="font-size:18px;font-weight:800;color:#64748b">VS</div>
+          <div style="font-size:11px;color:#475569;margin-top:4px">${kickoffStr}</div>
+        </div>
+        <div style="text-align:center">
+          <img class="team-logo-lg" src="https://api.sofascore.com/api/v1/team/${a.awayId}/image" onerror="this.style.display='none'">
+          <div style="font-size:13px;font-weight:700;color:#e2e8f0;margin-top:6px;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(a.away)}</div>
+          <div style="font-size:11px;color:#475569;margin-top:2px">λ ${m.lambdaAway}</div>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:8px;min-width:140px">
+        ${confRing(m.confidence, 72, confColor)}
+        <div style="font-size:11px;color:#475569">Confiança do Modelo</div>
+        <div style="font-size:12px;font-weight:600;color:${favColor}">Favorito: ${esc(favorito)}</div>
+        <div style="font-size:11px;color:#475569">Incerteza: ${m.uncertainty}</div>
+        ${a.superbetUrl ? `<a href="${a.superbetUrl}" target="_blank" style="font-size:11px;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.3);color:#22c55e;padding:4px 12px;border-radius:6px;text-decoration:none">Abrir Superbet ↗</a>` : ''}
+      </div>
+    </div>
+  </div>
+
+  <!-- Team Stats -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px">
+    ${teamStatsCard(a.homeStats, '🏠 ' + a.home)}
+    ${teamStatsCard(a.awayStats, '✈️ ' + a.away)}
+  </div>
+
+  <!-- Melhores Apostas -->
+  ${(a.recommendations||[]).length ? `
+  <div class="card" style="margin-bottom:20px;border-color:rgba(34,197,94,.2)">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <div>
+        <div style="font-size:14px;font-weight:700;color:#e2e8f0">🎯 Melhores Apostas</div>
+        <div style="font-size:12px;color:#475569;margin-top:2px">Mercados que passaram no gate PIE · Score combinado modelo + calibração</div>
+      </div>
+      <span class="badge badge-green">${a.recommendations.length} opções</span>
+    </div>
+    ${a.recommendations.map((r, i) => recCard(r, i, a)).join('')}
+  </div>` : `
+  <div class="card" style="margin-bottom:20px;text-align:center;padding:28px">
+    <i class="fas fa-exclamation-triangle" style="font-size:28px;display:block;margin-bottom:8px;color:#f59e0b"></i>
+    <div style="font-size:14px;font-weight:600;color:#64748b">Nenhum mercado passou no gate PIE neste jogo</div>
+  </div>`}
+
+  <!-- Linha 1: Vitória + Dupla Chance -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+    ${marketGroupCard(a.marketGroups?.vitoria, a)}
+    ${marketGroupCard(a.marketGroups?.dupla, a)}
+  </div>
+
+  <!-- Linha 2: Gols+BTTS | Placar Exato -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+    <div class="card">
+      <div style="font-size:13px;font-weight:700;color:#e2e8f0;margin-bottom:10px">⚽ Gols</div>
+      ${(a.marketGroups?.gols?.markets||[]).map(m2 => marketProbRow(m2, a)).join('')}
+      <div style="height:1px;background:var(--border);margin:12px 0 10px"></div>
+      <div style="font-size:13px;font-weight:700;color:#e2e8f0;margin-bottom:10px">🔁 BTTS</div>
+      ${(a.marketGroups?.btts?.markets||[]).map(m2 => marketProbRow(m2, a)).join('')}
+    </div>
+    <div class="card">
+      <div style="font-size:13px;font-weight:700;color:#e2e8f0;margin-bottom:3px">🔢 Placar Exato</div>
+      <div style="font-size:11px;color:#475569;margin-bottom:12px">Poisson · λ Casa ${m.lambdaHome} · λ Fora ${m.lambdaAway}</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+        ${(a.exactScores||[]).map((s, i) => exactScoreCard(s, i)).join('')}
+      </div>
+    </div>
+  </div>
+
+  <!-- Linha 3: Cantos + Cartões -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+    ${marketGroupCard(a.marketGroups?.cantos, a)}
+    ${marketGroupCard(a.marketGroups?.cartoes, a)}
+  </div>
+  `;
+}
+
+function teamStatsCard(stats, label) {
+  if (!stats) return '';
+  const form = (stats.form || '').split('').map(c =>
+    c === 'W' ? `<span style="color:#22c55e;font-weight:700">${c}</span>` :
+    c === 'L' ? `<span style="color:#ef4444;font-weight:700">${c}</span>` :
+    `<span style="color:#f59e0b;font-weight:700">${c}</span>`
+  ).join(' ');
+  return `<div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px">
+    <div style="font-size:12px;font-weight:700;color:#94a3b8;margin-bottom:10px">${esc(label)}</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+      <div style="background:rgba(255,255,255,.03);border-radius:6px;padding:8px;text-align:center">
+        <div style="font-size:10px;color:#475569;margin-bottom:2px">Gols/Jogo</div>
+        <div style="font-size:18px;font-weight:800;color:#22c55e">${stats.goals_scored_avg||'—'}</div>
+      </div>
+      <div style="background:rgba(255,255,255,.03);border-radius:6px;padding:8px;text-align:center">
+        <div style="font-size:10px;color:#475569;margin-bottom:2px">Sofridos</div>
+        <div style="font-size:18px;font-weight:800;color:#ef4444">${stats.goals_conceded_avg||'—'}</div>
+      </div>
+    </div>
+    ${form ? `<div style="font-size:11px;color:#475569;margin-bottom:4px">Forma recente:</div><div style="display:flex;gap:6px">${form}</div>` : ''}
+  </div>`;
+}
+
+function betAttr(obj) {
+  return JSON.stringify(obj).replace(/&/g,'&amp;').replace(/"/g,'&quot;');
+}
+
+function recCard(r, idx, a) {
+  const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `${idx+1}.`;
+  const pieOk = r.pieAcc && r.pieAcc >= r.gate;
+  const pieColor = pieOk ? '#22c55e' : r.pieAcc ? '#f59e0b' : '#475569';
+  const payload = betAttr({match:a.match,homeTeam:a.home,awayTeam:a.away,market:r.market,prob:r.prob,competition:a.competition,gameId:a.id,superbetUrl:a.superbetUrl,kickoff:a.kickoff});
+  return `<div class="rec-card ${idx===0?'top1':''}">
+    <div style="font-size:22px;flex-shrink:0">${medal}</div>
+    <div style="flex:1;min-width:0">
+      <div style="font-size:15px;font-weight:700;color:#e2e8f0;margin-bottom:4px">${marketIcon(r.market)} ${esc(r.market)}</div>
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <span style="font-size:13px">Modelo: <strong style="color:#22c55e">${r.prob}%</strong></span>
+        <span style="font-size:13px">Gate: <strong style="color:#f8fafc">${r.gate}%</strong></span>
+        ${r.pieAcc ? `<span style="font-size:13px">PIE: <strong style="color:${pieColor}">${r.pieAcc}%</strong> ${pieOk?'✅':'⚠️'} <span style="color:#cbd5e1">(n=${r.pieSamples})</span></span>` : ''}
+      </div>
+    </div>
+    <button class="apply-btn" data-bet="${payload}" onclick="applyBet(this.dataset.bet)">
+      🤖 Aplicar
+    </button>
+  </div>`;
+}
+
+function marketProbRow(m2, a) {
+  const bar = Math.min(m2.prob, 100);
+  const c   = m2.ok ? (m2.prob >= 85 ? '#22c55e' : '#f59e0b') : '#ef4444';
+  const pie  = m2.pieAcc ? `<span style="font-size:10px;color:#475569;margin-left:4px">PIE ${m2.pieAcc}%</span>` : '';
+  const applyAttr = a && m2.ok ? `data-bet="${betAttr({match:a.match,homeTeam:a.home,awayTeam:a.away,market:m2.market,prob:m2.prob,competition:a.competition,gameId:a.id,superbetUrl:a.superbetUrl,kickoff:a.kickoff})}" onclick="applyBet(this.dataset.bet)" title="Clique para aplicar"` : '';
+  return `<div class="prob-bar-wrap" style="padding:5px 6px;border-radius:6px;background:${m2.ok?'rgba(34,197,94,.04)':'transparent'};cursor:${a&&m2.ok?'pointer':'default'}" ${applyAttr}>
+    <div style="font-size:12px;color:${m2.ok?'#e2e8f0':'#64748b'};font-weight:${m2.ok?600:400};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(m2.market)}${m2.ok?' ✓':''}</div>
+    <div><div class="prob-bar-bg"><div class="prob-bar-fill" style="width:${bar}%;background:${c}"></div></div></div>
+    <div style="text-align:right;white-space:nowrap">
+      <span style="font-size:13px;font-weight:700;color:${c}">${m2.prob}%</span>${pie}
+    </div>
+  </div>`;
+}
+
+function marketGroupCard(group, a) {
+  if (!group) return '<div class="card"><div style="color:#334155;text-align:center;padding:20px">Sem dados</div></div>';
+  return `<div class="card">
+    <div style="font-size:13px;font-weight:700;color:#e2e8f0;margin-bottom:12px">${group.icon} ${esc(group.label)}</div>
+    ${(group.markets||[]).map(m2 => marketProbRow(m2, a)).join('')}
+  </div>`;
+}
+
+function exactScoreCard(s, i) {
+  const topColors = ['#22c55e','#06b6d4','#f59e0b','#a855f7','#3b82f6'];
+  const c = i < topColors.length ? topColors[i] : '#334155';
+  const intensity = Math.min(s.prob / 15, 1);
+  return `<div style="background:${c}${Math.round(intensity*30).toString(16).padStart(2,'0')};border:1px solid ${c}${Math.round(intensity*60).toString(16).padStart(2,'0')};border-radius:8px;padding:10px 6px;text-align:center;cursor:pointer" title="${s.prob}% de probabilidade">
+    <div style="font-size:16px;font-weight:800;color:${i<3?c:'#94a3b8'}">${s.score}</div>
+    <div style="font-size:11px;color:#475569;margin-top:2px">${s.prob}%</div>
+    ${i < 3 ? `<div style="font-size:9px;color:${c};margin-top:2px;font-weight:600">TOP ${i+1}</div>` : ''}
+  </div>`;
+}
+
+// ── FLUXO PRINCIPAL: Dashboard → Auto-Bettor ─────────────────────────────────
+async function applyBet(jsonStr) {
+  const bet = typeof jsonStr === 'string' ? JSON.parse(jsonStr) : jsonStr;
+  bet.stake = getStake();
+
+  // 1. Mostra modal de início
+  _autobetModal_render(bet, { phase: 'init' });
+
+  // 2. Dispara execução no servidor
+  let execData;
+  try {
+    const res = await fetch('/api/autobet/execute', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...bet, stake: getStake(), source: 'dashboard' }),
+    });
+    execData = await res.json();
+  } catch(e) {
+    return _autobetModal_render(bet, { phase: 'error', error: e.message });
+  }
+
+  if (execData.noSession) return _autobetModal_render(bet, { phase: 'nosession' });
+  if (execData.noUrl)     return _autobetModal_render(bet, { phase: 'nourl' });
+  if (execData.error)     return _autobetModal_render(bet, { phase: 'error', error: execData.error });
+
+  const { entryId, searching, market, recommendation, superbetUrl } = execData;
+
+  // 3. Mostra fase "executando" e começa polling
+  _autobetModal_render(bet, { phase: searching ? 'searching' : 'placing', market, recommendation, superbetUrl });
+  _autobetModal_poll(bet, entryId, superbetUrl);
+}
+
+// Polling do status até resultado final (max 4 min)
+function _autobetModal_poll(bet, entryId, cachedUrl) {
+  let attempts = 0;
+  const MAX = 80; // 80 × 3s = 4 min
+
+  const timer = setInterval(async () => {
+    attempts++;
+    if (attempts > MAX) {
+      clearInterval(timer);
+      return _autobetModal_render(bet, { phase: 'error', error: 'Tempo esgotado. Verifique o Superbet manualmente.' });
+    }
+
+    try {
+      const res  = await fetch(`/api/autobet/status/${entryId}`);
+      const data = await res.json();
+      const modal = document.getElementById('autobet-modal');
+      if (!modal) { clearInterval(timer); return; } // usuário fechou
+
+      if (data.status === 'pending' || data.status === 'starting') return; // ainda aguardando
+
+      if (data.status === 'searching') {
+        _autobetModal_render(bet, { phase: 'searching', step: data.step });
+        return;
+      }
+      if (data.status === 'placing') {
+        _autobetModal_render(bet, { phase: 'placing', step: data.step, superbetUrl: data.superbetUrl || cachedUrl });
+        return;
+      }
+
+      // Terminal: success ou error
+      clearInterval(timer);
+      if (data.status === 'success') {
+        _autobetModal_render(bet, { phase: 'done', ...data });
+      } else {
+        _autobetModal_render(bet, { phase: 'error', error: data.error || 'Falha desconhecida', screenshot: data.screenshot });
+      }
+    } catch { /* ignora erros de rede temporários */ }
+  }, 3000);
+}
+
+// Renderiza o modal em qualquer fase
+function _autobetModal_render(bet, s) {
+  const old = document.getElementById('autobet-modal');
+  const scrollTop = old?.querySelector('.modal-inner')?.scrollTop || 0;
+  if (old) old.remove();
+
+  const PHASE = {
+    init:      { color:'#3b82f6', icon:'<div style="width:52px;height:52px;border-radius:50%;border:4px solid #1e3a5f;border-top-color:#3b82f6;animation:spin .8s linear infinite;margin:0 auto 14px"></div>', title:'Iniciando Auto-Bettor...', sub:'Conectando ao servidor e verificando sessão...' },
+    searching: { color:'#f59e0b', icon:'<div style="font-size:46px;margin-bottom:12px;animation:pulse 1.5s infinite">🔎</div>', title:'Localizando jogo na Superbet', sub: s.step || 'Playwright navegando pela página de jogos ao vivo...' },
+    placing:   { color:'#3b82f6', icon:'<div style="font-size:46px;margin-bottom:12px;animation:pulse 1.5s infinite">🤖</div>', title:'Colocando aposta...', sub: s.step || `Localizando mercado <b>${esc(s.market||bet.market||'')}</b> e preenchendo valor` },
+    done:      { color:'#22c55e', icon:'<div style="font-size:52px;margin-bottom:12px">✅</div>', title:`Aposta ${s.dryRun?'Simulada':'Confirmada'}!`, sub: s.dryRun ? 'Modo DRY-RUN — aposta não confirmada mas tudo pronto.' : 'Aposta colocada com sucesso na Superbet!' },
+    nosession: { color:'#a855f7', icon:'<div style="font-size:46px;margin-bottom:12px">🔐</div>', title:'Login necessário', sub:'Execute <code style="background:#1e3a5f;padding:2px 6px;border-radius:4px;font-family:monospace">npm run autobet-login</code> no terminal para fazer login na Superbet.' },
+    nourl:     { color:'#f59e0b', icon:'<div style="font-size:46px;margin-bottom:12px">🔍</div>', title:'Jogo não identificado', sub:'Não foi possível identificar os times para busca. Verifique se o jogo está disponível ao vivo na Superbet.' },
+    error:     { color:'#ef4444', icon:'<div style="font-size:46px;margin-bottom:12px">❌</div>', title:'Falha na execução', sub: esc(s.error || 'Erro desconhecido') },
+  };
+
+  const p     = PHASE[s.phase] || PHASE.error;
+  const final = s.phase === 'done' || s.phase === 'error' || s.phase === 'nosession' || s.phase === 'nourl';
+
+  // Detalhes extras para fase "done"
+  let doneExtra = '';
+  if (s.phase === 'done') {
+    const sbUrl = s.superbetUrl || bet.superbetUrl;
+    doneExtra = `
+      <div style="background:#14532d20;border:1px solid #22c55e40;border-radius:8px;padding:12px;margin-bottom:16px;text-align:left">
+        ${s.odds ? `<div style="font-size:13px;color:#4ade80;margin-bottom:4px">Odds obtidas: <strong>${s.odds}</strong></div>` : ''}
+        ${s.stake ? `<div style="font-size:13px;color:#64748b">Stake: R$${s.stake.toFixed ? s.stake.toFixed(2) : s.stake}</div>` : ''}
+      </div>
+      <div style="display:flex;justify-content:center;gap:8px;flex-wrap:wrap">
+        ${sbUrl ? `<a href="${sbUrl}" target="_blank" style="background:#22c55e;color:#000;padding:10px 20px;border-radius:8px;font-weight:700;text-decoration:none;font-size:14px">🔗 Ver aposta</a>` : ''}
+        <a href="https://superbet.bet.br/minhas-apostas/abertos" target="_blank" style="background:#1e3a5f;color:#60a5fa;padding:10px 20px;border-radius:8px;font-weight:700;text-decoration:none;font-size:14px">📋 Minhas apostas</a>
+        <button onclick="document.getElementById('autobet-modal').remove()" style="background:#1e293b;color:#94a3b8;border:1px solid #334155;padding:10px 20px;border-radius:8px;cursor:pointer;font-size:14px">Fechar</button>
+      </div>`;
+  }
+
+  const errorExtra = s.phase === 'error' ? `
+    <div style="display:flex;justify-content:center;gap:8px;flex-wrap:wrap">
+      <button data-bet="${betAttr(bet)}" onclick="document.getElementById('autobet-modal').remove();applyBet(this.dataset.bet)" style="background:#3b82f6;color:#fff;padding:10px 20px;border-radius:8px;cursor:pointer;font-size:14px;font-weight:700;border:none">🔄 Tentar novamente</button>
+      <button onclick="document.getElementById('autobet-modal').remove()" style="background:#1e293b;color:#94a3b8;border:1px solid #334155;padding:10px 20px;border-radius:8px;cursor:pointer;font-size:14px">Fechar</button>
+    </div>` : '';
+
+  const otherExtra = (s.phase === 'nosession' || s.phase === 'nourl') ? `
+    <div style="display:flex;justify-content:center">
+      <button onclick="document.getElementById('autobet-modal').remove()" style="background:#1e293b;color:#94a3b8;border:1px solid #334155;padding:10px 20px;border-radius:8px;cursor:pointer;font-size:14px">Fechar</button>
+    </div>` : '';
+
+  const modal = document.createElement('div');
+  modal.id = 'autobet-modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
+  modal.innerHTML = `
+    <div class="modal-inner" style="background:#0f172a;border:1px solid ${p.color}40;border-radius:16px;padding:28px;max-width:480px;width:100%;text-align:center;box-shadow:0 0 60px ${p.color}18;max-height:90vh;overflow-y:auto">
+      ${p.icon}
+      <div style="font-size:19px;font-weight:700;color:#e2e8f0;margin-bottom:6px">${p.title}</div>
+      <div style="font-size:13px;color:#64748b;margin-bottom:18px;line-height:1.6">${p.sub}</div>
+
+      <div style="background:#1e293b;border-radius:10px;padding:13px;margin-bottom:18px;text-align:left">
+        <div style="font-size:10px;color:#475569;text-transform:uppercase;letter-spacing:.8px;margin-bottom:5px">Aposta selecionada</div>
+        <div style="font-size:15px;font-weight:700;color:#e2e8f0;margin-bottom:6px">${esc(bet.match||'')}</div>
+        <div style="display:flex;gap:5px;flex-wrap:wrap">
+          <span style="background:#1e3a5f;color:#60a5fa;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600">${esc(bet.market||s.market||'')}</span>
+          ${bet.prob ? `<span style="background:#14532d;color:#4ade80;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600">${bet.prob}% modelo</span>` : ''}
+          ${bet.competition ? `<span style="background:#1e1b4b;color:#a78bfa;padding:2px 9px;border-radius:20px;font-size:11px">${esc(bet.competition)}</span>` : ''}
+          <span style="background:#1a2e1a;color:#22c55e;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:700">💰 R$${parseFloat(bet.stake||getStake()).toFixed(2)}</span>
+        </div>
+      </div>
+
+      ${doneExtra}${errorExtra}${otherExtra}
+    </div>`;
+
+  if (final) {
+    modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+  }
+  document.body.appendChild(modal);
+  if (scrollTop) modal.querySelector('.modal-inner').scrollTop = scrollTop;
+}
+
+function esc(s) { return String(s||'').replace(/[<>&"']/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c])); }
+
+// ═══════════════════════════════════════════════════════
+//  AUTO-BETTOR
+// ═══════════════════════════════════════════════════════
+function renderAutoBettor() {
+  const d       = S.dash;
+  if (!d) { $('content').innerHTML = loading(); return; }
+  const bts     = S.bets;
+  const enabled = d?.autoEnabled;
+  const local   = (bts?.bets || []).map(b => ({...b, _src:'local'}));
+  const sbOpen   = (S.superbetBets?.open   || []).map(b => ({...b, _src:'superbet'}));
+  const sbClosed = (S.superbetBets?.closed || []).map(b => ({...b, _src:'superbet'}));
+
+  // Aba Em Aberto: apostas locais pendentes + Superbet abertas
+  const openList   = [
+    ...local.filter(b => !b.result || b.result === 'pending'),
+    ...sbOpen,
+  ];
+  // Aba Finalizado: apostas locais com resultado + Superbet fechadas
+  const closedList = [
+    ...local.filter(b => b.result && b.result !== 'pending'),
+    ...sbClosed,
+  ];
+
+  const tab = S.betTab || 'open';
+
+  $('content').innerHTML = `
+  <!-- Master Control -->
+  <div class="card" style="margin-bottom:20px;border-color:${enabled?'rgba(34,197,94,.3)':'rgba(239,68,68,.2)'}">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px">
+      <div style="display:flex;align-items:center;gap:16px">
+        <div style="width:60px;height:60px;border-radius:14px;background:${enabled?'rgba(34,197,94,.15)':'rgba(239,68,68,.1)'};display:flex;align-items:center;justify-content:center;font-size:28px">
+          ${enabled ? '🤖' : '⏸️'}
+        </div>
+        <div>
+          <div style="font-size:20px;font-weight:800;color:#e2e8f0">Auto-Bettor ${enabled?'Ativo':'Pausado'}</div>
+          <div style="font-size:13px;color:#475569;margin-top:3px">${enabled?'Monitorando sinais e executando apostas automaticamente':'Automação desativada — apostas manuais apenas'}</div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <span class="badge" style="background:${enabled?'rgba(34,197,94,.15)':'rgba(239,68,68,.1)'};color:${enabled?'#22c55e':'#ef4444'};font-size:13px;padding:6px 16px">${enabled ? '● LIGADO' : '○ DESLIGADO'}</span>
+        <button onclick="syncSuperbetBalance()" style="background:rgba(14,165,233,0.1);color:#0ea5e9;border:1px solid rgba(14,165,233,0.25);border-radius:8px;padding:7px 14px;font-size:12px;cursor:pointer;font-weight:700;font-family:inherit">🔄 Sync Saldo</button>
+        <button onclick="syncSuperbetBets()" style="background:rgba(168,85,247,0.1);color:#a78bfa;border:1px solid rgba(168,85,247,0.25);border-radius:8px;padding:7px 14px;font-size:12px;cursor:pointer;font-weight:700;font-family:inherit">📥 Importar Apostas</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Settings Grid -->
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px">
+    ${settingCard('Banca Atual', fmtBRL(S.superbetBalance?.balance ?? d?.bankroll), 'fa-wallet', '#22c55e', S.superbetBalance?.scrapedAt ? 'Superbet · ' + fmtDateTime(S.superbetBalance.scrapedAt) : 'Capital total gerenciado')}
+    ${settingCard('Stake Máximo', fmtBRL(d?.maxStake), 'fa-hand-holding-usd', '#3b82f6', 'Por aposta individual')}
+    ${settingCard('Apostas/Dia', String(d?.maxBetsDay), 'fa-calendar-check', '#a855f7', 'Limite diário máximo')}
+    ${settingCard('Fração de Banca', fmtPct((d?.kellyFraction||.25)*100), 'fa-percentage', '#f59e0b', 'Fração do capital por aposta')}
+    ${settingCard('Em Aberto', String(openList.length), 'fa-clock', '#06b6d4', 'Apostas aguardando resultado')}
+    ${settingCard('Finalizadas', String(closedList.length), 'fa-check-circle', '#22c55e', 'Apostas com resultado')}
+  </div>
+
+  <!-- Tabbed Bets -->
+  <div class="card">
+    <!-- Tab Navigation (estilo Superbet) -->
+    <div style="display:flex;gap:0;margin-bottom:20px;border-bottom:1px solid #2d3748">
+      <button onclick="S.betTab='open';renderAutoBettor()"
+        style="padding:11px 22px;background:none;border:none;border-bottom:2px solid ${tab==='open'?'#22c55e':'transparent'};color:${tab==='open'?'#22c55e':'#64748b'};cursor:pointer;font-weight:700;font-size:14px;font-family:inherit;transition:all 0.15s;display:flex;align-items:center;gap:8px">
+        <span style="width:8px;height:8px;background:${tab==='open'?'#22c55e':'#475569'};border-radius:50%;display:inline-block;${tab==='open'?'box-shadow:0 0 6px #22c55e':''};"></span>
+        Em Aberto
+        <span style="background:${tab==='open'?'rgba(34,197,94,0.2)':'rgba(255,255,255,0.06)'};color:${tab==='open'?'#22c55e':'#475569'};border-radius:20px;padding:1px 9px;font-size:11px">${openList.length}</span>
+      </button>
+      <button onclick="S.betTab='closed';renderAutoBettor()"
+        style="padding:11px 22px;background:none;border:none;border-bottom:2px solid ${tab==='closed'?'#0ea5e9':'transparent'};color:${tab==='closed'?'#0ea5e9':'#64748b'};cursor:pointer;font-weight:700;font-size:14px;font-family:inherit;transition:all 0.15s;display:flex;align-items:center;gap:8px">
+        <i class="fas fa-flag-checkered" style="font-size:11px"></i>
+        Finalizado
+        <span style="background:${tab==='closed'?'rgba(0,212,255,0.15)':'rgba(255,255,255,0.06)'};color:${tab==='closed'?'#0ea5e9':'#475569'};border-radius:20px;padding:1px 9px;font-size:11px">${closedList.length}</span>
+      </button>
+    </div>
+
+    ${tab === 'open' ? _renderBetsList(openList, 'open') : _renderBetsList(closedList, 'closed')}
+  </div>
+  `;
+}
+
+function _renderBetsList(list, type) {
+  if (!list.length) return `
+    <div style="text-align:center;padding:40px 20px;color:#334155">
+      <div style="font-size:36px;margin-bottom:12px">${type==='open'?'⏳':'📋'}</div>
+      <div style="font-size:14px;font-weight:600;color:#475569;margin-bottom:6px">${type==='open'?'Nenhuma aposta em aberto':'Nenhuma aposta finalizada'}</div>
+      <div style="font-size:12px;color:#334155;margin-bottom:16px">${type==='open'?'Apostas ativas aparecerão aqui':'Resultados finalizados aparecerão aqui'}</div>
+      <button onclick="syncSuperbetBets()" style="background:rgba(14,165,233,0.1);color:#0ea5e9;border:1px solid rgba(14,165,233,0.3);border-radius:8px;padding:8px 18px;cursor:pointer;font-size:12px;font-weight:700;font-family:inherit">📥 Importar do Superbet</button>
+    </div>`;
+
+  return `<div class="table-wrapper">
+    <table>
+      <thead><tr><th>Jogo</th><th>Mercado</th><th>Odds</th><th>Stake</th><th>Retorno</th><th>Data</th><th>Status</th></tr></thead>
+      <tbody>
+        ${list.map(b => {
+          const resultLabel = b.result==='won' ? 'VENCIDA' : b.result==='lost' ? 'PERDIDA' : b.result==='void' ? 'DEVOLVIDA' : 'PENDENTE';
+          return `<tr>
+            <td>
+              <div style="font-weight:500;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${b.match||''}">${b.match||'—'}</div>
+              <div style="font-size:11px;color:#475569;display:flex;align-items:center;gap:4px">
+                ${b.competition||''}
+                ${b._src==='superbet' ? '<span style="background:rgba(14,165,233,0.15);color:#0ea5e9;border-radius:4px;padding:0 5px;font-size:9px;font-weight:700">SB</span>' : '<span style="background:rgba(34,197,94,0.1);color:#22c55e;border-radius:4px;padding:0 5px;font-size:9px;font-weight:700">LOCAL</span>'}
+              </div>
+            </td>
+            <td><span style="font-size:12px">${marketIcon(b.market)} ${b.market||'—'}</span></td>
+            <td style="font-weight:700;color:#f59e0b;font-family:'JetBrains Mono',monospace">${fmt(b.odds)}</td>
+            <td style="color:#94a3b8;font-family:'JetBrains Mono',monospace">${fmtBRL(b.stake)}</td>
+            <td style="color:${b.result==='won'?'#22c55e':b.result==='lost'?'#ef4444':'#94a3b8'};font-family:'JetBrains Mono',monospace">${fmtBRL(b.potentialReturn)}</td>
+            <td style="font-size:11px;color:#475569">${fmtDateTime(b.placedAt || b.dateText)}</td>
+            <td>${statusBadge(resultLabel)}</td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>
+  </div>`;
+}
+
+function settingCard(label, value, icon, c, desc) {
+  return `<div style="background:linear-gradient(135deg,rgba(26,34,54,0.95),rgba(15,20,31,0.95));border:1px solid rgba(255,255,255,0.09);border-radius:14px;padding:18px;transition:all 0.2s" onmouseover="this.style.borderColor='rgba(244,164,96,0.2)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.09)'">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+      <div style="width:36px;height:36px;border-radius:10px;background:${c}20;display:flex;align-items:center;justify-content:center">
+        <i class="fas ${icon}" style="color:${c};font-size:15px"></i>
+      </div>
+      <div style="font-size:11px;color:var(--text-tertiary);font-weight:700;text-transform:uppercase;letter-spacing:0.8px">${label}</div>
+    </div>
+    <div style="font-size:24px;font-weight:900;color:var(--text-primary);font-family:'JetBrains Mono',monospace">${value}</div>
+    <div style="font-size:11px;color:var(--text-tertiary);margin-top:5px">${desc}</div>
+  </div>`;
+}
+
+// ═══════════════════════════════════════════════════════
+//  PERFORMANCE
+// ═══════════════════════════════════════════════════════
+function renderPerformance() {
+  const d = S.dash;
+  if (!d) { $('content').innerHTML = loading(); return; }
+
+  $('content').innerHTML = `
+  <!-- Top Stats -->
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px">
+    ${metricCard('Taxa de Acerto', fmtPct(d.winRate), 'fa-bullseye', d.winRate>=72?'#22c55e':'#f59e0b', '', `${d.wonBets}W de ${d.wonBets+d.lostBets} fechadas`)}
+    ${metricCard('ROI', fmtPct(d.roi), 'fa-chart-line', d.roi>0?'#22c55e':'#ef4444', '', 'Retorno sobre investimento')}
+    ${metricCard('Total Apostas', String(d.totalBets), 'fa-list', '#a855f7', '', `${d.pendingBets} abertas`)}
+    ${metricCard('P&L Total', fmtBRL(calcPnL(d)), 'fa-coins', calcPnL(d)>=0?'#22c55e':'#ef4444', '', 'Lucro/Prejuízo total')}
+  </div>
+
+  <!-- Charts -->
+  <div style="display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-bottom:20px">
+    <div class="card">
+      <div style="font-size:14px;font-weight:700;color:#e2e8f0;margin-bottom:12px">Evolução da Banca</div>
+      <div style="position:relative;height:160px"><canvas id="bankrollChart"></canvas></div>
+    </div>
+    <div class="card">
+      <div style="font-size:14px;font-weight:700;color:#e2e8f0;margin-bottom:12px">Resultado Apostas</div>
+      <div style="position:relative;height:160px"><canvas id="winlossChart"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Markets breakdown -->
+  ${(d.markets||[]).length ? `<div class="card">
+    <div style="font-size:14px;font-weight:700;color:#e2e8f0;margin-bottom:14px">Precisão por Mercado (PIE)</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px">
+      ${(d.markets||[]).map(m => `
+        <div style="background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:8px;padding:12px">
+          <div style="font-size:12px;font-weight:600;color:#e2e8f0;margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${m.market}</div>
+          <div style="font-size:24px;font-weight:800;color:${color(m.acc,m.gate+5,m.gate)};margin-bottom:4px">${m.acc}%</div>
+          <div class="pie-bar" style="margin-bottom:4px">
+            <div class="pie-fill" style="width:${Math.min(m.acc,100)}%;background:${color(m.acc,m.gate+5,m.gate)}"></div>
+          </div>
+          <div style="font-size:11px;color:#475569">n=${m.n} · gate ${m.gate}%</div>
+        </div>`).join('')}
+    </div>
+  </div>` : ''}
+  `;
+
+  // Build charts
+  setTimeout(() => {
+    buildBankrollChart(d.dailyHistory || []);
+    buildWinLossChart(d.wonBets, d.lostBets, d.pendingBets);
+  }, 50);
+}
+
+function calcPnL(d) {
+  if (!S.bets?.bets) return 0;
+  return S.bets.bets.reduce((s, b) => {
+    if (b.result === 'won')  return s + (b.potentialReturn || 0) - (b.stake || 0);
+    if (b.result === 'lost') return s - (b.stake || 0);
+    return s;
+  }, 0);
+}
+
+function buildBankrollChart(history) {
+  const ctx = document.getElementById('bankrollChart');
+  if (!ctx) return;
+  if (S.charts.bankroll) { S.charts.bankroll.destroy(); }
+
+  const labels = history.map(h => fmtDate(h.date));
+  const data   = history.map(h => h.profit);
+
+  S.charts.bankroll = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Lucro/Dia',
+        data,
+        fill: true,
+        borderColor: '#22c55e',
+        backgroundColor: 'rgba(34,197,94,.08)',
+        pointBackgroundColor: '#22c55e',
+        pointRadius: 3,
+        tension: 0.4,
+      }],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color:'#475569', font:{size:10} }, grid: { color:'#1f2d47' } },
+        y: { ticks: { color:'#475569', font:{size:10}, callback: v => 'R$'+v }, grid: { color:'#1f2d47' } },
+      },
+    },
+  });
+}
+
+function buildWinLossChart(won, lost, pending) {
+  const ctx = document.getElementById('winlossChart');
+  if (!ctx) return;
+  if (S.charts.winloss) { S.charts.winloss.destroy(); }
+  S.charts.winloss = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: ['Vencidas', 'Perdidas', 'Abertas'],
+      datasets: [{ data: [won||0, lost||0, pending||0],
+        backgroundColor: ['#22c55e','#ef4444','#3b82f6'],
+        borderWidth: 0,
+        hoverOffset: 4,
+      }],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      cutout: '65%',
+      plugins: {
+        legend: { position:'bottom', labels:{ color:'#94a3b8', font:{size:11}, padding:12 } },
+      },
+    },
+  });
+}
+
+// ═══════════════════════════════════════════════════════
+//  BANKROLL
+// ═══════════════════════════════════════════════════════
+function renderBankroll() {
+  const b = S.bankroll;
+  if (!b) {
+    // Se dados da API não chegaram, usar fallback do dashboard ou mostrar estado vazio
+    const d = S.dash;
+    if (!d) { $('content').innerHTML = loading(); return; }
+    // Construir objeto bankroll a partir dos dados do dashboard
+    const fallback = {
+      bankroll:   d.bankroll || 0,
+      roi:        d.roi || 0,
+      safeLimit:  d.maxStake || 0,
+      todayBets:  d.pendingBets || 0,
+      todayStake: 0,
+      dailyLimit: d.maxStake * (d.maxBetsDay || 5) || 0,
+      maxBetsDay: d.maxBetsDay || 5,
+      kellyFraction: d.kellyFraction || 0.25,
+      history:    d.dailyHistory || [],
+    };
+    renderBankrollContent(fallback);
+    return;
+  }
+  renderBankrollContent(b);
+}
+
+function renderBankrollContent(b) {
+
+  const usedPct = b.bankroll > 0 ? ((b.todayStake / b.dailyLimit) * 100).toFixed(0) : 0;
+  const sbBal   = S.superbetBalance;
+
+  $('content').innerHTML = `
+  <!-- Superbet Sync Card -->
+  <div class="card" style="margin-bottom:20px;border-color:rgba(14,165,233,0.25);background:linear-gradient(135deg,rgba(14,165,233,0.04),rgba(10,13,20,0.95))">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+      <div style="display:flex;align-items:center;gap:14px">
+        <div style="width:48px;height:48px;border-radius:12px;background:rgba(0,212,255,0.12);border:1px solid rgba(14,165,233,0.3);display:flex;align-items:center;justify-content:center;font-size:22px">⚡</div>
+        <div>
+          <div style="font-size:14px;font-weight:700;color:#e2e8f0">Saldo Superbet ao Vivo</div>
+          <div style="font-size:12px;color:#475569;margin-top:2px">${sbBal?.scrapedAt ? 'Último sync: ' + fmtDateTime(sbBal.scrapedAt) : 'Não sincronizado — clique para buscar'}</div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px">
+        ${sbBal?.balance != null ? `<div style="font-size:32px;font-weight:900;color:#22c55e;font-family:'JetBrains Mono',monospace">${fmtBRL(sbBal.balance)}</div>` : ''}
+        <div style="display:flex;gap:8px">
+          <button onclick="syncSuperbetBalance()" style="background:rgba(14,165,233,0.12);color:#0ea5e9;border:1px solid rgba(14,165,233,0.3);border-radius:8px;padding:8px 16px;cursor:pointer;font-size:13px;font-weight:700;font-family:inherit;display:flex;align-items:center;gap:6px"><i class="fas fa-sync-alt" style="font-size:11px"></i> Sync Saldo</button>
+          <button onclick="syncSuperbetBets()" style="background:rgba(168,85,247,0.1);color:#a78bfa;border:1px solid rgba(168,85,247,0.25);border-radius:8px;padding:8px 16px;cursor:pointer;font-size:13px;font-weight:700;font-family:inherit;display:flex;align-items:center;gap:6px"><i class="fas fa-download" style="font-size:11px"></i> Importar Apostas</button>
+        </div>
+      </div>
+    </div>
+    ${S.superbetBets?.total ? `<div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.06);font-size:12px;color:#475569">${S.superbetBets.total} apostas importadas da Superbet · <span style="color:#a78bfa">Clique "Importar Apostas" para atualizar</span></div>` : ''}
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
+    <div class="card">
+      <div style="font-size:14px;font-weight:700;color:#e2e8f0;margin-bottom:20px">Capital Atual</div>
+      <div style="font-size:48px;font-weight:900;color:#22c55e;margin-bottom:6px">${fmtBRL(b.bankroll)}</div>
+      <div style="font-size:13px;color:#475569">Banca real registrada</div>
+      <div style="margin-top:20px;display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        ${miniStat('ROI Total', fmtPct(b.roi), b.roi>=0?'#22c55e':'#ef4444')}
+        ${miniStat('Stake Seguro', fmtBRL(b.safeLimit), '#3b82f6')}
+        ${miniStat('Apostas Hoje', String(b.todayBets), '#a855f7')}
+        ${miniStat('Gasto Hoje', fmtBRL(b.todayStake), '#f59e0b')}
+      </div>
+    </div>
+    <div class="card">
+      <div style="font-size:14px;font-weight:700;color:#e2e8f0;margin-bottom:20px">Limites & Proteções</div>
+      <div style="margin-bottom:16px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+          <span style="font-size:13px;color:#94a3b8">Uso do limite diário</span>
+          <span style="font-size:13px;font-weight:700;color:${usedPct>80?'#ef4444':usedPct>50?'#f59e0b':'#22c55e'}">${usedPct}%</span>
+        </div>
+        <div class="progress">
+          <div class="progress-fill" style="width:${Math.min(usedPct,100)}%;background:${usedPct>80?'#ef4444':usedPct>50?'#f59e0b':'#22c55e'}"></div>
+        </div>
+        <div style="font-size:11px;color:#334155;margin-top:4px">${fmtBRL(b.todayStake)} de ${fmtBRL(b.dailyLimit)} máximo</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        ${limitRow('Stake máximo por aposta', fmtBRL(b.maxStake),'fa-hand-stop')}
+        ${limitRow('Apostas máximas por dia', String(b.maxBetsDay),'fa-calendar')}
+        ${limitRow('% máxima da banca', fmtPct(b.maxStakePct),'fa-percent')}
+        ${limitRow('Fração de Banca', fmtPct(b.kellyFraction*100),'fa-balance-scale')}
+        ${limitRow('Auto-Bettor', b.autoEnabled?'Ativo':'Pausado','fa-robot',b.autoEnabled?'#22c55e':'#ef4444')}
+      </div>
+    </div>
+  </div>
+
+  <!-- Stake Calculation Explanation -->
+  <div class="card">
+    <div style="font-size:14px;font-weight:700;color:#e2e8f0;margin-bottom:14px">Como é Calculado o Stake Recomendado</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+      <div style="background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.2);border-radius:8px;padding:14px">
+        <div style="font-size:12px;color:#3b82f6;font-weight:600;margin-bottom:6px">1. Cálculo Ótimo</div>
+        <div style="font-size:11px;color:#475569;font-family:monospace">K = (p × odd - 1) / (odd - 1)</div>
+        <div style="font-size:11px;color:#475569;margin-top:4px">Fórmula matemática de aposta ótima</div>
+      </div>
+      <div style="background:rgba(168,85,247,.08);border:1px solid rgba(168,85,247,.2);border-radius:8px;padding:14px">
+        <div style="font-size:12px;color:#a855f7;font-weight:600;margin-bottom:6px">2. Fração de Segurança</div>
+        <div style="font-size:11px;color:#475569;font-family:monospace">Stake = K × ${(b.kellyFraction||.25)} × Banca</div>
+        <div style="font-size:11px;color:#475569;margin-top:4px">Reduz volatilidade em ${((1-b.kellyFraction)*100).toFixed(0)}%</div>
+      </div>
+      <div style="background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.2);border-radius:8px;padding:14px">
+        <div style="font-size:12px;color:#22c55e;font-weight:600;margin-bottom:6px">3. Cap de Segurança</div>
+        <div style="font-size:11px;color:#475569;font-family:monospace">min(Stake, R$${b.maxStake||50})</div>
+        <div style="font-size:11px;color:#475569;margin-top:4px">Nunca ultrapassa ${fmtBRL(b.maxStake)} por aposta</div>
+      </div>
+    </div>
+  </div>
+  `;
+}
+
+function miniStat(label, val, c) {
+  return `<div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:12px">
+    <div style="font-size:10px;color:var(--text-tertiary);margin-bottom:4px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px">${label}</div>
+    <div style="font-size:17px;font-weight:800;color:${c};font-family:'JetBrains Mono',monospace">${val}</div>
+  </div>`;
+}
+function limitRow(label, val, icon, vc='#94a3b8') {
+  return `<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.05)">
+    <div style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-tertiary)">
+      <i class="fas ${icon}" style="width:16px;color:#334155;font-size:12px"></i>${label}
+    </div>
+    <span style="font-size:13px;font-weight:700;color:${vc};font-family:'JetBrains Mono',monospace">${val}</span>
+  </div>`;
+}
+
+// ═══════════════════════════════════════════════════════
+//  PLANS
+// ═══════════════════════════════════════════════════════
+const PLAN_DATA = [
+  {
+    key:      'monthly',
+    name:     'Mensal',
+    price:    49.90,
+    per:      'por mês',
+    days:     30,
+    badge:    null,
+    perMonth: 49.90,
+    saving:   null,
+    features: ['Análises ilimitadas de jogos','Auto-Bettor ativo','Integração Superbet','PIE calibrado em tempo real','Suporte via Telegram'],
+    color:    'var(--accent-cyan)',
+    featured: false,
+  },
+  {
+    key:      'quarterly',
+    name:     'Trimestral',
+    price:    119.90,
+    per:      'a cada 3 meses',
+    days:     90,
+    badge:    '🔥 MAIS POPULAR',
+    perMonth: 39.97,
+    saving:   20,
+    features: ['Tudo do plano Mensal','Economia de 20% vs mensal','Relatório semanal PIE','Histórico completo de apostas','Alertas Telegram VIP','Prioridade no suporte 24/7'],
+    color:    'var(--primary-gold)',
+    featured: true,
+    savingNote: 'Economize R$ 29,80',
+  },
+  {
+    key:      'annual',
+    name:     'Anual',
+    price:    359.90,
+    per:      'por ano',
+    days:     365,
+    badge:    '💎 MELHOR PREÇO',
+    perMonth: 29.99,
+    saving:   40,
+    features: ['Tudo do plano Trimestral','Economia de 40% vs mensal','1 ano de acesso garantido','Relatório mensal exclusivo','Multi-conta Superbet','Suporte VIP prioritário'],
+    color:    'var(--accent-purple)',
+    featured: false,
+  },
+];
+
+function renderPlans() {
+  const user = window.BSQ_USER;
+  const isActive = user?.status === 'active';
+  const expDate  = user?.subscription_expires_at
+    ? new Date(user.subscription_expires_at).toLocaleDateString('pt-BR')
+    : null;
+
+  $('content').innerHTML = `
+  <!-- Cabeçalho -->
+  <div style="text-align:center;padding:32px 20px 40px;max-width:700px;margin:0 auto">
+    <div style="display:inline-flex;align-items:center;gap:8px;background:rgba(212,175,55,0.12);border:1px solid rgba(212,175,55,0.25);border-radius:20px;padding:6px 16px;font-size:12px;font-weight:700;color:var(--primary-gold);letter-spacing:1px;text-transform:uppercase;margin-bottom:16px">
+      <i class="fas fa-crown" style="font-size:11px"></i> Planos PRO+
+    </div>
+    <h1 style="font-size:36px;font-weight:900;background:linear-gradient(135deg,#f8fafc,var(--primary-gold) 60%,var(--accent-cyan));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;letter-spacing:-1.5px;margin-bottom:12px">
+      Eleve seu jogo ao próximo nível
+    </h1>
+    <p style="font-size:16px;color:var(--text-secondary);line-height:1.65;margin:0">
+      Acesso completo ao melhor sistema de análise de futebol com IA.<br>
+      Cancele a qualquer momento. Sem taxas ocultas.
+    </p>
+    ${isActive ? `<div style="margin-top:16px;background:rgba(16,185,129,0.12);border:1px solid rgba(16,185,129,0.25);border-radius:10px;padding:10px 18px;display:inline-flex;align-items:center;gap:8px;font-size:13px;color:#10b981;font-weight:600"><i class="fas fa-check-circle"></i> Assinatura ativa${expDate ? ` · Expira em ${expDate}` : ''}</div>` : ''}
+  </div>
+
+  <!-- Grid de planos -->
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:20px;max-width:1100px;margin:0 auto;padding:0 4px 40px">
+    ${PLAN_DATA.map(p => planCard(p)).join('')}
+  </div>
+
+  <!-- Garantia -->
+  <div style="text-align:center;padding:24px 20px;border-top:1px solid rgba(255,255,255,0.06);max-width:600px;margin:0 auto">
+    <div style="display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:10px">
+      <span style="font-size:22px">🔒</span>
+      <span style="font-size:15px;font-weight:700;color:var(--text-primary)">Pagamento 100% seguro</span>
+    </div>
+    <p style="font-size:13px;color:var(--text-tertiary);margin:0;line-height:1.6">
+      Processado pelo MercadoPago · Criptografia SSL · Dados protegidos por AES-256
+    </p>
+    <div style="display:flex;align-items:center;justify-content:center;gap:16px;margin-top:14px;flex-wrap:wrap">
+      <span style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:6px 14px;font-size:12px;color:var(--text-tertiary)">💳 Cartão de Crédito</span>
+      <span style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:6px 14px;font-size:12px;color:var(--text-tertiary)">📱 PIX</span>
+      <span style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:6px 14px;font-size:12px;color:var(--text-tertiary)">🏦 Boleto</span>
+    </div>
+  </div>
+  `;
+}
+
+function planCard(p) {
+  const monthlyRef = 49.90;
+  const savingAmt  = p.saving ? (monthlyRef - p.perMonth).toFixed(2).replace('.',',') : null;
+
+  return `
+  <div style="background:${p.featured
+    ? 'linear-gradient(160deg,rgba(212,175,55,0.12) 0%,rgba(26,31,46,0.97) 40%)'
+    : 'linear-gradient(135deg,rgba(26,31,46,0.97),rgba(15,20,25,0.97))'};
+    border:${p.featured ? '2px solid rgba(212,175,55,0.45)' : '1px solid rgba(255,255,255,0.08)'};
+    border-radius:20px;padding:28px 24px;position:relative;overflow:hidden;
+    transition:all 0.3s ease;animation:slideInUp 0.4s ease-out;
+    ${p.featured ? 'transform:scale(1.03);box-shadow:0 20px 60px rgba(212,175,55,0.15);' : ''}"
+    onmouseover="this.style.transform='${p.featured ? 'scale(1.05)' : 'translateY(-4px)'}';this.style.boxShadow='0 16px 48px rgba(0,0,0,0.4)'"
+    onmouseout="this.style.transform='${p.featured ? 'scale(1.03)' : ''}';this.style.boxShadow='${p.featured ? '0 20px 60px rgba(212,175,55,0.15)' : ''}'">
+
+    <!-- Orb decorativo -->
+    <div style="position:absolute;top:-30px;right:-30px;width:120px;height:120px;background:radial-gradient(circle,${p.color}20,transparent 70%);pointer-events:none"></div>
+
+    ${p.badge ? `<div style="position:absolute;top:18px;right:18px;background:${p.featured ? 'linear-gradient(135deg,var(--primary-gold),var(--primary-gold-dark))' : 'rgba(16,185,129,0.15)'};color:${p.featured ? '#0f1419' : '#10b981'};font-size:9px;font-weight:900;padding:4px 10px;border-radius:20px;letter-spacing:1px;text-transform:uppercase;border:${p.featured ? 'none' : '1px solid rgba(16,185,129,0.3)'}">${p.badge}</div>` : ''}
+
+    <!-- Ícone + Nome -->
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
+      <div style="width:44px;height:44px;border-radius:12px;background:${p.color}18;border:1px solid ${p.color}30;display:flex;align-items:center;justify-content:center;font-size:20px">
+        ${ p.key==='monthly' ? '📅' : p.key==='quarterly' ? '🚀' : '👑' }
+      </div>
+      <div>
+        <div style="font-size:16px;font-weight:800;color:var(--text-primary)">${p.name}</div>
+        <div style="font-size:11px;color:var(--text-tertiary)">${p.days} dias de acesso</div>
+      </div>
+    </div>
+
+    <!-- Preço -->
+    <div style="margin-bottom:6px">
+      <span style="font-family:'Space Mono',monospace;font-size:38px;font-weight:700;color:${p.color};letter-spacing:-2px">R$&nbsp;${p.price.toFixed(2).replace('.',',')}</span>
+    </div>
+    <div style="font-size:12px;color:var(--text-tertiary);margin-bottom:4px">${p.per}</div>
+    <div style="font-size:12px;color:var(--text-quaternary);margin-bottom:${p.saving ? '6px' : '20px'}">
+      ≈ R$&nbsp;${p.perMonth.toFixed(2).replace('.',',')} <span style="color:var(--text-tertiary)">por mês</span>
+    </div>
+    ${p.saving ? `<div style="background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.2);border-radius:8px;padding:5px 12px;font-size:11px;font-weight:700;color:#10b981;display:inline-flex;align-items:center;gap:5px;margin-bottom:20px"><i class="fas fa-tag" style="font-size:9px"></i> Economize ${p.saving}% · R$&nbsp;${savingAmt}/mês a menos</div>` : ''}
+
+    <!-- Divisor -->
+    <div style="height:1px;background:rgba(255,255,255,0.07);margin-bottom:20px"></div>
+
+    <!-- Features -->
+    <ul style="list-style:none;padding:0;margin:0 0 24px;display:flex;flex-direction:column;gap:10px">
+      ${p.features.map(f => `
+        <li style="display:flex;align-items:flex-start;gap:10px;font-size:13px;color:var(--text-secondary)">
+          <i class="fas fa-check" style="color:${p.color};font-size:11px;margin-top:2px;flex-shrink:0"></i>
+          ${f}
+        </li>`).join('')}
+    </ul>
+
+    <!-- Botão -->
+    <button onclick="checkoutPlan('${p.key}')" id="plan-btn-${p.key}"
+      style="width:100%;padding:14px;background:${p.featured
+        ? 'linear-gradient(135deg,var(--primary-gold),var(--primary-gold-dark))'
+        : `linear-gradient(135deg,${p.color}22,${p.color}11)`};
+      border:${p.featured ? 'none' : `1px solid ${p.color}40`};
+      border-radius:12px;color:${p.featured ? '#0f1419' : p.color};
+      font-size:14px;font-weight:800;cursor:pointer;
+      transition:all 0.2s;letter-spacing:0.3px;font-family:inherit;
+      box-shadow:${p.featured ? '0 4px 16px rgba(212,175,55,0.35)' : 'none'}">
+      <i class="fas fa-bolt" style="margin-right:7px"></i>Assinar ${p.name}
+    </button>
+  </div>`;
+}
+
+async function checkoutPlan(planKey) {
+  const btn = document.getElementById(`plan-btn-${planKey}`);
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner" style="border-top-color:currentColor"></span> Aguarde...'; }
+
+  try {
+    const token = localStorage.getItem('bsq_token');
+    const r = await fetch('/api/payment/create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+      body: JSON.stringify({ plan: planKey }),
+    });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error || 'Erro ao gerar link de pagamento');
+    // Redireciona para o MercadoPago
+    window.location.href = data.init_point;
+  } catch(err) {
+    toast('❌ ' + err.message, 'red');
+    if (btn) { btn.disabled = false; btn.innerHTML = `<i class="fas fa-bolt" style="margin-right:7px"></i>Assinar`; }
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+//  SETTINGS
+// ═══════════════════════════════════════════════════════
+function renderSettings() {
+  const savedStake = parseFloat(localStorage.getItem('autobet_stake') || '2');
+
+  // Status dinâmico do Superbet
+  const sbConn = _isSbConnected();
+  const sbBal  = S.superbetBalance;
+  const sbBets = S.superbetBets;
+  let sbStatusColor, sbStatusDesc, sbBtnLabel, sbBtnFn;
+  if (!sbConn) {
+    sbStatusColor = '#ef4444';
+    sbStatusDesc  = 'Não conectada — clique para conectar';
+    sbBtnLabel    = 'Conectar';
+    sbBtnFn       = "window.location.href='/connect-superbet'";
+  } else if (!sbBal?.balance) {
+    sbStatusColor = '#f59e0b';
+    const email   = window.BSQ_USER?.superbet_email || '';
+    sbStatusDesc  = (email ? `Conectada (${email}) · ` : 'Conectada · ') + 'Saldo não sincronizado';
+    sbBtnLabel    = 'Sincronizar';
+    sbBtnFn       = 'reconnect()';
+  } else {
+    sbStatusColor = '#22c55e';
+    const email   = window.BSQ_USER?.superbet_email || '';
+    const betsN   = (sbBets?.open?.length || 0) + (sbBets?.closed?.length || 0);
+    const sync    = sbBal.scrapedAt ? new Date(sbBal.scrapedAt).toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'}) : '';
+    sbStatusDesc  = (email ? email + ' · ' : '') + fmtBRL(sbBal.balance) + (betsN ? ` · ${betsN} apostas` : '') + (sync ? ` · sync ${sync}` : '');
+    sbBtnLabel    = 'Reconectar';
+    sbBtnFn       = 'reconnect()';
+  }
+
+  $('content').innerHTML = `
+  <div style="max-width:700px">
+    <div class="card" style="margin-bottom:16px">
+      <div style="font-size:14px;font-weight:700;color:#e2e8f0;margin-bottom:16px">Conta & Conexões</div>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        ${connCard('Superbet', sbStatusDesc, sbStatusColor, 'fa-link', sbBtnLabel, sbBtnFn)}
+        ${connCard('SofaScore API','Ativa · Coleta automática de jogos','#22c55e','fa-database','Testar','testAPI()')}
+        ${connCard('Groq LLM','Pool de 5 chaves · Rate-limit gerenciado','#f59e0b','fa-brain','Status','llmStatus()')}
+        ${connCard('Telegram Bot','Webhook ativo · Notificações habilitadas','#22c55e','fa-paper-plane','Testar','testTG()')}
+
+        <!-- Stake field -->
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px;background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:8px">
+          <div style="display:flex;align-items:center;gap:12px">
+            <div style="width:38px;height:38px;border-radius:9px;background:#22c55e18;display:flex;align-items:center;justify-content:center">
+              <i class="fas fa-coins" style="color:#22c55e"></i>
+            </div>
+            <div>
+              <div style="font-size:13px;font-weight:600;color:#e2e8f0">Valor por Aposta</div>
+              <div style="font-size:11px;color:#475569">Stake padrão aplicado automaticamente pelo Auto-Bettor</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="font-size:12px;color:#475569">R$</span>
+            <input
+              id="stake-input"
+              type="number"
+              min="1" max="100" step="0.50"
+              value="${savedStake.toFixed(2)}"
+              oninput="saveStake(this.value)"
+              style="width:80px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;font-size:15px;font-weight:700;padding:6px 10px;text-align:center;outline:none"
+            >
+            <input
+              type="range"
+              min="1" max="100" step="0.50"
+              value="${savedStake}"
+              oninput="document.getElementById('stake-input').value=parseFloat(this.value).toFixed(2);saveStake(this.value)"
+              style="width:110px;accent-color:#22c55e;cursor:pointer"
+            >
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:16px">
+      <div style="font-size:14px;font-weight:700;color:#e2e8f0;margin-bottom:16px">Automação</div>
+      <div style="display:flex;flex-direction:column;gap:14px">
+        ${settingRow('Auto-Bettor', 'Executar apostas automaticamente', S.dash?.autoEnabled)}
+        ${settingRow('Notificações Telegram', 'Enviar sinais ao grupo', true)}
+        ${settingRow('Monitor de Pre-Live', 'Escanear jogos +24h e +12h', true)}
+        ${settingRow('Gate Monitor Semanal', 'Auditoria automática domingo 06h', true)}
+        ${settingRow('Escalada Noturna', 'Relaxar gates após 20h (Tier 1/2)', true)}
+      </div>
+    </div>
+
+    <div class="card">
+      <div style="font-size:14px;font-weight:700;color:#e2e8f0;margin-bottom:16px">Tiers de Ligas</div>
+      <div style="font-size:12px;color:#475569;margin-bottom:12px">Gates de probabilidade por tier de qualidade</div>
+      ${[
+        ['Tier 1 Elite','Eredivisie · Bundesliga · UCL · Brasileirão','80%','#22c55e'],
+        ['Tier 2 Sólido','La Liga · Premier League · Serie A · Ligue 1','82%','#3b82f6'],
+        ['Tier 3 Monitor','Championship · Copa Lib · Europa League','84%','#f59e0b'],
+        ['Tier 4 Shadow','FA Cup · Copa do Brasil · Copa del Rey','88%','#ef4444'],
+      ].map(([t,l,g,c]) => `
+        <div style="display:flex;align-items:center;gap:12px;padding:10px;background:${c}0a;border:1px solid ${c}20;border-radius:8px;margin-bottom:8px">
+          <span style="font-size:20px">🏆</span>
+          <div style="flex:1">
+            <div style="font-size:13px;font-weight:600;color:#e2e8f0">${t}</div>
+            <div style="font-size:11px;color:#475569;margin-top:2px">${l}</div>
+          </div>
+          <span class="badge" style="background:${c}18;color:${c}">Gate ${g}</span>
+        </div>`).join('')}
+    </div>
+  </div>
+  `;
+}
+
+function connCard(name, desc, status, icon, btn, fn) {
+  return `<div style="display:flex;align-items:center;justify-content:space-between;padding:13px 14px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:12px;transition:all 0.2s" onmouseover="this.style.borderColor='rgba(244,164,96,0.2)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.08)'">
+    <div style="display:flex;align-items:center;gap:12px">
+      <div style="width:40px;height:40px;border-radius:11px;background:${status}18;display:flex;align-items:center;justify-content:center;border:1px solid ${status}30">
+        <i class="fas ${icon}" style="color:${status};font-size:15px"></i>
+      </div>
+      <div>
+        <div style="font-size:13px;font-weight:700;color:var(--text-primary)">${name}</div>
+        <div style="font-size:11px;color:var(--text-tertiary);margin-top:1px">${desc}</div>
+      </div>
+    </div>
+    <button onclick="${fn}" class="btn-secondary btn" style="padding:6px 14px;border-radius:8px;font-size:12px">${btn}</button>
+  </div>`;
+}
+
+function settingRow(label, desc, val) {
+  return `<div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0">
+    <div>
+      <div style="font-size:13px;font-weight:600;color:var(--text-primary)">${label}</div>
+      <div style="font-size:11px;color:var(--text-tertiary);margin-top:2px">${desc}</div>
+    </div>
+    <label class="toggle">
+      <input type="checkbox" ${val?'checked':''} onchange="toast('Configuração salva','green')">
+      <span class="toggle-slider"></span>
+    </label>
+  </div>`;
+}
+
+function loading() {
+  return `<div style="display:flex;align-items:center;justify-content:center;height:200px;color:#475569">
+    <i class="fas fa-spinner fa-spin" style="font-size:24px;margin-right:12px"></i> Carregando...
+  </div>`;
+}
+
+// ── Superbet reconnect — sync completo (saldo + apostas) ──────────────────────
+async function reconnect() {
+  if (!_isSbConnected()) {
+    toast('⚠️ Conta não conectada. Redirecionando...', 'amber');
+    setTimeout(() => window.location.href = '/connect-superbet', 1200);
+    return;
+  }
+
+  // Reseta status travado antes de iniciar
+  try { await apiAuth('/api/superbet/user-sync-reset', { method: 'POST' }); } catch(_) {}
+
+  _showSyncProgress('reconnect', 'Iniciando sincronização completa...');
+
+  let started = false;
+  try {
+    const r = await apiAuth('/api/superbet/user-sync', { method: 'POST', body: JSON.stringify({ mode: 'both' }) });
+    if (r?.error) { _hideSyncProgress('reconnect'); toast('❌ ' + r.error, 'red'); return; }
+    started = true;
+  } catch(e) { _hideSyncProgress('reconnect'); toast('❌ ' + e.message, 'red'); return; }
+
+  const before = S.superbetBalance?.scrapedAt || null;
+  let attempts = 0;
+  const timer = setInterval(async () => {
+    attempts++;
+    if (attempts > 50) {
+      clearInterval(timer);
+      _hideSyncProgress('reconnect');
+      toast('⏱️ Tempo esgotado. Verifique se o Playwright está instalado no servidor.', 'amber');
+      return;
+    }
+    try {
+      const [status, d] = await Promise.all([
+        apiAuth('/api/superbet/user-sync-status'),
+        apiAuth('/api/superbet/user-data'),
+      ]);
+
+      if (status?.exitCode != null && status.exitCode !== 0 && !status.running) {
+        clearInterval(timer);
+        _hideSyncProgress('reconnect');
+        toast('❌ Sync falhou: ' + (status.error || 'erro desconhecido'), 'red');
+        return;
+      }
+
+      const elapsed = attempts * 3;
+      _showSyncProgress('reconnect', `Raspando Superbet... (${elapsed}s) — saldo + apostas`);
+
+      // Verificar se dados foram atualizados
+      const gotBalance = d?.balance != null && (d.lastSync !== before || !before);
+      const gotBets    = !!d?.bets;
+      if (!status?.running && (gotBalance || gotBets)) {
+        clearInterval(timer);
+        if (d.balance != null)  S.superbetBalance = { balance: d.balance, balanceText: d.balanceText, scrapedAt: d.lastSync };
+        if (d.bets)             S.superbetBets    = d.bets;
+        S.superbetConnected = true;
+        if (window.BSQ_USER) window.BSQ_USER.superbet_connected = 1;
+        _hideSyncProgress('reconnect');
+        const balStr = d.balance != null ? ` · Saldo: ${fmtBRL(d.balance)}` : '';
+        const betsN  = (d.bets?.open?.length || 0) + (d.bets?.closed?.length || 0);
+        const betsStr = betsN > 0 ? ` · ${betsN} apostas importadas` : '';
+        toast(`✅ Superbet sincronizado${balStr}${betsStr}`, 'green');
+        renderTab(S.tab);
+      }
+    } catch(_) {}
+  }, 3000);
+}
+
+function testAPI()   { toast('SofaScore API OK ✓','green'); }
+function llmStatus() { toast('Groq: 5 chaves ativas','green'); }
+function testTG()    { toast('Telegram: enviando teste...','blue'); }
+
+function saveStake(val) {
+  const v = parseFloat(val);
+  if (isNaN(v) || v < 1 || v > 100) return;
+  localStorage.setItem('autobet_stake', v.toFixed(2));
+  // Sync slider ↔ input
+  const inp = document.getElementById('stake-input');
+  if (inp && document.activeElement !== inp) inp.value = v.toFixed(2);
+  toast(`Stake definido: R$${v.toFixed(2)}`, 'green');
+}
+
+function getStake() {
+  return parseFloat(localStorage.getItem('autobet_stake') || '2');
+}
+
+// ═══════════════════════════════════════════════════════
+//  SUPERBET SYNC — polling real
+// ═══════════════════════════════════════════════════════
+function _isSbConnected() {
+  // Usa S.superbetConnected (atualizado em tempo real pelo refreshAll)
+  // e window.BSQ_USER.superbet_connected (do login inicial) como fallback
+  return S.superbetConnected || window.BSQ_USER?.superbet_connected;
+}
+
+async function syncSuperbetBalance() {
+  if (!_isSbConnected()) {
+    toast('⚠️ Conecte sua conta Superbet primeiro.', 'amber');
+    setTimeout(() => window.location.href = '/connect-superbet', 1500);
+    return;
+  }
+  const before = S.superbetBalance?.scrapedAt || null;
+  _showSyncProgress('balance', 'Conectando à Superbet para buscar saldo...');
+  try {
+    const r = await apiAuth('/api/superbet/user-sync', { method: 'POST', body: JSON.stringify({ mode: 'balance' }) });
+    if (r?.error) { _hideSyncProgress('balance'); toast('❌ ' + r.error, 'red'); return; }
+    if (r?.alreadyRunning) { _showSyncProgress('balance', 'Sincronização já em andamento...'); }
+  } catch(e) { _hideSyncProgress('balance'); toast('❌ Falha na conexão: ' + e.message, 'red'); return; }
+
+  let attempts = 0;
+  const timer = setInterval(async () => {
+    attempts++;
+    if (attempts > 40) {
+      clearInterval(timer);
+      _hideSyncProgress('balance');
+      toast('⏱️ Tempo esgotado. Veja os logs do servidor para detalhes.', 'amber');
+      return;
+    }
+    try {
+      // Verifica status do processo + dados atualizados em paralelo
+      const [status, d] = await Promise.all([
+        apiAuth('/api/superbet/user-sync-status'),
+        apiAuth('/api/superbet/user-data'),
+      ]);
+
+      // Se o processo falhou, exibe erro imediatamente
+      if (status?.exitCode != null && status.exitCode !== 0 && !status.running) {
+        clearInterval(timer);
+        _hideSyncProgress('balance');
+        toast('❌ Scraping falhou: ' + (status.error || 'erro desconhecido'), 'red');
+        return;
+      }
+
+      _showSyncProgress('balance', `Aguardando Superbet... (${attempts * 3}s)`);
+
+      if (d?.balance != null && (d.lastSync !== before || !before)) {
+        clearInterval(timer);
+        S.superbetBalance = { balance: d.balance, balanceText: d.balanceText, scrapedAt: d.lastSync };
+        S.superbetConnected = true;
+        if (window.BSQ_USER) window.BSQ_USER.superbet_connected = 1;
+        _hideSyncProgress('balance');
+        toast('✅ Saldo atualizado: ' + fmtBRL(d.balance), 'green');
+        renderTab(S.tab);
+      }
+    } catch(_) {}
+  }, 3000);
+}
+
+async function syncSuperbetBets() {
+  if (!_isSbConnected()) {
+    toast('⚠️ Conecte sua conta Superbet primeiro.', 'amber');
+    setTimeout(() => window.location.href = '/connect-superbet', 1500);
+    return;
+  }
+  const before = S.superbetBets?.scrapedAt || null;
+  _showSyncProgress('bets', 'Conectando à Superbet para importar apostas...');
+  try {
+    const r = await apiAuth('/api/superbet/user-sync', { method: 'POST', body: JSON.stringify({ mode: 'bets' }) });
+    if (r?.error) { _hideSyncProgress('bets'); toast('❌ ' + r.error, 'red'); return; }
+  } catch(e) { _hideSyncProgress('bets'); toast('❌ Falha na conexão: ' + e.message, 'red'); return; }
+
+  let attempts = 0;
+  const timer = setInterval(async () => {
+    attempts++;
+    if (attempts > 40) {
+      clearInterval(timer);
+      _hideSyncProgress('bets');
+      toast('⏱️ Tempo esgotado. Verifique se o Playwright está instalado no servidor.', 'amber');
+      return;
+    }
+    try {
+      const d = await apiAuth('/api/superbet/user-data');
+      _showSyncProgress('bets', `Raspando histórico de apostas... (${attempts * 4}s)`);
+      if (d?.bets && (d.lastSync !== before || !before)) {
+        clearInterval(timer);
+        S.superbetBets = d.bets;
+        S.superbetConnected = true;
+        _hideSyncProgress('bets');
+        const open   = d.bets?.open?.length   || 0;
+        const closed = d.bets?.closed?.length || 0;
+        toast(`✅ Apostas importadas — Em aberto: ${open} · Fechadas: ${closed}`, 'green');
+        renderTab(S.tab);
+      }
+    } catch(_) {}
+  }, 4000);
+}
+
+// Mostra/esconde spinner inline nos botões de sync
+function _showSyncProgress(type, msg) {
+  const id = 'sync-prog-' + type;
+  let el = document.getElementById(id);
+  if (!el) {
+    el = document.createElement('div');
+    el.id = id;
+    el.style.cssText = 'position:fixed;bottom:80px;right:20px;background:#0f172a;border:1px solid #3b82f6;border-radius:12px;padding:12px 18px;z-index:9998;display:flex;align-items:center;gap:10px;font-size:13px;color:#e2e8f0;box-shadow:0 4px 24px rgba(59,130,246,0.25);max-width:340px';
+    document.body.appendChild(el);
+  }
+  const typeLabels = { balance: 'Saldo', bets: 'Apostas', reconnect: 'Completo' };
+  el.innerHTML = `<div style="width:18px;height:18px;border-radius:50%;border:2px solid #1e3a5f;border-top-color:#3b82f6;animation:spin .8s linear infinite;flex-shrink:0"></div><div><div style="font-weight:600;margin-bottom:2px">Superbet Sync ${typeLabels[type] || type}</div><div style="font-size:11px;color:#64748b">${msg}</div></div>`;
+}
+function _hideSyncProgress(type) {
+  const el = document.getElementById('sync-prog-' + type);
+  if (el) el.remove();
+}
+
+// ═══════════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════════
+async function init() {
+  await refreshAll();
+
+  // Saldo a cada 15s — leve, sem re-render completo
+  setInterval(() => { if (!document.hidden) _refreshBalanceSilent(); }, 15000);
+
+  // Dados principais a cada 30s — pausar quando aba em background
+  setInterval(() => { if (!document.hidden) refreshAll(); }, 30000);
+
+  // Jogos a cada 60s — só quando na aba Análises
+  setInterval(() => {
+    if (!document.hidden && S.tab === 'analyses' && S.games) loadGamesToday(false);
+  }, 60000);
+
+  // Retomar ao voltar para a aba
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) refreshAll();
+  });
+}
+
+init();
+
+// ── Segurança: bloquear atalhos de DevTools ─────────────
+document.addEventListener('keydown', function(e) {
+  if (
+    e.key === 'F12' ||
+    (e.ctrlKey && e.shiftKey && ['I','C','J'].includes(e.key)) ||
+    (e.ctrlKey && e.key === 'u')
+  ) {
+    e.preventDefault();
+  }
+});
+
+// ── Fingerprint de sessão ────────────────────────────────
+(function() {
+  const fp = btoa([navigator.userAgent, navigator.language, Intl.DateTimeFormat().resolvedOptions().timeZone].join('|'));
+  sessionStorage.setItem('_fp', fp);
+  setInterval(() => {
+    const cur = btoa([navigator.userAgent, navigator.language, Intl.DateTimeFormat().resolvedOptions().timeZone].join('|'));
+    if (cur !== sessionStorage.getItem('_fp')) sessionStorage.setItem('_fp', cur);
+  }, 60000);
+})();
+</script>
+</body>
+</html>

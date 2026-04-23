@@ -143,45 +143,55 @@ const MARKET_PIE_KEY = {
 // ── Configuração de tiers ─────────────────────────────────────────────────────
 const PARLAY_TIERS = [
   {
+    name:        'Dupla Valor',
+    emoji:       '✅',
+    min_legs:    2,
+    max_legs:    2,
+    min_conf:    75,
+    min_odds:    1.30,
+    stake_pct:   5,
+    target_roi:  '5x-15x',
+  },
+  {
     name:        'Seguro',
     emoji:       '🛡️',
-    min_legs:    2,
-    max_legs:    3,
-    min_conf:    80,
+    min_legs:    3,
+    max_legs:    4,
+    min_conf:    75,
     min_odds:    1.25,
-    stake_pct:   5,    // % da banca recomendada
-    target_roi:  '2x-10x',
+    stake_pct:   4,
+    target_roi:  '5x-20x',
   },
   {
     name:        'Acumulador',
     emoji:       '⚡',
     min_legs:    4,
-    max_legs:    5,
-    min_conf:    72,
-    min_odds:    1.30,
+    max_legs:    6,
+    min_conf:    70,
+    min_odds:    1.25,
     stake_pct:   2,
-    target_roi:  '10x-50x',
+    target_roi:  '10x-80x',
   },
   {
     name:        'Mega Retorno',
     emoji:       '💥',
-    min_legs:    5,
+    min_legs:    6,
     max_legs:    8,
     min_conf:    62,
     min_odds:    1.20,
     stake_pct:   1.5,
-    target_roi:  '20x-500x',
-    highlight_above: 20.0,   // destaca combinações com odds ≥ 20x
+    target_roi:  '30x-500x',
+    highlight_above: 30.0,
   },
   {
     name:        'Super Odds',
     emoji:       '🚀',
-    min_legs:    6,
-    max_legs:    10,
+    min_legs:    8,
+    max_legs:    12,
     min_conf:    55,
     min_odds:    1.15,
     stake_pct:   0.5,
-    target_roi:  '100x-2000x',
+    target_roi:  '100x-5000x',
     highlight_above: 100.0,
   },
 ];
@@ -356,8 +366,8 @@ export function buildParlayOptions(legs, bankroll = 1000, topN = 5) {
         // Para Mega Retorno e Super Odds: aceita EV ligeiramente negativo se odds ≥ 20x
         if (metrics.ev <= -0.05 && metrics.combined_odds < 20.0) continue;
 
-        // Gate obrigatório: SuperOdds exige odds combinadas ≥ 10x
-        if (metrics.combined_odds < 10.0) continue;
+        // Gate obrigatório: multiplicador mínimo 5x
+        if (metrics.combined_odds < 5.0) continue;
 
         // Gate obrigatório: pelo menos 2 jogos distintos na combinação
         const distinctMatches = new Set(combo.map(l => l.match_id || l.match)).size;

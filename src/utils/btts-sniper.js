@@ -220,8 +220,8 @@ const TRACKER    = join(__dirSn, '../../data/btts-tracker.json');
 //     85-90%:  7 amostras    → 29% precisão  ← COLAPSO CATASTRÓFICO
 //   Elevar o gate para 85% reduz volume de 191→7 E piora precisão de 75%→29%.
 //   NÃO alterar BTTS_MIN_CONFIDENCE para além de 80 por nenhum motivo.
-export const BTTS_MIN_PROBABILITY = 82;
-export const BTTS_MIN_CONFIDENCE  = 80; // NÃO ELEVAR — ver Drill B2 acima
+export const BTTS_MIN_PROBABILITY = 78;
+export const BTTS_MIN_CONFIDENCE  = 75;
 
 // ── Liga Tier Map ──────────────────────────────────────────────────────────────
 // Tier 1 → threshold reduzido (80%) + fire zone bonus

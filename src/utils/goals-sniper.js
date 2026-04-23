@@ -8,8 +8,8 @@
  *   Over 1.5 não tem Fire Zone real por confiança — a meta 88% exige restrição de liga.
  *   Drill G1 simulação: apenas Top3 (Eredivisie+UCL+Bundesliga) atingem 89% (265/299).
  *
- *   Tier 1 Elite  (prob ≥ 80%): Eredivisie 92.1% · Bundesliga 85.8% · UCL 84.2%
- *   Tier 2        (prob ≥ 82%): LaLiga 83.7% · PL 83.6% · Brasileirão 83.1%
+ *   Tier 1 Elite  (prob ≥ 80%): Eredivisie 92.1% · Bundesliga 85.8% · UCL 84.2% · Brasileirão 83.1% (shadow mode 2026-04-21)
+ *   Tier 2        (prob ≥ 82%): LaLiga 83.7% · PL 83.6%
  *   Tier 3        (prob ≥ 84%): Liga Portugal 82.1% · Serie A 80.3% (rebaixadas Drill G1)
  *   Não-listadas  (prob ≥ 85%): elevado de 83% (Drill G1 2026-04-16)
  *
@@ -93,8 +93,10 @@ const GOALS_THRESHOLDS = {
 const TIER1_OVER15 = [
   'eredivisie',
   'bundesliga',
-  'champions league',  // UCL group 84.2% + KO 89.7% — ambos acima de 80%
-  'conference league', // KO Phase: 7/7 = 100% Over 1.5 (PIE 2026) — TIER 1 Elite
+  'champions league',     // UCL group 84.2% + KO 89.7% — ambos acima de 80%
+  'conference league',    // KO Phase: 7/7 = 100% Over 1.5 (PIE 2026) — TIER 1 Elite
+  'brasileirão betano',   // 83.1% (n=142) — promovido shadow mode 2026-04-21
+  'brasileirao betano',
 ];
 
 // TIER 2 — precisão 83-84%, prob ≥ 82% (threshold ligeiramente elevado)
@@ -102,13 +104,13 @@ const TIER1_OVER15 = [
 // ┌───────────────────┬──────┬──────┐
 // │ LaLiga            │  84% │ ~130 │
 // │ Premier League    │  84% │ ~120 │
-// │ Brasileirão       │  83% │ ~142 │
 // │ CONCACAF CC       │  ≥80%│  n<  │ estimativa — recalibrar com dados
 // └───────────────────┴──────┴──────┘
+// Brasileirão promovido para Tier 1 (shadow mode confirmado 2026-04-21):
+//   83.1% real com n=142 → tolerância de 80% aprovada pelo estudo PIE
 const TIER2_OVER15 = [
   'laliga', 'la liga',
   'premier league',
-  'brasileirão betano', 'brasileirao betano',
   'concacaf champions cup',
 ];
 

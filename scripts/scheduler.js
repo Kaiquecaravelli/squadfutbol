@@ -35,6 +35,7 @@
 
 import cron   from 'node-cron';
 import chalk  from 'chalk';
+import { processBetSignal } from './auto-bettor.js';
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
@@ -420,6 +421,18 @@ cron.schedule('30 21 * * *', async () => {
   }
 }, { timezone: 'America/Sao_Paulo' });
 
+// ── Auditoria semanal de gates (domingo 06:01) ────────────────────────────────
+cron.schedule('1 6 * * 0', async () => {
+  console.log(chalk.bold.magenta(`\n[${ts()}] 📐 Auditoria Semanal de Gates`));
+  try {
+    const { monitorarPerformance } = await import('../src/monitoring/gatePerformanceMonitor.js');
+    await monitorarPerformance();
+    console.log(chalk.magenta(`[${ts()}] ✅ Auditoria de gates concluída`));
+  } catch (e) {
+    console.error(chalk.red(`[${ts()}] ❌ Auditoria de gates falhou: ${e.message}`));
+  }
+}, { timezone: 'America/Sao_Paulo' });
+
 // ── Relatório semanal ─────────────────────────────────────────────────────────
 cron.schedule('0 21 * * 0', async () => {
   console.log(chalk.bold.yellow(`\n[${ts()}] 📊 Relatório Semanal`));
@@ -586,6 +599,9 @@ const _guardianInterval = setInterval(async () => {
       await handleGuardianCommand(upd).catch(() => {});
       await handleNewMember(upd).catch(() => {});
       await handleAntiFlood(upd).catch(() => {});
+
+      // Verificar se é sinal de aposta do Fut Win Analytics
+      await processBetSignal(upd).catch(() => {});
     }
   } catch { /* silent */ }
 }, 10_000);
