@@ -86,6 +86,99 @@ async function sofaGet(path, retries = 3) {
   }
 }
 
+// ── Detalhes extras de uma partida (árbitro, estádio, rodada) ─────────────────
+async function fetchEventDetails(eventId) {
+  try {
+    const data = await sofaGet(`/event/${eventId}`);
+    const ev = data?.event;
+    if (!ev) return {};
+    return {
+      referee: ev.referee?.name || null,
+      stadium: ev.venue?.stadium?.name || null,
+      city:    ev.venue?.city?.name || null,
+      round:   ev.roundInfo?.round || null,
+    };
+  } catch {
+    return {};
+  }
+}
+
+// ── Formações e escalação inicial ─────────────────────────────────────────────
+async function fetchMatchLineups(eventId) {
+  try {
+    const data = await sofaGet(`/event/${eventId}/lineups`);
+    const extract = (side) => {
+      if (!side) return null;
+      return {
+        formation: side.formation || null,
+        players: (side.players || [])
+          .filter(p => !p.substitute)
+          .slice(0, 11)
+          .map(p => ({
+            name:     p.player?.name || null,
+            position: p.position    || null,
+            number:   p.jerseyNumber || null,
+          })),
+      };
+    };
+    return { home: extract(data.home), away: extract(data.away) };
+  } catch {
+    return null;
+  }
+}
+
+// ── Probabilidades pré-jogo (votos dos fãs + odds implícitas) ─────────────────
+async function fetchMatchProbabilities(eventId) {
+  try {
+    const [votesData, oddsData] = await Promise.allSettled([
+      sofaGet(`/event/${eventId}/votes`),
+      sofaGet(`/event/${eventId}/odds/1/featured`),
+    ]);
+
+    const votes = votesData.status === 'fulfilled' ? votesData.value : null;
+    const odds  = oddsData.status  === 'fulfilled' ? oddsData.value  : null;
+
+    // Votos dos fãs (%)
+    const fanVotes = votes ? {
+      home: votes.vote1 != null ? +parseFloat(votes.vote1).toFixed(1) : null,
+      draw: votes.votex != null ? +parseFloat(votes.votex).toFixed(1) : null,
+      away: votes.vote2 != null ? +parseFloat(votes.vote2).toFixed(1) : null,
+    } : null;
+
+    // Probabilidades implícitas das odds (1X2 da primeira casa encontrada)
+    let impliedProbs = null;
+    if (odds?.markets) {
+      const market1x2 = odds.markets.find(m =>
+        m.marketName?.toLowerCase().includes('winner') ||
+        m.marketName?.toLowerCase().includes('1x2')
+      );
+      if (market1x2?.choices?.length >= 3) {
+        const byLabel = {};
+        for (const c of market1x2.choices) {
+          byLabel[c.name?.toLowerCase()] = parseFloat(c.fractionalValue || c.sourceOdds || 0);
+        }
+        const o1 = byLabel['1'] || byLabel['home'] || 0;
+        const ox = byLabel['x'] || byLabel['draw'] || 0;
+        const o2 = byLabel['2'] || byLabel['away'] || 0;
+        if (o1 > 1 && ox > 1 && o2 > 1) {
+          const margin = 1/o1 + 1/ox + 1/o2;
+          impliedProbs = {
+            home: +((1/o1/margin)*100).toFixed(1),
+            draw: +((1/ox/margin)*100).toFixed(1),
+            away: +((1/o2/margin)*100).toFixed(1),
+            odds: { home: o1, draw: ox, away: o2 },
+          };
+        }
+      }
+    }
+
+    if (!fanVotes && !impliedProbs) return null;
+    return { fan_votes: fanVotes, implied_probs: impliedProbs };
+  } catch {
+    return null;
+  }
+}
+
 // ── Coleta de estatísticas de uma partida ─────────────────────────────────────
 async function fetchMatchStats(eventId) {
   try {
@@ -146,9 +239,19 @@ async function convertEvent(event) {
   const htHome = event.homeScore?.period1 ?? null;
   const htAway = event.awayScore?.period1 ?? null;
 
-  // Aguarda levemente para não saturar a API
-  await sleep(400);
-  const matchStats = await fetchMatchStats(event.id);
+  // Coleta em paralelo para otimizar tempo sem saturar a API
+  await sleep(500);
+  const [statsRes, lineupsRes, detailsRes, probsRes] = await Promise.allSettled([
+    fetchMatchStats(event.id),
+    fetchMatchLineups(event.id),
+    fetchEventDetails(event.id),
+    fetchMatchProbabilities(event.id),
+  ]);
+
+  const matchStats  = statsRes.status   === 'fulfilled' ? statsRes.value   : {};
+  const lineups     = lineupsRes.status === 'fulfilled' ? lineupsRes.value : null;
+  const details     = detailsRes.status === 'fulfilled' ? detailsRes.value : {};
+  const probs       = probsRes.status   === 'fulfilled' ? probsRes.value   : null;
 
   return {
     match:       `${event.homeTeam.name} vs ${event.awayTeam.name}`,
@@ -161,6 +264,9 @@ async function convertEvent(event) {
     },
     ht_score: htHome !== null ? { home: htHome, away: htAway } : null,
     match_stats: matchStats,
+    lineups,       // { home: { formation, players[] }, away: { formation, players[] } }
+    details,       // { referee, stadium, city, round }
+    probabilities: probs, // { fan_votes: { home, draw, away }, implied_probs: { home, draw, away, odds } }
     pre_match: {
       home: { team: event.homeTeam.name, position: null, form: null, goals_avg: null },
       away: { team: event.awayTeam.name, position: null, form: null, goals_avg: null },

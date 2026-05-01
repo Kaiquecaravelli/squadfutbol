@@ -7314,56 +7314,120 @@
         }
       ],
       "registered_at": "2026-04-20T01:10:01.203Z"
+    },
+    {
+      "id": "0e1d4c88-d70d-483b-a349-8f6cddb59195",
+      "prediction_id": null,
+      "match_name": "Lecce vs Fiorentina",
+      "placar_real": "1-1",
+      "competition": "Serie A",
+      "market_outcomes": [
+        {
+          "market": "Total de Gols",
+          "recomendacao": "Over",
+          "probabilidade": 80,
+          "acertou": true
+        }
+      ],
+      "registered_at": "2026-04-20T20:50:01.364Z"
+    },
+    {
+      "id": "0dfc6dfa-6639-46b5-a047-218ee6220442",
+      "prediction_id": null,
+      "match_name": "Athletic Club vs Osasuna",
+      "placar_real": "1-0",
+      "competition": "La Liga",
+      "market_outcomes": [
+        {
+          "market": "Ambas Marcam",
+          "recomendacao": "Sim",
+          "probabilidade": 82,
+          "acertou": false
+        }
+      ],
+      "registered_at": "2026-04-21T19:00:01.523Z"
+    },
+    {
+      "id": "7f467bd0-80c2-44c0-9a5b-bed889004ab8",
+      "prediction_id": null,
+      "match_name": "FC Barcelona vs Celta Vigo",
+      "placar_real": "1-0",
+      "competition": "La Liga",
+      "market_outcomes": [
+        {
+          "market": "Ambas Marcam",
+          "recomendacao": "Sim",
+          "probabilidade": 83,
+          "acertou": false
+        }
+      ],
+      "registered_at": "2026-04-22T21:50:01.915Z"
+    },
+    {
+      "id": "08318316-8bf8-476d-9753-cbc7e21b2c94",
+      "prediction_id": null,
+      "match_name": "Toronto FC vs Philadelphia Union",
+      "placar_real": "3-3",
+      "competition": "Copa Sudamericana",
+      "market_outcomes": [
+        {
+          "market": "Total de Gols",
+          "recomendacao": "Over",
+          "probabilidade": 80,
+          "acertou": false
+        }
+      ],
+      "registered_at": "2026-04-23T01:40:01.506Z"
     }
   ],
   "stats": {
-    "total": 5178,
-    "acertos": 3044,
-    "erros": 1216,
+    "total": 7836,
+    "acertos": 4952,
+    "erros": 1970,
     "nao_verificaveis": 0
   },
   "calibration": {
     "Over 2.5": {
-      "total": 1706,
-      "hits": 984,
+      "total": 2181,
+      "hits": 1298,
       "byRange": {
         "80-85": {
-          "total": 100,
-          "hits": 100
+          "total": 150,
+          "hits": 150
         },
         "70-80": {
-          "total": 1485,
-          "hits": 845
+          "total": 1827,
+          "hits": 1071
         },
         "85-90": {
-          "total": 39,
-          "hits": 39
+          "total": 77,
+          "hits": 77
         },
         "60-70": {
-          "total": 82,
+          "total": 127,
           "hits": 0
         }
       },
       "byCompetition": {
         "Premier League": {
-          "total": 138,
-          "hits": 84
+          "total": 186,
+          "hits": 127
         },
         "Serie A": {
-          "total": 142,
-          "hits": 80
+          "total": 181,
+          "hits": 100
         },
         "LaLiga": {
-          "total": 135,
-          "hits": 78
+          "total": 173,
+          "hits": 103
         },
         "Ligue 1": {
-          "total": 115,
-          "hits": 57
+          "total": 165,
+          "hits": 93
         },
         "Bundesliga": {
-          "total": 132,
-          "hits": 91
+          "total": 176,
+          "hits": 123
         },
         "UEFA Europa League, Knockout stage": {
           "total": 46,
@@ -7374,60 +7438,60 @@
           "hits": 1
         },
         "CONMEBOL Sudamericana, Group B": {
-          "total": 4,
-          "hits": 2
+          "total": 6,
+          "hits": 3
         },
         "CONMEBOL Sudamericana, Group E": {
-          "total": 4,
-          "hits": 2
+          "total": 6,
+          "hits": 3
         },
         "CONMEBOL Sudamericana, Group H": {
           "total": 4,
           "hits": 1
         },
         "Liga Portugal Betclic": {
-          "total": 133,
-          "hits": 85
+          "total": 170,
+          "hits": 112
         },
         "VriendenLoterij Eredivisie": {
-          "total": 126,
-          "hits": 73
+          "total": 136,
+          "hits": 79
         },
         "Liga Profesional de Fútbol, Apertura": {
-          "total": 248,
-          "hits": 113
+          "total": 308,
+          "hits": 143
         },
         "Brasileirão Série B": {
-          "total": 71,
-          "hits": 46
+          "total": 119,
+          "hits": 76
         },
         "UEFA Champions League, Knockout stage": {
-          "total": 54,
-          "hits": 41
+          "total": 60,
+          "hits": 45
         },
         "CONMEBOL Sudamericana, Group D": {
-          "total": 4,
+          "total": 6,
           "hits": 0
         },
         "CONMEBOL Sudamericana, Group F": {
-          "total": 4,
-          "hits": 0
+          "total": 6,
+          "hits": 1
         },
         "CONMEBOL Sudamericana, Group G": {
-          "total": 4,
+          "total": 5,
           "hits": 1
         },
         "CONMEBOL Sudamericana, Group C": {
-          "total": 4,
+          "total": 6,
           "hits": 0
         },
         "Brasileirão Betano": {
-          "total": 150,
-          "hits": 88
+          "total": 191,
+          "hits": 121
         },
         "MLS": {
-          "total": 118,
-          "hits": 75
+          "total": 145,
+          "hits": 92
         },
         "CONMEBOL Sudamericana, Qualification": {
           "total": 16,
@@ -7448,12 +7512,40 @@
         "Copa Libertadores": {
           "total": 1,
           "hits": 0
+        },
+        "Brasileirão Série A": {
+          "total": 4,
+          "hits": 2
+        },
+        "Brasileirão Série C": {
+          "total": 1,
+          "hits": 0
+        },
+        "Ligue 2": {
+          "total": 1,
+          "hits": 1
+        },
+        "FA Cup": {
+          "total": 1,
+          "hits": 1
+        },
+        "Championship": {
+          "total": 1,
+          "hits": 1
+        },
+        "Serie B": {
+          "total": 2,
+          "hits": 1
+        },
+        "VriendenLoterij Eredivisie, Relegation/P": {
+          "total": 6,
+          "hits": 2
         }
       }
     },
     "1X": {
-      "total": 1353,
-      "hits": 958,
+      "total": 1553,
+      "hits": 1108,
       "byRange": {
         "80-85": {
           "total": 34,
@@ -7464,14 +7556,14 @@
           "hits": 5
         },
         "70-80": {
-          "total": 1309,
-          "hits": 923
+          "total": 1509,
+          "hits": 1073
         }
       },
       "byCompetition": {
         "Premier League": {
-          "total": 98,
-          "hits": 60
+          "total": 113,
+          "hits": 71
         },
         "CONCACAF Champions Cup": {
           "total": 9,
@@ -7506,8 +7598,8 @@
           "hits": 0
         },
         "Ligue 1": {
-          "total": 92,
-          "hits": 70
+          "total": 107,
+          "hits": 79
         },
         "Trendyol Süper Lig": {
           "total": 2,
@@ -7522,76 +7614,76 @@
           "hits": 0
         },
         "Liga Profesional de Fútbol, Apertura": {
-          "total": 186,
-          "hits": 139
+          "total": 211,
+          "hits": 158
         },
         "Serie A": {
-          "total": 106,
-          "hits": 67
-        },
-        "LaLiga": {
-          "total": 102,
+          "total": 121,
           "hits": 78
         },
+        "LaLiga": {
+          "total": 122,
+          "hits": 94
+        },
         "Bundesliga": {
-          "total": 99,
-          "hits": 67
+          "total": 111,
+          "hits": 76
         },
         "CONMEBOL Sudamericana, Group A": {
           "total": 4,
           "hits": 3
         },
         "CONMEBOL Sudamericana, Group B": {
-          "total": 4,
-          "hits": 4
+          "total": 6,
+          "hits": 6
         },
         "CONMEBOL Sudamericana, Group E": {
-          "total": 4,
-          "hits": 2
+          "total": 6,
+          "hits": 4
         },
         "CONMEBOL Sudamericana, Group H": {
           "total": 4,
           "hits": 4
         },
         "Liga Portugal Betclic": {
-          "total": 93,
-          "hits": 67
+          "total": 109,
+          "hits": 78
         },
         "VriendenLoterij Eredivisie": {
-          "total": 92,
-          "hits": 67
+          "total": 101,
+          "hits": 74
         },
         "Brasileirão Série B": {
-          "total": 45,
-          "hits": 29
+          "total": 60,
+          "hits": 42
         },
         "UEFA Champions League, Knockout stage": {
-          "total": 40,
-          "hits": 27
+          "total": 42,
+          "hits": 29
         },
         "CONMEBOL Sudamericana, Group D": {
-          "total": 4,
-          "hits": 4
+          "total": 6,
+          "hits": 6
         },
         "CONMEBOL Sudamericana, Group F": {
-          "total": 4,
-          "hits": 3
+          "total": 6,
+          "hits": 5
         },
         "CONMEBOL Sudamericana, Group G": {
-          "total": 4,
-          "hits": 2
-        },
-        "CONMEBOL Sudamericana, Group C": {
-          "total": 4,
+          "total": 5,
           "hits": 3
         },
+        "CONMEBOL Sudamericana, Group C": {
+          "total": 6,
+          "hits": 5
+        },
         "Brasileirão Betano": {
-          "total": 111,
-          "hits": 85
+          "total": 127,
+          "hits": 96
         },
         "MLS": {
-          "total": 117,
-          "hits": 84
+          "total": 144,
+          "hits": 103
         },
         "CONMEBOL Sudamericana, Qualification": {
           "total": 16,
@@ -7608,20 +7700,24 @@
         "UEFA Champions League": {
           "total": 18,
           "hits": 11
+        },
+        "VriendenLoterij Eredivisie, Relegation/P": {
+          "total": 2,
+          "hits": 1
         }
       }
     },
     "Over 1.5": {
-      "total": 1786,
-      "hits": 1445,
+      "total": 2261,
+      "hits": 1861,
       "byRange": {
         "80-85": {
-          "total": 84,
-          "hits": 67
+          "total": 107,
+          "hits": 86
         },
         "70-80": {
-          "total": 1700,
-          "hits": 1377
+          "total": 2152,
+          "hits": 1774
         },
         "85-90": {
           "total": 2,
@@ -7634,8 +7730,8 @@
           "hits": 0
         },
         "CONMEBOL Sudamericana, Group B": {
-          "total": 8,
-          "hits": 8
+          "total": 10,
+          "hits": 9
         },
         "CONCACAF Champions Cup": {
           "total": 9,
@@ -7678,8 +7774,8 @@
           "hits": 6
         },
         "Premier League": {
-          "total": 140,
-          "hits": 117
+          "total": 188,
+          "hits": 160
         },
         "Parva Liga": {
           "total": 3,
@@ -7702,8 +7798,8 @@
           "hits": 2
         },
         "Championship": {
-          "total": 6,
-          "hits": 2
+          "total": 7,
+          "hits": 3
         },
         "2. Bundesliga": {
           "total": 4,
@@ -7714,76 +7810,76 @@
           "hits": 1
         },
         "Liga Profesional de Fútbol, Apertura": {
-          "total": 249,
-          "hits": 181
+          "total": 309,
+          "hits": 231
         },
         "Serie A": {
-          "total": 142,
-          "hits": 115
+          "total": 181,
+          "hits": 147
         },
         "LaLiga": {
-          "total": 135,
-          "hits": 113
+          "total": 173,
+          "hits": 146
         },
         "Ligue 1": {
-          "total": 115,
-          "hits": 88
+          "total": 165,
+          "hits": 137
         },
         "Bundesliga": {
-          "total": 132,
-          "hits": 116
+          "total": 176,
+          "hits": 159
         },
         "CONMEBOL Sudamericana, Group A": {
           "total": 4,
           "hits": 3
         },
         "CONMEBOL Sudamericana, Group E": {
-          "total": 4,
-          "hits": 3
+          "total": 6,
+          "hits": 5
         },
         "CONMEBOL Sudamericana, Group H": {
           "total": 4,
           "hits": 2
         },
         "Liga Portugal Betclic": {
-          "total": 133,
-          "hits": 108
+          "total": 170,
+          "hits": 141
         },
         "VriendenLoterij Eredivisie": {
-          "total": 126,
-          "hits": 116
-        },
-        "Brasileirão Série B": {
-          "total": 71,
-          "hits": 55
-        },
-        "UEFA Champions League, Knockout stage": {
-          "total": 54,
-          "hits": 49
-        },
-        "CONMEBOL Sudamericana, Group D": {
-          "total": 4,
-          "hits": 3
-        },
-        "CONMEBOL Sudamericana, Group F": {
-          "total": 4,
-          "hits": 1
-        },
-        "CONMEBOL Sudamericana, Group G": {
-          "total": 4,
-          "hits": 2
-        },
-        "CONMEBOL Sudamericana, Group C": {
-          "total": 4,
-          "hits": 2
-        },
-        "Brasileirão Betano": {
-          "total": 150,
+          "total": 136,
           "hits": 125
         },
+        "Brasileirão Série B": {
+          "total": 119,
+          "hits": 96
+        },
+        "UEFA Champions League, Knockout stage": {
+          "total": 60,
+          "hits": 55
+        },
+        "CONMEBOL Sudamericana, Group D": {
+          "total": 6,
+          "hits": 4
+        },
+        "CONMEBOL Sudamericana, Group F": {
+          "total": 6,
+          "hits": 2
+        },
+        "CONMEBOL Sudamericana, Group G": {
+          "total": 5,
+          "hits": 3
+        },
+        "CONMEBOL Sudamericana, Group C": {
+          "total": 6,
+          "hits": 3
+        },
+        "Brasileirão Betano": {
+          "total": 191,
+          "hits": 160
+        },
         "MLS": {
-          "total": 117,
-          "hits": 92
+          "total": 144,
+          "hits": 114
         },
         "CONMEBOL Sudamericana, Qualification": {
           "total": 16,
@@ -7812,25 +7908,49 @@
         "League Two": {
           "total": 1,
           "hits": 0
+        },
+        "Brasileirão Série A": {
+          "total": 4,
+          "hits": 3
+        },
+        "Brasileirão Série C": {
+          "total": 1,
+          "hits": 0
+        },
+        "Ligue 2": {
+          "total": 1,
+          "hits": 1
+        },
+        "FA Cup": {
+          "total": 1,
+          "hits": 1
+        },
+        "Serie B": {
+          "total": 2,
+          "hits": 1
+        },
+        "VriendenLoterij Eredivisie, Relegation/P": {
+          "total": 6,
+          "hits": 6
         }
       }
     },
     "X2": {
-      "total": 1341,
-      "hits": 734,
+      "total": 1541,
+      "hits": 844,
       "byRange": {
         "80-85": {
           "total": 32,
           "hits": 17
         },
         "70-80": {
-          "total": 1309,
-          "hits": 717
+          "total": 1509,
+          "hits": 827
         }
       },
       "byCompetition": {
         "CONMEBOL Sudamericana, Group B": {
-          "total": 8,
+          "total": 10,
           "hits": 1
         },
         "UEFA Europa League, Knockout stage": {
@@ -7858,8 +7978,8 @@
           "hits": 0
         },
         "Premier League": {
-          "total": 98,
-          "hits": 64
+          "total": 113,
+          "hits": 70
         },
         "I-League": {
           "total": 2,
@@ -7878,76 +7998,76 @@
           "hits": 2
         },
         "Serie A": {
-          "total": 106,
-          "hits": 58
+          "total": 121,
+          "hits": 69
         },
         "LaLiga": {
-          "total": 102,
-          "hits": 51
+          "total": 122,
+          "hits": 60
         },
         "Ligue 1": {
-          "total": 91,
-          "hits": 48
+          "total": 106,
+          "hits": 60
         },
         "Bundesliga": {
-          "total": 99,
-          "hits": 57
+          "total": 111,
+          "hits": 64
         },
         "CONMEBOL Sudamericana, Group A": {
           "total": 4,
           "hits": 3
         },
         "CONMEBOL Sudamericana, Group E": {
-          "total": 4,
-          "hits": 3
+          "total": 6,
+          "hits": 4
         },
         "CONMEBOL Sudamericana, Group H": {
           "total": 4,
           "hits": 1
         },
         "Liga Portugal Betclic": {
-          "total": 93,
-          "hits": 53
+          "total": 109,
+          "hits": 61
         },
         "VriendenLoterij Eredivisie": {
-          "total": 92,
-          "hits": 50
+          "total": 101,
+          "hits": 54
         },
         "Liga Profesional de Fútbol, Apertura": {
-          "total": 185,
-          "hits": 103
+          "total": 210,
+          "hits": 120
         },
         "Brasileirão Série B": {
-          "total": 45,
-          "hits": 31
+          "total": 60,
+          "hits": 38
         },
         "UEFA Champions League, Knockout stage": {
-          "total": 40,
-          "hits": 19
+          "total": 42,
+          "hits": 20
         },
         "CONMEBOL Sudamericana, Group D": {
-          "total": 4,
-          "hits": 2
-        },
-        "CONMEBOL Sudamericana, Group F": {
-          "total": 4,
-          "hits": 2
-        },
-        "CONMEBOL Sudamericana, Group G": {
-          "total": 4,
+          "total": 6,
           "hits": 4
         },
+        "CONMEBOL Sudamericana, Group F": {
+          "total": 6,
+          "hits": 3
+        },
+        "CONMEBOL Sudamericana, Group G": {
+          "total": 5,
+          "hits": 5
+        },
         "CONMEBOL Sudamericana, Group C": {
-          "total": 4,
-          "hits": 1
+          "total": 6,
+          "hits": 2
         },
         "Brasileirão Betano": {
-          "total": 111,
-          "hits": 57
+          "total": 127,
+          "hits": 64
         },
         "MLS": {
-          "total": 117,
-          "hits": 57
+          "total": 144,
+          "hits": 70
         },
         "CONMEBOL Sudamericana, Qualification": {
           "total": 16,
@@ -7964,24 +8084,28 @@
         "UEFA Champions League": {
           "total": 18,
           "hits": 9
+        },
+        "VriendenLoterij Eredivisie, Relegation/P": {
+          "total": 2,
+          "hits": 2
         }
       }
     },
     "BTTS": {
-      "total": 1795,
-      "hits": 1124,
+      "total": 2272,
+      "hits": 1502,
       "byRange": {
         "80-85": {
-          "total": 232,
-          "hits": 175
+          "total": 292,
+          "hits": 233
         },
         "85-90": {
           "total": 7,
           "hits": 2
         },
         "70-80": {
-          "total": 1556,
-          "hits": 947
+          "total": 1973,
+          "hits": 1267
         }
       },
       "byCompetition": {
@@ -8026,92 +8150,92 @@
           "hits": 2
         },
         "Championship": {
-          "total": 3,
-          "hits": 0
+          "total": 4,
+          "hits": 1
         },
         "2. Bundesliga": {
           "total": 4,
           "hits": 0
         },
         "Premier League": {
-          "total": 138,
-          "hits": 95
+          "total": 186,
+          "hits": 136
         },
         "Serie A": {
-          "total": 144,
-          "hits": 87
+          "total": 183,
+          "hits": 114
         },
         "LaLiga": {
-          "total": 135,
-          "hits": 97
+          "total": 173,
+          "hits": 128
         },
         "Ligue 1": {
-          "total": 115,
-          "hits": 66
+          "total": 165,
+          "hits": 111
         },
         "Bundesliga": {
-          "total": 132,
-          "hits": 96
+          "total": 176,
+          "hits": 137
         },
         "CONMEBOL Sudamericana, Group A": {
           "total": 4,
           "hits": 3
         },
         "CONMEBOL Sudamericana, Group B": {
-          "total": 4,
+          "total": 6,
           "hits": 3
         },
         "CONMEBOL Sudamericana, Group E": {
-          "total": 4,
-          "hits": 3
+          "total": 6,
+          "hits": 4
         },
         "CONMEBOL Sudamericana, Group H": {
           "total": 4,
           "hits": 2
         },
         "Liga Portugal Betclic": {
-          "total": 133,
-          "hits": 87
+          "total": 170,
+          "hits": 117
         },
         "VriendenLoterij Eredivisie": {
-          "total": 126,
-          "hits": 92
+          "total": 136,
+          "hits": 98
         },
         "Liga Profesional de Fútbol, Apertura": {
-          "total": 248,
-          "hits": 144
+          "total": 308,
+          "hits": 191
         },
         "Brasileirão Série B": {
-          "total": 71,
-          "hits": 49
+          "total": 119,
+          "hits": 88
         },
         "UEFA Champions League, Knockout stage": {
-          "total": 54,
-          "hits": 38
+          "total": 60,
+          "hits": 44
         },
         "CONMEBOL Sudamericana, Group D": {
-          "total": 4,
-          "hits": 2
+          "total": 6,
+          "hits": 3
         },
         "CONMEBOL Sudamericana, Group F": {
-          "total": 4,
-          "hits": 0
-        },
-        "CONMEBOL Sudamericana, Group G": {
-          "total": 4,
+          "total": 6,
           "hits": 1
         },
+        "CONMEBOL Sudamericana, Group G": {
+          "total": 5,
+          "hits": 2
+        },
         "CONMEBOL Sudamericana, Group C": {
-          "total": 4,
+          "total": 6,
           "hits": 0
         },
         "Brasileirão Betano": {
-          "total": 151,
-          "hits": 102
+          "total": 192,
+          "hits": 134
         },
         "MLS": {
-          "total": 120,
-          "hits": 68
+          "total": 147,
+          "hits": 85
         },
         "CONMEBOL Sudamericana, Qualification": {
           "total": 16,
@@ -8150,22 +8274,50 @@
           "hits": 3
         },
         "Brasileirão Série A": {
-          "total": 2,
-          "hits": 0
+          "total": 6,
+          "hits": 2
         },
         "Copa Sudamericana": {
           "total": 1,
           "hits": 1
+        },
+        "Brasileirão Série C": {
+          "total": 1,
+          "hits": 0
+        },
+        "Ligue 2": {
+          "total": 1,
+          "hits": 1
+        },
+        "FA Cup": {
+          "total": 1,
+          "hits": 1
+        },
+        "Serie B": {
+          "total": 2,
+          "hits": 1
+        },
+        "La Liga": {
+          "total": 2,
+          "hits": 0
+        },
+        "VriendenLoterij Eredivisie, Relegation/P": {
+          "total": 6,
+          "hits": 6
         }
       }
     },
     "Under 2.5": {
-      "total": 3,
-      "hits": 1,
+      "total": 26,
+      "hits": 10,
       "byRange": {
         "80-85": {
           "total": 3,
           "hits": 1
+        },
+        "70-80": {
+          "total": 23,
+          "hits": 9
         }
       },
       "byCompetition": {
@@ -8176,24 +8328,64 @@
         "CONMEBOL Libertadores, Group E": {
           "total": 1,
           "hits": 1
+        },
+        "Brasileirão Série B": {
+          "total": 5,
+          "hits": 2
+        },
+        "Brasileirão Série A": {
+          "total": 4,
+          "hits": 2
+        },
+        "Brasileirão Série C": {
+          "total": 1,
+          "hits": 1
+        },
+        "Ligue 1": {
+          "total": 4,
+          "hits": 1
+        },
+        "Ligue 2": {
+          "total": 1,
+          "hits": 0
+        },
+        "FA Cup": {
+          "total": 1,
+          "hits": 0
+        },
+        "Premier League": {
+          "total": 2,
+          "hits": 0
+        },
+        "Championship": {
+          "total": 1,
+          "hits": 0
+        },
+        "Serie A": {
+          "total": 2,
+          "hits": 2
+        },
+        "Serie B": {
+          "total": 2,
+          "hits": 1
         }
       }
     },
     "Over 3.5": {
-      "total": 1704,
-      "hits": 516,
+      "total": 2179,
+      "hits": 685,
       "byRange": {
         "70-80": {
-          "total": 1450,
-          "hits": 502
+          "total": 1751,
+          "hits": 662
         },
         "60-70": {
-          "total": 238,
-          "hits": 0
+          "total": 410,
+          "hits": 7
         },
         "80-85": {
-          "total": 13,
-          "hits": 13
+          "total": 15,
+          "hits": 15
         },
         "85-90": {
           "total": 3,
@@ -8202,24 +8394,24 @@
       },
       "byCompetition": {
         "Premier League": {
-          "total": 137,
-          "hits": 32
+          "total": 185,
+          "hits": 51
         },
         "Serie A": {
-          "total": 142,
-          "hits": 31
+          "total": 181,
+          "hits": 45
         },
         "LaLiga": {
-          "total": 135,
-          "hits": 36
+          "total": 173,
+          "hits": 46
         },
         "Ligue 1": {
-          "total": 115,
-          "hits": 38
+          "total": 165,
+          "hits": 60
         },
         "Bundesliga": {
-          "total": 132,
-          "hits": 59
+          "total": 176,
+          "hits": 74
         },
         "UEFA Europa League, Knockout stage": {
           "total": 46,
@@ -8230,11 +8422,11 @@
           "hits": 0
         },
         "CONMEBOL Sudamericana, Group B": {
-          "total": 4,
-          "hits": 0
+          "total": 6,
+          "hits": 1
         },
         "CONMEBOL Sudamericana, Group E": {
-          "total": 4,
+          "total": 6,
           "hits": 2
         },
         "CONMEBOL Sudamericana, Group H": {
@@ -8242,48 +8434,48 @@
           "hits": 1
         },
         "Liga Portugal Betclic": {
-          "total": 133,
-          "hits": 58
+          "total": 170,
+          "hits": 67
         },
         "VriendenLoterij Eredivisie": {
-          "total": 126,
-          "hits": 45
+          "total": 136,
+          "hits": 50
         },
         "Liga Profesional de Fútbol, Apertura": {
-          "total": 248,
-          "hits": 43
+          "total": 308,
+          "hits": 61
         },
         "Brasileirão Série B": {
-          "total": 71,
-          "hits": 20
+          "total": 119,
+          "hits": 33
         },
         "UEFA Champions League, Knockout stage": {
-          "total": 54,
-          "hits": 25
+          "total": 60,
+          "hits": 29
         },
         "CONMEBOL Sudamericana, Group D": {
-          "total": 4,
+          "total": 6,
           "hits": 0
         },
         "CONMEBOL Sudamericana, Group F": {
-          "total": 4,
+          "total": 6,
           "hits": 0
         },
         "CONMEBOL Sudamericana, Group G": {
-          "total": 4,
+          "total": 5,
           "hits": 0
         },
         "CONMEBOL Sudamericana, Group C": {
-          "total": 4,
+          "total": 6,
           "hits": 0
         },
         "Brasileirão Betano": {
-          "total": 150,
-          "hits": 34
+          "total": 191,
+          "hits": 55
         },
         "MLS": {
-          "total": 118,
-          "hits": 45
+          "total": 145,
+          "hits": 56
         },
         "CONMEBOL Sudamericana, Qualification": {
           "total": 16,
@@ -8312,38 +8504,66 @@
         "UEFA Champions League": {
           "total": 18,
           "hits": 7
+        },
+        "Brasileirão Série A": {
+          "total": 4,
+          "hits": 2
+        },
+        "Brasileirão Série C": {
+          "total": 1,
+          "hits": 0
+        },
+        "Ligue 2": {
+          "total": 1,
+          "hits": 1
+        },
+        "FA Cup": {
+          "total": 1,
+          "hits": 1
+        },
+        "Championship": {
+          "total": 1,
+          "hits": 1
+        },
+        "Serie B": {
+          "total": 2,
+          "hits": 0
+        },
+        "VriendenLoterij Eredivisie, Relegation/P": {
+          "total": 6,
+          "hits": 2
         }
       }
     },
     "Home Win": {
-      "total": 1309,
-      "hits": 592,
+      "total": 1509,
+      "hits": 682,
       "byRange": {
         "70-80": {
-          "total": 1309,
-          "hits": 592
+          "total": 1509,
+          "hits": 682
         }
       },
       "byCompetition": {
         "Premier League": {
-          "total": 95,
-          "hits": 31
+          "total": 110,
+          "hits": 40
         },
         "Serie A": {
-          "total": 106,
-          "hits": 48
+          "total": 121,
+          "hits": 52
         },
         "LaLiga": {
-          "total": 102,
-          "hits": 51
+          "total": 122,
+          "hits": 62
         },
         "Ligue 1": {
-          "total": 91,
-          "hits": 43
+          "total": 106,
+          "hits": 46
         },
         "Bundesliga": {
-          "total": 99,
-          "hits": 42
+          "total": 111,
+          "hits": 47
         },
         "UEFA Europa League, Knockout stage": {
           "total": 40,
@@ -8354,60 +8574,60 @@
           "hits": 1
         },
         "CONMEBOL Sudamericana, Group B": {
-          "total": 4,
-          "hits": 3
+          "total": 6,
+          "hits": 5
         },
         "CONMEBOL Sudamericana, Group E": {
-          "total": 4,
-          "hits": 1
+          "total": 6,
+          "hits": 2
         },
         "CONMEBOL Sudamericana, Group H": {
           "total": 4,
           "hits": 3
         },
         "Liga Portugal Betclic": {
-          "total": 93,
-          "hits": 40
+          "total": 109,
+          "hits": 48
         },
         "VriendenLoterij Eredivisie": {
-          "total": 92,
-          "hits": 42
+          "total": 101,
+          "hits": 47
         },
         "Liga Profesional de Fútbol, Apertura": {
-          "total": 185,
-          "hits": 82
+          "total": 210,
+          "hits": 90
         },
         "Brasileirão Série B": {
-          "total": 45,
-          "hits": 14
+          "total": 60,
+          "hits": 22
         },
         "UEFA Champions League, Knockout stage": {
-          "total": 40,
-          "hits": 21
+          "total": 42,
+          "hits": 22
         },
         "CONMEBOL Sudamericana, Group D": {
-          "total": 4,
+          "total": 6,
           "hits": 2
         },
         "CONMEBOL Sudamericana, Group F": {
-          "total": 4,
-          "hits": 2
+          "total": 6,
+          "hits": 3
         },
         "CONMEBOL Sudamericana, Group G": {
-          "total": 4,
+          "total": 5,
           "hits": 0
         },
         "CONMEBOL Sudamericana, Group C": {
-          "total": 4,
-          "hits": 3
+          "total": 6,
+          "hits": 4
         },
         "Brasileirão Betano": {
-          "total": 111,
-          "hits": 54
+          "total": 127,
+          "hits": 63
         },
         "MLS": {
-          "total": 117,
-          "hits": 60
+          "total": 144,
+          "hits": 74
         },
         "CONMEBOL Sudamericana, Qualification": {
           "total": 16,
@@ -8424,38 +8644,42 @@
         "UEFA Champions League": {
           "total": 18,
           "hits": 9
+        },
+        "VriendenLoterij Eredivisie, Relegation/P": {
+          "total": 2,
+          "hits": 0
         }
       }
     },
     "Away Win": {
-      "total": 1309,
-      "hits": 386,
+      "total": 1509,
+      "hits": 436,
       "byRange": {
         "70-80": {
-          "total": 1309,
-          "hits": 386
+          "total": 1509,
+          "hits": 436
         }
       },
       "byCompetition": {
         "Premier League": {
-          "total": 95,
-          "hits": 36
+          "total": 110,
+          "hits": 40
         },
         "Serie A": {
-          "total": 106,
-          "hits": 39
+          "total": 121,
+          "hits": 43
         },
         "LaLiga": {
-          "total": 102,
-          "hits": 24
+          "total": 122,
+          "hits": 28
         },
         "Ligue 1": {
-          "total": 91,
-          "hits": 22
+          "total": 106,
+          "hits": 28
         },
         "Bundesliga": {
-          "total": 99,
-          "hits": 32
+          "total": 111,
+          "hits": 35
         },
         "UEFA Europa League, Knockout stage": {
           "total": 40,
@@ -8466,11 +8690,11 @@
           "hits": 1
         },
         "CONMEBOL Sudamericana, Group B": {
-          "total": 4,
+          "total": 6,
           "hits": 0
         },
         "CONMEBOL Sudamericana, Group E": {
-          "total": 4,
+          "total": 6,
           "hits": 2
         },
         "CONMEBOL Sudamericana, Group H": {
@@ -8478,48 +8702,48 @@
           "hits": 0
         },
         "Liga Portugal Betclic": {
-          "total": 93,
-          "hits": 26
+          "total": 109,
+          "hits": 31
         },
         "VriendenLoterij Eredivisie": {
-          "total": 92,
-          "hits": 25
+          "total": 101,
+          "hits": 27
         },
         "Liga Profesional de Fútbol, Apertura": {
-          "total": 185,
-          "hits": 47
+          "total": 210,
+          "hits": 53
         },
         "Brasileirão Série B": {
-          "total": 45,
-          "hits": 16
+          "total": 60,
+          "hits": 18
         },
         "UEFA Champions League, Knockout stage": {
-          "total": 40,
+          "total": 42,
           "hits": 13
         },
         "CONMEBOL Sudamericana, Group D": {
-          "total": 4,
+          "total": 6,
           "hits": 0
         },
         "CONMEBOL Sudamericana, Group F": {
-          "total": 4,
+          "total": 6,
           "hits": 1
         },
         "CONMEBOL Sudamericana, Group G": {
-          "total": 4,
+          "total": 5,
           "hits": 2
         },
         "CONMEBOL Sudamericana, Group C": {
-          "total": 4,
+          "total": 6,
           "hits": 1
         },
         "Brasileirão Betano": {
-          "total": 111,
-          "hits": 26
+          "total": 127,
+          "hits": 31
         },
         "MLS": {
-          "total": 117,
-          "hits": 33
+          "total": 144,
+          "hits": 41
         },
         "CONMEBOL Sudamericana, Qualification": {
           "total": 16,
@@ -8536,38 +8760,42 @@
         "UEFA Champions League": {
           "total": 18,
           "hits": 7
+        },
+        "VriendenLoterij Eredivisie, Relegation/P": {
+          "total": 2,
+          "hits": 1
         }
       }
     },
     "Draw": {
-      "total": 1309,
-      "hits": 331,
+      "total": 1509,
+      "hits": 391,
       "byRange": {
         "70-80": {
-          "total": 1309,
-          "hits": 331
+          "total": 1509,
+          "hits": 391
         }
       },
       "byCompetition": {
         "Premier League": {
-          "total": 95,
-          "hits": 28
+          "total": 110,
+          "hits": 30
         },
         "Serie A": {
-          "total": 106,
-          "hits": 19
-        },
-        "LaLiga": {
-          "total": 102,
-          "hits": 27
-        },
-        "Ligue 1": {
-          "total": 91,
+          "total": 121,
           "hits": 26
         },
+        "LaLiga": {
+          "total": 122,
+          "hits": 32
+        },
+        "Ligue 1": {
+          "total": 106,
+          "hits": 32
+        },
         "Bundesliga": {
-          "total": 99,
-          "hits": 25
+          "total": 111,
+          "hits": 29
         },
         "UEFA Europa League, Knockout stage": {
           "total": 40,
@@ -8578,60 +8806,60 @@
           "hits": 2
         },
         "CONMEBOL Sudamericana, Group B": {
-          "total": 4,
+          "total": 6,
           "hits": 1
         },
         "CONMEBOL Sudamericana, Group E": {
-          "total": 4,
-          "hits": 1
+          "total": 6,
+          "hits": 2
         },
         "CONMEBOL Sudamericana, Group H": {
           "total": 4,
           "hits": 1
         },
         "Liga Portugal Betclic": {
-          "total": 93,
-          "hits": 27
+          "total": 109,
+          "hits": 30
         },
         "VriendenLoterij Eredivisie": {
-          "total": 92,
-          "hits": 25
+          "total": 101,
+          "hits": 27
         },
         "Liga Profesional de Fútbol, Apertura": {
-          "total": 185,
-          "hits": 56
+          "total": 210,
+          "hits": 67
         },
         "Brasileirão Série B": {
-          "total": 45,
-          "hits": 15
+          "total": 60,
+          "hits": 20
         },
         "UEFA Champions League, Knockout stage": {
-          "total": 40,
-          "hits": 6
+          "total": 42,
+          "hits": 7
         },
         "CONMEBOL Sudamericana, Group D": {
-          "total": 4,
-          "hits": 2
+          "total": 6,
+          "hits": 4
         },
         "CONMEBOL Sudamericana, Group F": {
-          "total": 4,
-          "hits": 1
-        },
-        "CONMEBOL Sudamericana, Group G": {
-          "total": 4,
+          "total": 6,
           "hits": 2
         },
+        "CONMEBOL Sudamericana, Group G": {
+          "total": 5,
+          "hits": 3
+        },
         "CONMEBOL Sudamericana, Group C": {
-          "total": 4,
-          "hits": 0
+          "total": 6,
+          "hits": 1
         },
         "Brasileirão Betano": {
-          "total": 111,
-          "hits": 31
+          "total": 127,
+          "hits": 33
         },
         "MLS": {
-          "total": 117,
-          "hits": 24
+          "total": 144,
+          "hits": 29
         },
         "CONMEBOL Sudamericana, Qualification": {
           "total": 16,
@@ -8648,46 +8876,50 @@
         "UEFA Champions League": {
           "total": 18,
           "hits": 2
+        },
+        "VriendenLoterij Eredivisie, Relegation/P": {
+          "total": 2,
+          "hits": 1
         }
       }
     },
     "Over Corners 6.5": {
-      "total": 1699,
-      "hits": 1410,
+      "total": 2151,
+      "hits": 1790,
       "byRange": {
         "70-80": {
-          "total": 1583,
-          "hits": 1342
+          "total": 1985,
+          "hits": 1707
         },
         "80-85": {
-          "total": 68,
-          "hits": 68
+          "total": 83,
+          "hits": 83
         },
         "60-70": {
-          "total": 48,
+          "total": 83,
           "hits": 0
         }
       },
       "byCompetition": {
         "Premier League": {
-          "total": 137,
-          "hits": 113
+          "total": 183,
+          "hits": 156
         },
         "Serie A": {
-          "total": 142,
-          "hits": 112
+          "total": 179,
+          "hits": 146
         },
         "LaLiga": {
-          "total": 135,
-          "hits": 115
+          "total": 173,
+          "hits": 149
         },
         "Ligue 1": {
-          "total": 115,
-          "hits": 100
+          "total": 161,
+          "hits": 144
         },
         "Bundesliga": {
-          "total": 132,
-          "hits": 120
+          "total": 176,
+          "hits": 157
         },
         "UEFA Europa League, Knockout stage": {
           "total": 46,
@@ -8698,60 +8930,60 @@
           "hits": 4
         },
         "CONMEBOL Sudamericana, Group B": {
-          "total": 4,
-          "hits": 2
+          "total": 6,
+          "hits": 3
         },
         "CONMEBOL Sudamericana, Group E": {
-          "total": 4,
-          "hits": 2
+          "total": 6,
+          "hits": 4
         },
         "CONMEBOL Sudamericana, Group H": {
           "total": 4,
           "hits": 2
         },
         "Liga Portugal Betclic": {
-          "total": 133,
-          "hits": 116
+          "total": 170,
+          "hits": 146
         },
         "VriendenLoterij Eredivisie": {
-          "total": 126,
-          "hits": 107
+          "total": 136,
+          "hits": 115
         },
         "Liga Profesional de Fútbol, Apertura": {
-          "total": 248,
-          "hits": 192
+          "total": 308,
+          "hits": 227
         },
         "Brasileirão Série B": {
-          "total": 71,
-          "hits": 64
+          "total": 114,
+          "hits": 107
         },
         "UEFA Champions League, Knockout stage": {
-          "total": 54,
-          "hits": 37
+          "total": 60,
+          "hits": 43
         },
         "CONMEBOL Sudamericana, Group D": {
-          "total": 4,
-          "hits": 3
+          "total": 6,
+          "hits": 5
         },
         "CONMEBOL Sudamericana, Group F": {
-          "total": 4,
-          "hits": 4
+          "total": 6,
+          "hits": 5
         },
         "CONMEBOL Sudamericana, Group G": {
-          "total": 4,
-          "hits": 3
-        },
-        "CONMEBOL Sudamericana, Group C": {
-          "total": 4,
+          "total": 5,
           "hits": 4
         },
+        "CONMEBOL Sudamericana, Group C": {
+          "total": 6,
+          "hits": 6
+        },
         "Brasileirão Betano": {
-          "total": 150,
-          "hits": 133
+          "total": 191,
+          "hits": 167
         },
         "MLS": {
-          "total": 117,
-          "hits": 100
+          "total": 144,
+          "hits": 117
         },
         "CONMEBOL Sudamericana, Qualification": {
           "total": 16,
@@ -8768,46 +9000,50 @@
         "UEFA Champions League": {
           "total": 18,
           "hits": 12
+        },
+        "VriendenLoterij Eredivisie, Relegation/P": {
+          "total": 6,
+          "hits": 6
         }
       }
     },
     "Over Corners 7.5": {
-      "total": 1699,
-      "hits": 1237,
+      "total": 2151,
+      "hits": 1540,
       "byRange": {
         "70-80": {
-          "total": 1535,
-          "hits": 1161
+          "total": 1878,
+          "hits": 1436
         },
         "80-85": {
-          "total": 76,
-          "hits": 76
+          "total": 104,
+          "hits": 104
         },
         "60-70": {
-          "total": 88,
+          "total": 169,
           "hits": 0
         }
       },
       "byCompetition": {
         "Premier League": {
-          "total": 137,
-          "hits": 100
+          "total": 183,
+          "hits": 135
         },
         "Serie A": {
-          "total": 142,
-          "hits": 98
+          "total": 179,
+          "hits": 124
         },
         "LaLiga": {
-          "total": 135,
-          "hits": 105
+          "total": 173,
+          "hits": 134
         },
         "Ligue 1": {
-          "total": 115,
-          "hits": 75
+          "total": 161,
+          "hits": 116
         },
         "Bundesliga": {
-          "total": 132,
-          "hits": 104
+          "total": 176,
+          "hits": 137
         },
         "UEFA Europa League, Knockout stage": {
           "total": 46,
@@ -8818,60 +9054,60 @@
           "hits": 2
         },
         "CONMEBOL Sudamericana, Group B": {
-          "total": 4,
-          "hits": 2
+          "total": 6,
+          "hits": 3
         },
         "CONMEBOL Sudamericana, Group E": {
-          "total": 4,
-          "hits": 2
+          "total": 6,
+          "hits": 4
         },
         "CONMEBOL Sudamericana, Group H": {
           "total": 4,
           "hits": 2
         },
         "Liga Portugal Betclic": {
-          "total": 133,
-          "hits": 112
+          "total": 170,
+          "hits": 130
         },
         "VriendenLoterij Eredivisie": {
-          "total": 126,
-          "hits": 89
+          "total": 136,
+          "hits": 96
         },
         "Liga Profesional de Fútbol, Apertura": {
-          "total": 248,
-          "hits": 164
+          "total": 308,
+          "hits": 187
         },
         "Brasileirão Série B": {
-          "total": 71,
-          "hits": 50
+          "total": 114,
+          "hits": 81
         },
         "UEFA Champions League, Knockout stage": {
-          "total": 54,
+          "total": 60,
           "hits": 36
         },
         "CONMEBOL Sudamericana, Group D": {
-          "total": 4,
-          "hits": 3
+          "total": 6,
+          "hits": 4
         },
         "CONMEBOL Sudamericana, Group F": {
-          "total": 4,
-          "hits": 4
+          "total": 6,
+          "hits": 5
         },
         "CONMEBOL Sudamericana, Group G": {
-          "total": 4,
-          "hits": 3
-        },
-        "CONMEBOL Sudamericana, Group C": {
-          "total": 4,
+          "total": 5,
           "hits": 4
         },
+        "CONMEBOL Sudamericana, Group C": {
+          "total": 6,
+          "hits": 6
+        },
         "Brasileirão Betano": {
-          "total": 150,
-          "hits": 128
+          "total": 191,
+          "hits": 160
         },
         "MLS": {
-          "total": 117,
-          "hits": 87
+          "total": 144,
+          "hits": 101
         },
         "CONMEBOL Sudamericana, Qualification": {
           "total": 16,
@@ -8888,28 +9124,32 @@
         "UEFA Champions League": {
           "total": 18,
           "hits": 12
+        },
+        "VriendenLoterij Eredivisie, Relegation/P": {
+          "total": 6,
+          "hits": 6
         }
       }
     },
     "Over Corners 8.5": {
-      "total": 1699,
-      "hits": 1066,
+      "total": 2151,
+      "hits": 1328,
       "byRange": {
         "70-80": {
-          "total": 1429,
-          "hits": 921
+          "total": 1705,
+          "hits": 1107
         },
         "85-90": {
-          "total": 18,
-          "hits": 18
+          "total": 42,
+          "hits": 42
         },
         "60-70": {
-          "total": 125,
+          "total": 225,
           "hits": 0
         },
         "80-85": {
-          "total": 124,
-          "hits": 124
+          "total": 176,
+          "hits": 176
         },
         "90-95": {
           "total": 3,
@@ -8918,24 +9158,24 @@
       },
       "byCompetition": {
         "Premier League": {
-          "total": 137,
-          "hits": 91
+          "total": 183,
+          "hits": 120
         },
         "Serie A": {
-          "total": 142,
-          "hits": 72
+          "total": 179,
+          "hits": 98
         },
         "LaLiga": {
-          "total": 135,
-          "hits": 93
+          "total": 173,
+          "hits": 116
         },
         "Ligue 1": {
-          "total": 115,
-          "hits": 64
+          "total": 161,
+          "hits": 102
         },
         "Bundesliga": {
-          "total": 132,
-          "hits": 85
+          "total": 176,
+          "hits": 117
         },
         "UEFA Europa League, Knockout stage": {
           "total": 46,
@@ -8946,60 +9186,60 @@
           "hits": 2
         },
         "CONMEBOL Sudamericana, Group B": {
-          "total": 4,
-          "hits": 2
+          "total": 6,
+          "hits": 3
         },
         "CONMEBOL Sudamericana, Group E": {
-          "total": 4,
-          "hits": 1
+          "total": 6,
+          "hits": 3
         },
         "CONMEBOL Sudamericana, Group H": {
           "total": 4,
           "hits": 2
         },
         "Liga Portugal Betclic": {
-          "total": 133,
-          "hits": 104
+          "total": 170,
+          "hits": 121
         },
         "VriendenLoterij Eredivisie": {
-          "total": 126,
-          "hits": 78
+          "total": 136,
+          "hits": 84
         },
         "Liga Profesional de Fútbol, Apertura": {
-          "total": 248,
-          "hits": 128
+          "total": 308,
+          "hits": 150
         },
         "Brasileirão Série B": {
-          "total": 71,
-          "hits": 48
+          "total": 114,
+          "hits": 76
         },
         "UEFA Champions League, Knockout stage": {
-          "total": 54,
+          "total": 60,
           "hits": 33
         },
         "CONMEBOL Sudamericana, Group D": {
-          "total": 4,
+          "total": 6,
           "hits": 2
         },
         "CONMEBOL Sudamericana, Group F": {
-          "total": 4,
-          "hits": 2
-        },
-        "CONMEBOL Sudamericana, Group G": {
-          "total": 4,
+          "total": 6,
           "hits": 3
         },
-        "CONMEBOL Sudamericana, Group C": {
-          "total": 4,
+        "CONMEBOL Sudamericana, Group G": {
+          "total": 5,
           "hits": 4
         },
+        "CONMEBOL Sudamericana, Group C": {
+          "total": 6,
+          "hits": 6
+        },
         "Brasileirão Betano": {
-          "total": 150,
-          "hits": 117
+          "total": 191,
+          "hits": 138
         },
         "MLS": {
-          "total": 117,
-          "hits": 77
+          "total": 144,
+          "hits": 88
         },
         "CONMEBOL Sudamericana, Qualification": {
           "total": 16,
@@ -9016,38 +9256,42 @@
         "UEFA Champions League": {
           "total": 18,
           "hits": 10
+        },
+        "VriendenLoterij Eredivisie, Relegation/P": {
+          "total": 6,
+          "hits": 2
         }
       }
     },
     "Over Corners 9.5": {
-      "total": 1309,
-      "hits": 640,
+      "total": 1509,
+      "hits": 727,
       "byRange": {
         "70-80": {
-          "total": 1309,
-          "hits": 640
+          "total": 1509,
+          "hits": 727
         }
       },
       "byCompetition": {
         "Premier League": {
-          "total": 95,
-          "hits": 55
+          "total": 110,
+          "hits": 63
         },
         "Serie A": {
-          "total": 106,
-          "hits": 42
+          "total": 121,
+          "hits": 49
         },
         "LaLiga": {
-          "total": 102,
-          "hits": 50
+          "total": 122,
+          "hits": 58
         },
         "Ligue 1": {
-          "total": 91,
-          "hits": 41
+          "total": 106,
+          "hits": 51
         },
         "Bundesliga": {
-          "total": 99,
-          "hits": 51
+          "total": 111,
+          "hits": 58
         },
         "UEFA Europa League, Knockout stage": {
           "total": 40,
@@ -9058,60 +9302,60 @@
           "hits": 1
         },
         "CONMEBOL Sudamericana, Group B": {
-          "total": 4,
+          "total": 6,
           "hits": 1
         },
         "CONMEBOL Sudamericana, Group E": {
-          "total": 4,
-          "hits": 1
+          "total": 6,
+          "hits": 3
         },
         "CONMEBOL Sudamericana, Group H": {
           "total": 4,
           "hits": 2
         },
         "Liga Portugal Betclic": {
-          "total": 93,
-          "hits": 53
+          "total": 109,
+          "hits": 59
         },
         "VriendenLoterij Eredivisie": {
-          "total": 92,
-          "hits": 50
+          "total": 101,
+          "hits": 55
         },
         "Liga Profesional de Fútbol, Apertura": {
-          "total": 185,
-          "hits": 67
+          "total": 210,
+          "hits": 71
         },
         "Brasileirão Série B": {
-          "total": 45,
-          "hits": 27
+          "total": 60,
+          "hits": 36
         },
         "UEFA Champions League, Knockout stage": {
-          "total": 40,
+          "total": 42,
           "hits": 20
         },
         "CONMEBOL Sudamericana, Group D": {
-          "total": 4,
+          "total": 6,
           "hits": 2
         },
         "CONMEBOL Sudamericana, Group F": {
-          "total": 4,
+          "total": 6,
           "hits": 2
         },
         "CONMEBOL Sudamericana, Group G": {
-          "total": 4,
-          "hits": 2
+          "total": 5,
+          "hits": 3
         },
         "CONMEBOL Sudamericana, Group C": {
-          "total": 4,
-          "hits": 4
+          "total": 6,
+          "hits": 5
         },
         "Brasileirão Betano": {
-          "total": 111,
-          "hits": 64
+          "total": 127,
+          "hits": 71
         },
         "MLS": {
-          "total": 117,
-          "hits": 60
+          "total": 144,
+          "hits": 71
         },
         "CONMEBOL Sudamericana, Qualification": {
           "total": 16,
@@ -9128,42 +9372,46 @@
         "UEFA Champions League": {
           "total": 18,
           "hits": 9
+        },
+        "VriendenLoterij Eredivisie, Relegation/P": {
+          "total": 2,
+          "hits": 1
         }
       }
     },
     "YC 2.5": {
-      "total": 1699,
-      "hits": 1300,
+      "total": 2151,
+      "hits": 1654,
       "byRange": {
         "70-80": {
-          "total": 1594,
-          "hits": 1300
+          "total": 1990,
+          "hits": 1654
         },
         "60-70": {
-          "total": 105,
+          "total": 161,
           "hits": 0
         }
       },
       "byCompetition": {
         "Premier League": {
-          "total": 137,
-          "hits": 113
+          "total": 183,
+          "hits": 145
         },
         "Serie A": {
-          "total": 142,
-          "hits": 98
+          "total": 179,
+          "hits": 127
         },
         "LaLiga": {
-          "total": 135,
-          "hits": 119
+          "total": 173,
+          "hits": 143
         },
         "Ligue 1": {
-          "total": 115,
-          "hits": 76
+          "total": 161,
+          "hits": 120
         },
         "Bundesliga": {
-          "total": 132,
-          "hits": 100
+          "total": 176,
+          "hits": 120
         },
         "UEFA Europa League, Knockout stage": {
           "total": 46,
@@ -9174,60 +9422,60 @@
           "hits": 4
         },
         "CONMEBOL Sudamericana, Group B": {
-          "total": 4,
-          "hits": 1
+          "total": 6,
+          "hits": 3
         },
         "CONMEBOL Sudamericana, Group E": {
-          "total": 4,
-          "hits": 4
+          "total": 6,
+          "hits": 5
         },
         "CONMEBOL Sudamericana, Group H": {
           "total": 4,
           "hits": 4
         },
         "Liga Portugal Betclic": {
-          "total": 133,
-          "hits": 108
+          "total": 170,
+          "hits": 143
         },
         "VriendenLoterij Eredivisie": {
-          "total": 126,
-          "hits": 74
+          "total": 136,
+          "hits": 78
         },
         "Liga Profesional de Fútbol, Apertura": {
-          "total": 248,
-          "hits": 220
+          "total": 308,
+          "hits": 273
         },
         "Brasileirão Série B": {
-          "total": 71,
-          "hits": 56
+          "total": 114,
+          "hits": 98
         },
         "UEFA Champions League, Knockout stage": {
-          "total": 54,
-          "hits": 28
+          "total": 60,
+          "hits": 32
         },
         "CONMEBOL Sudamericana, Group D": {
-          "total": 4,
-          "hits": 4
+          "total": 6,
+          "hits": 6
         },
         "CONMEBOL Sudamericana, Group F": {
-          "total": 4,
-          "hits": 4
+          "total": 6,
+          "hits": 6
         },
         "CONMEBOL Sudamericana, Group G": {
-          "total": 4,
-          "hits": 4
+          "total": 5,
+          "hits": 5
         },
         "CONMEBOL Sudamericana, Group C": {
-          "total": 4,
-          "hits": 3
+          "total": 6,
+          "hits": 5
         },
         "Brasileirão Betano": {
-          "total": 150,
-          "hits": 117
+          "total": 191,
+          "hits": 148
         },
         "MLS": {
-          "total": 117,
-          "hits": 88
+          "total": 144,
+          "hits": 110
         },
         "CONMEBOL Sudamericana, Qualification": {
           "total": 16,
@@ -9244,46 +9492,50 @@
         "UEFA Champions League": {
           "total": 18,
           "hits": 12
+        },
+        "VriendenLoterij Eredivisie, Relegation/P": {
+          "total": 6,
+          "hits": 4
         }
       }
     },
     "YC 3.5": {
-      "total": 1699,
-      "hits": 1024,
+      "total": 2151,
+      "hits": 1313,
       "byRange": {
         "70-80": {
-          "total": 1499,
-          "hits": 983
+          "total": 1853,
+          "hits": 1254
         },
         "60-70": {
-          "total": 159,
+          "total": 239,
           "hits": 0
         },
         "80-85": {
-          "total": 41,
-          "hits": 41
+          "total": 59,
+          "hits": 59
         }
       },
       "byCompetition": {
         "Premier League": {
-          "total": 137,
-          "hits": 87
+          "total": 183,
+          "hits": 116
         },
         "Serie A": {
-          "total": 142,
-          "hits": 80
+          "total": 179,
+          "hits": 99
         },
         "LaLiga": {
-          "total": 135,
-          "hits": 100
+          "total": 173,
+          "hits": 122
         },
         "Ligue 1": {
-          "total": 115,
-          "hits": 53
+          "total": 161,
+          "hits": 92
         },
         "Bundesliga": {
-          "total": 132,
-          "hits": 70
+          "total": 176,
+          "hits": 84
         },
         "UEFA Europa League, Knockout stage": {
           "total": 46,
@@ -9294,60 +9546,60 @@
           "hits": 4
         },
         "CONMEBOL Sudamericana, Group B": {
-          "total": 4,
-          "hits": 1
+          "total": 6,
+          "hits": 2
         },
         "CONMEBOL Sudamericana, Group E": {
-          "total": 4,
-          "hits": 3
+          "total": 6,
+          "hits": 4
         },
         "CONMEBOL Sudamericana, Group H": {
           "total": 4,
           "hits": 3
         },
         "Liga Portugal Betclic": {
-          "total": 133,
-          "hits": 90
+          "total": 170,
+          "hits": 118
         },
         "VriendenLoterij Eredivisie": {
-          "total": 126,
+          "total": 136,
           "hits": 39
         },
         "Liga Profesional de Fútbol, Apertura": {
-          "total": 248,
-          "hits": 180
+          "total": 308,
+          "hits": 229
         },
         "Brasileirão Série B": {
-          "total": 71,
-          "hits": 51
+          "total": 114,
+          "hits": 90
         },
         "UEFA Champions League, Knockout stage": {
-          "total": 54,
+          "total": 60,
           "hits": 23
         },
         "CONMEBOL Sudamericana, Group D": {
-          "total": 4,
-          "hits": 2
-        },
-        "CONMEBOL Sudamericana, Group F": {
-          "total": 4,
+          "total": 6,
           "hits": 3
         },
+        "CONMEBOL Sudamericana, Group F": {
+          "total": 6,
+          "hits": 5
+        },
         "CONMEBOL Sudamericana, Group G": {
-          "total": 4,
-          "hits": 4
+          "total": 5,
+          "hits": 5
         },
         "CONMEBOL Sudamericana, Group C": {
-          "total": 4,
+          "total": 6,
           "hits": 3
         },
         "Brasileirão Betano": {
-          "total": 150,
-          "hits": 101
+          "total": 191,
+          "hits": 125
         },
         "MLS": {
-          "total": 117,
-          "hits": 69
+          "total": 144,
+          "hits": 85
         },
         "CONMEBOL Sudamericana, Qualification": {
           "total": 16,
@@ -9364,19 +9616,23 @@
         "UEFA Champions League": {
           "total": 18,
           "hits": 7
+        },
+        "VriendenLoterij Eredivisie, Relegation/P": {
+          "total": 6,
+          "hits": 4
         }
       }
     },
     "YC 4.5": {
-      "total": 1699,
-      "hits": 725,
+      "total": 2151,
+      "hits": 918,
       "byRange": {
         "70-80": {
-          "total": 1485,
-          "hits": 723
+          "total": 1797,
+          "hits": 916
         },
         "60-70": {
-          "total": 212,
+          "total": 352,
           "hits": 0
         },
         "80-85": {
@@ -9386,24 +9642,24 @@
       },
       "byCompetition": {
         "Premier League": {
-          "total": 137,
-          "hits": 48
+          "total": 183,
+          "hits": 59
         },
         "Serie A": {
-          "total": 142,
-          "hits": 60
+          "total": 179,
+          "hits": 67
         },
         "LaLiga": {
-          "total": 135,
-          "hits": 82
+          "total": 173,
+          "hits": 93
         },
         "Ligue 1": {
-          "total": 115,
-          "hits": 27
+          "total": 161,
+          "hits": 48
         },
         "Bundesliga": {
-          "total": 132,
-          "hits": 53
+          "total": 176,
+          "hits": 66
         },
         "UEFA Europa League, Knockout stage": {
           "total": 46,
@@ -9414,11 +9670,11 @@
           "hits": 3
         },
         "CONMEBOL Sudamericana, Group B": {
-          "total": 4,
-          "hits": 1
+          "total": 6,
+          "hits": 2
         },
         "CONMEBOL Sudamericana, Group E": {
-          "total": 4,
+          "total": 6,
           "hits": 2
         },
         "CONMEBOL Sudamericana, Group H": {
@@ -9426,48 +9682,48 @@
           "hits": 2
         },
         "Liga Portugal Betclic": {
-          "total": 133,
-          "hits": 67
+          "total": 170,
+          "hits": 91
         },
         "VriendenLoterij Eredivisie": {
-          "total": 126,
+          "total": 136,
           "hits": 23
         },
         "Liga Profesional de Fútbol, Apertura": {
-          "total": 248,
-          "hits": 128
+          "total": 308,
+          "hits": 168
         },
         "Brasileirão Série B": {
-          "total": 71,
-          "hits": 35
+          "total": 114,
+          "hits": 68
         },
         "UEFA Champions League, Knockout stage": {
-          "total": 54,
+          "total": 60,
           "hits": 18
         },
         "CONMEBOL Sudamericana, Group D": {
-          "total": 4,
+          "total": 6,
           "hits": 1
         },
         "CONMEBOL Sudamericana, Group F": {
-          "total": 4,
-          "hits": 1
-        },
-        "CONMEBOL Sudamericana, Group G": {
-          "total": 4,
+          "total": 6,
           "hits": 3
         },
+        "CONMEBOL Sudamericana, Group G": {
+          "total": 5,
+          "hits": 4
+        },
         "CONMEBOL Sudamericana, Group C": {
-          "total": 4,
+          "total": 6,
           "hits": 2
         },
         "Brasileirão Betano": {
-          "total": 150,
-          "hits": 79
+          "total": 191,
+          "hits": 96
         },
         "MLS": {
-          "total": 117,
-          "hits": 44
+          "total": 144,
+          "hits": 56
         },
         "CONMEBOL Sudamericana, Qualification": {
           "total": 16,
@@ -9484,6 +9740,10 @@
         "UEFA Champions League": {
           "total": 18,
           "hits": 5
+        },
+        "VriendenLoterij Eredivisie, Relegation/P": {
+          "total": 6,
+          "hits": 0
         }
       }
     },
@@ -9589,20 +9849,32 @@
       "byCompetition": {}
     },
     "Resultado Final": {
-      "total": 20,
-      "hits": 12,
+      "total": 1988,
+      "hits": 668,
       "byRange": {
         "80-85": {
-          "total": 2,
-          "hits": 1
+          "total": 115,
+          "hits": 66
         },
         "85-90": {
-          "total": 12,
-          "hits": 9
+          "total": 83,
+          "hits": 60
         },
         "90-95": {
-          "total": 6,
-          "hits": 2
+          "total": 8,
+          "hits": 4
+        },
+        "70-80": {
+          "total": 144,
+          "hits": 69
+        },
+        "<60": {
+          "total": 1509,
+          "hits": 411
+        },
+        "60-70": {
+          "total": 129,
+          "hits": 58
         }
       },
       "byCompetition": {
@@ -9649,6 +9921,54 @@
         "Conference League": {
           "total": 1,
           "hits": 1
+        },
+        "LaLiga": {
+          "total": 171,
+          "hits": 57
+        },
+        "Ligue 1": {
+          "total": 168,
+          "hits": 56
+        },
+        "Brasileirão Betano": {
+          "total": 210,
+          "hits": 70
+        },
+        "Liga Portugal Betclic": {
+          "total": 183,
+          "hits": 61
+        },
+        "Liga Profesional de Fútbol": {
+          "total": 279,
+          "hits": 93
+        },
+        "Brasileirão Série B": {
+          "total": 207,
+          "hits": 69
+        },
+        "Serie A": {
+          "total": 207,
+          "hits": 69
+        },
+        "Bundesliga": {
+          "total": 168,
+          "hits": 56
+        },
+        "VriendenLoterij Eredivisie": {
+          "total": 129,
+          "hits": 43
+        },
+        "UEFA Champions League": {
+          "total": 57,
+          "hits": 19
+        },
+        "UEFA Europa League": {
+          "total": 48,
+          "hits": 16
+        },
+        "Premier League": {
+          "total": 141,
+          "hits": 47
         }
       }
     },
@@ -9737,16 +10057,16 @@
       }
     },
     "Total de Gols": {
-      "total": 19,
-      "hits": 11,
+      "total": 21,
+      "hits": 12,
       "byRange": {
         "70-80": {
           "total": 2,
           "hits": 0
         },
         "80-85": {
-          "total": 9,
-          "hits": 6
+          "total": 11,
+          "hits": 7
         },
         "85-90": {
           "total": 8,
@@ -9759,15 +10079,15 @@
           "hits": 0
         },
         "Serie A": {
-          "total": 4,
-          "hits": 1
+          "total": 5,
+          "hits": 2
         },
         "J1 League": {
           "total": 2,
           "hits": 2
         },
         "Copa Sudamericana": {
-          "total": 2,
+          "total": 3,
           "hits": 2
         },
         "Bundesliga": {
@@ -9793,6 +10113,58 @@
         "Ligue 1": {
           "total": 1,
           "hits": 0
+        }
+      }
+    },
+    "Under 3.5": {
+      "total": 23,
+      "hits": 16,
+      "byRange": {
+        "70-80": {
+          "total": 23,
+          "hits": 16
+        }
+      },
+      "byCompetition": {
+        "Brasileirão Série B": {
+          "total": 5,
+          "hits": 4
+        },
+        "Brasileirão Série A": {
+          "total": 4,
+          "hits": 2
+        },
+        "Brasileirão Série C": {
+          "total": 1,
+          "hits": 1
+        },
+        "Ligue 1": {
+          "total": 4,
+          "hits": 3
+        },
+        "Ligue 2": {
+          "total": 1,
+          "hits": 0
+        },
+        "FA Cup": {
+          "total": 1,
+          "hits": 0
+        },
+        "Premier League": {
+          "total": 2,
+          "hits": 2
+        },
+        "Championship": {
+          "total": 1,
+          "hits": 0
+        },
+        "Serie A": {
+          "total": 2,
+          "hits": 2
+        },
+        "Serie B": {
+          "total": 2,
+          "hits": 2
         }
       }
     }
@@ -10351,699 +10723,603 @@
     }
   ],
   "base_rates": {
-    "12": 0.7458432304038005,
-    "Over 1.5": 0.7482185273159145,
-    "Over 2.5": 0.5083135391923991,
-    "Over 3.5": 0.2494061757719715,
-    "Over 4.5": 0.1163895486935867,
-    "BTTS": 0.5154394299287411,
-    "Over Corners 6.5": 0.8218527315914489,
-    "Over Corners 7.5": 0.7054631828978623,
-    "Over Corners 8.5": 0.6365795724465558,
-    "Over Corners 9.5": 0.5486935866983373,
-    "YC 2.5": 0.7434679334916865,
-    "YC 3.5": 0.5771971496437055,
-    "YC 4.5": 0.4085510688836104,
-    "Home Win": 0.42992874109263657,
-    "Draw": 0.25415676959619954,
-    "Away Win": 0.3159144893111639,
-    "1X": 0.684085510688836,
-    "X2": 0.5700712589073634,
+    "12": 0.7296466973886329,
+    "Over 1.5": 0.7311827956989247,
+    "Over 2.5": 0.5053763440860215,
+    "Over 3.5": 0.24731182795698925,
+    "Over 4.5": 0.1259600614439324,
+    "BTTS": 0.5299539170506913,
+    "Over Corners 6.5": 0.8341013824884793,
+    "Over Corners 7.5": 0.7004608294930875,
+    "Over Corners 8.5": 0.6236559139784946,
+    "Over Corners 9.5": 0.5299539170506913,
+    "YC 2.5": 0.7511520737327189,
+    "YC 3.5": 0.5867895545314901,
+    "YC 4.5": 0.40860215053763443,
+    "Home Win": 0.42242703533026116,
+    "Draw": 0.27035330261136714,
+    "Away Win": 0.30721966205837176,
+    "1X": 0.6927803379416283,
+    "X2": 0.5775729646697388,
     "Correct Score": 0,
-    "_computed_at": "2026-04-19T06:00:03.016Z",
+    "_computed_at": "2026-04-30T07:00:01.580Z",
     "_n": "261+"
   },
   "league_adjustments": {
     "LaLiga": {
       "Over 1.5": {
-        "rate": 0.7,
-        "vs_base": -0.048
+        "rate": 0.684,
+        "vs_base": -0.047
       },
-      "Over 3.5": {
-        "rate": 0.2,
-        "vs_base": -0.049
+      "Over 4.5": {
+        "rate": 0.175,
+        "vs_base": 0.049
       },
       "Over Corners 6.5": {
-        "rate": 0.9,
-        "vs_base": 0.078
+        "rate": 0.895,
+        "vs_base": 0.061
       },
       "Over Corners 7.5": {
-        "rate": 0.8,
-        "vs_base": 0.095
+        "rate": 0.807,
+        "vs_base": 0.107
       },
       "Over Corners 8.5": {
-        "rate": 0.75,
-        "vs_base": 0.113
+        "rate": 0.702,
+        "vs_base": 0.078
       },
       "Over Corners 9.5": {
-        "rate": 0.7,
-        "vs_base": 0.151
+        "rate": 0.614,
+        "vs_base": 0.084
       },
       "YC 2.5": {
-        "rate": 0.95,
-        "vs_base": 0.207
+        "rate": 0.86,
+        "vs_base": 0.108
       },
       "YC 3.5": {
-        "rate": 0.85,
-        "vs_base": 0.273
+        "rate": 0.789,
+        "vs_base": 0.203
       },
       "YC 4.5": {
-        "rate": 0.6,
-        "vs_base": 0.191
+        "rate": 0.544,
+        "vs_base": 0.135
       },
       "Home Win": {
-        "rate": 0.55,
-        "vs_base": 0.12
+        "rate": 0.526,
+        "vs_base": 0.104
       },
       "Away Win": {
-        "rate": 0.2,
-        "vs_base": -0.116
+        "rate": 0.211,
+        "vs_base": -0.097
       },
       "1X": {
-        "rate": 0.8,
-        "vs_base": 0.116
+        "rate": 0.789,
+        "vs_base": 0.097
       },
       "X2": {
-        "rate": 0.45,
-        "vs_base": -0.12
+        "rate": 0.474,
+        "vs_base": -0.104
       }
     },
     "Ligue 1": {
       "12": {
-        "rate": 0.636,
-        "vs_base": -0.109
+        "rate": 0.607,
+        "vs_base": -0.123
       },
       "Over 1.5": {
-        "rate": 0.818,
-        "vs_base": 0.07
+        "rate": 0.839,
+        "vs_base": 0.108
       },
       "Over 2.5": {
-        "rate": 0.576,
-        "vs_base": 0.067
+        "rate": 0.571,
+        "vs_base": 0.066
       },
       "Over 3.5": {
-        "rate": 0.394,
-        "vs_base": 0.145
+        "rate": 0.357,
+        "vs_base": 0.11
       },
       "BTTS": {
-        "rate": 0.636,
-        "vs_base": 0.121
+        "rate": 0.643,
+        "vs_base": 0.113
       },
-      "YC 2.5": {
-        "rate": 0.606,
-        "vs_base": -0.137
+      "Over Corners 6.5": {
+        "rate": 0.893,
+        "vs_base": 0.059
       },
-      "YC 3.5": {
-        "rate": 0.364,
-        "vs_base": -0.214
-      },
-      "YC 4.5": {
-        "rate": 0.182,
-        "vs_base": -0.227
-      },
-      "Home Win": {
-        "rate": 0.515,
+      "Over Corners 7.5": {
+        "rate": 0.786,
         "vs_base": 0.085
       },
+      "Over Corners 9.5": {
+        "rate": 0.625,
+        "vs_base": 0.095
+      },
+      "YC 3.5": {
+        "rate": 0.5,
+        "vs_base": -0.087
+      },
+      "YC 4.5": {
+        "rate": 0.232,
+        "vs_base": -0.176
+      },
       "Draw": {
-        "rate": 0.364,
-        "vs_base": 0.109
+        "rate": 0.393,
+        "vs_base": 0.123
       },
       "Away Win": {
-        "rate": 0.121,
-        "vs_base": -0.195
+        "rate": 0.214,
+        "vs_base": -0.093
       },
       "1X": {
-        "rate": 0.879,
-        "vs_base": 0.195
-      },
-      "X2": {
-        "rate": 0.485,
-        "vs_base": -0.085
+        "rate": 0.786,
+        "vs_base": 0.093
       }
     },
     "Brasileirão Betano": {
       "12": {
-        "rate": 0.682,
-        "vs_base": -0.064
-      },
-      "Over 3.5": {
-        "rate": 0.159,
-        "vs_base": -0.09
-      },
-      "Over 4.5": {
-        "rate": 0.045,
-        "vs_base": -0.071
-      },
-      "BTTS": {
-        "rate": 0.568,
-        "vs_base": 0.053
-      },
-      "Over Corners 6.5": {
-        "rate": 0.909,
-        "vs_base": 0.087
+        "rate": 0.771,
+        "vs_base": 0.042
       },
       "Over Corners 7.5": {
-        "rate": 0.864,
-        "vs_base": 0.158
+        "rate": 0.786,
+        "vs_base": 0.085
       },
       "Over Corners 8.5": {
-        "rate": 0.864,
-        "vs_base": 0.227
+        "rate": 0.729,
+        "vs_base": 0.105
       },
       "Over Corners 9.5": {
-        "rate": 0.682,
-        "vs_base": 0.133
-      },
-      "YC 3.5": {
-        "rate": 0.636,
-        "vs_base": 0.059
+        "rate": 0.6,
+        "vs_base": 0.07
       },
       "YC 4.5": {
-        "rate": 0.568,
-        "vs_base": 0.16
+        "rate": 0.5,
+        "vs_base": 0.091
       },
       "Home Win": {
-        "rate": 0.386,
-        "vs_base": -0.044
+        "rate": 0.471,
+        "vs_base": 0.049
       },
       "Draw": {
-        "rate": 0.318,
-        "vs_base": 0.064
+        "rate": 0.229,
+        "vs_base": -0.042
       },
       "X2": {
-        "rate": 0.614,
-        "vs_base": 0.044
+        "rate": 0.529,
+        "vs_base": -0.049
       }
     },
     "Liga Portugal Betclic": {
-      "12": {
-        "rate": 0.703,
-        "vs_base": -0.043
-      },
-      "Over 1.5": {
-        "rate": 0.838,
-        "vs_base": 0.09
-      },
       "Over 3.5": {
-        "rate": 0.405,
-        "vs_base": 0.156
-      },
-      "Over 4.5": {
-        "rate": 0.162,
-        "vs_base": 0.046
-      },
-      "BTTS": {
-        "rate": 0.568,
-        "vs_base": 0.052
+        "rate": 0.3,
+        "vs_base": 0.053
       },
       "Over Corners 8.5": {
-        "rate": 0.73,
-        "vs_base": 0.093
-      },
-      "Over Corners 9.5": {
-        "rate": 0.622,
-        "vs_base": 0.073
-      },
-      "YC 2.5": {
-        "rate": 0.838,
-        "vs_base": 0.094
-      },
-      "YC 3.5": {
-        "rate": 0.649,
-        "vs_base": 0.071
-      },
-      "YC 4.5": {
-        "rate": 0.486,
-        "vs_base": 0.078
-      },
-      "Draw": {
-        "rate": 0.297,
+        "rate": 0.667,
         "vs_base": 0.043
       },
+      "Over Corners 9.5": {
+        "rate": 0.583,
+        "vs_base": 0.053
+      },
+      "YC 2.5": {
+        "rate": 0.85,
+        "vs_base": 0.099
+      },
+      "YC 3.5": {
+        "rate": 0.65,
+        "vs_base": 0.063
+      },
+      "YC 4.5": {
+        "rate": 0.5,
+        "vs_base": 0.091
+      },
       "Away Win": {
-        "rate": 0.27,
-        "vs_base": -0.046
+        "rate": 0.267,
+        "vs_base": -0.041
       },
       "1X": {
-        "rate": 0.73,
-        "vs_base": 0.046
+        "rate": 0.733,
+        "vs_base": 0.041
       }
     },
     "Liga Profesional de Fútbol, Apertura": {
-      "12": {
-        "rate": 0.821,
-        "vs_base": 0.076
-      },
       "Over 1.5": {
-        "rate": 0.661,
-        "vs_base": -0.088
+        "rate": 0.613,
+        "vs_base": -0.118
       },
       "Over 2.5": {
-        "rate": 0.464,
-        "vs_base": -0.044
+        "rate": 0.409,
+        "vs_base": -0.097
       },
       "Over 3.5": {
-        "rate": 0.196,
-        "vs_base": -0.053
+        "rate": 0.204,
+        "vs_base": -0.043
       },
       "BTTS": {
-        "rate": 0.464,
-        "vs_base": -0.051
+        "rate": 0.473,
+        "vs_base": -0.057
       },
       "Over Corners 6.5": {
-        "rate": 0.768,
-        "vs_base": -0.054
+        "rate": 0.72,
+        "vs_base": -0.114
+      },
+      "Over Corners 7.5": {
+        "rate": 0.591,
+        "vs_base": -0.109
       },
       "Over Corners 8.5": {
-        "rate": 0.536,
-        "vs_base": -0.101
+        "rate": 0.505,
+        "vs_base": -0.118
       },
       "Over Corners 9.5": {
-        "rate": 0.411,
-        "vs_base": -0.138
+        "rate": 0.333,
+        "vs_base": -0.197
       },
       "YC 2.5": {
-        "rate": 0.929,
-        "vs_base": 0.185
+        "rate": 0.914,
+        "vs_base": 0.163
       },
       "YC 3.5": {
-        "rate": 0.679,
-        "vs_base": 0.101
+        "rate": 0.72,
+        "vs_base": 0.134
       },
       "YC 4.5": {
-        "rate": 0.482,
-        "vs_base": 0.074
-      },
-      "Home Win": {
-        "rate": 0.5,
-        "vs_base": 0.07
-      },
-      "Draw": {
-        "rate": 0.179,
-        "vs_base": -0.076
-      },
-      "X2": {
-        "rate": 0.5,
-        "vs_base": -0.07
+        "rate": 0.538,
+        "vs_base": 0.129
       }
     },
     "Brasileirão Série B": {
       "Over 1.5": {
-        "rate": 0.61,
-        "vs_base": -0.138
+        "rate": 0.623,
+        "vs_base": -0.108
       },
       "Over 2.5": {
-        "rate": 0.415,
-        "vs_base": -0.094
+        "rate": 0.435,
+        "vs_base": -0.071
       },
       "Over 3.5": {
-        "rate": 0.098,
-        "vs_base": -0.152
+        "rate": 0.116,
+        "vs_base": -0.131
       },
       "Over 4.5": {
-        "rate": 0.049,
-        "vs_base": -0.068
+        "rate": 0.072,
+        "vs_base": -0.053
       },
       "BTTS": {
-        "rate": 0.463,
+        "rate": 0.478,
         "vs_base": -0.052
       },
-      "Over Corners 7.5": {
-        "rate": 0.659,
-        "vs_base": -0.047
+      "Over Corners 6.5": {
+        "rate": 0.913,
+        "vs_base": 0.079
+      },
+      "Over Corners 8.5": {
+        "rate": 0.667,
+        "vs_base": 0.043
       },
       "Over Corners 9.5": {
-        "rate": 0.61,
-        "vs_base": 0.061
-      },
-      "YC 2.5": {
-        "rate": 0.805,
-        "vs_base": 0.061
-      },
-      "YC 3.5": {
-        "rate": 0.756,
-        "vs_base": 0.179
-      },
-      "YC 4.5": {
-        "rate": 0.463,
-        "vs_base": 0.055
-      },
-      "Away Win": {
-        "rate": 0.366,
+        "rate": 0.58,
         "vs_base": 0.05
       },
+      "YC 2.5": {
+        "rate": 0.855,
+        "vs_base": 0.104
+      },
+      "YC 3.5": {
+        "rate": 0.812,
+        "vs_base": 0.225
+      },
+      "YC 4.5": {
+        "rate": 0.565,
+        "vs_base": 0.157
+      },
+      "Home Win": {
+        "rate": 0.362,
+        "vs_base": -0.06
+      },
+      "Away Win": {
+        "rate": 0.362,
+        "vs_base": 0.055
+      },
       "1X": {
-        "rate": 0.634,
-        "vs_base": -0.05
+        "rate": 0.638,
+        "vs_base": -0.055
+      },
+      "X2": {
+        "rate": 0.638,
+        "vs_base": 0.06
       }
     },
     "Serie A": {
-      "12": {
-        "rate": 0.837,
-        "vs_base": 0.091
-      },
       "Over 1.5": {
-        "rate": 0.651,
-        "vs_base": -0.097
+        "rate": 0.667,
+        "vs_base": -0.065
       },
       "Over 2.5": {
-        "rate": 0.465,
-        "vs_base": -0.043
+        "rate": 0.42,
+        "vs_base": -0.085
       },
       "Over 3.5": {
-        "rate": 0.093,
-        "vs_base": -0.156
+        "rate": 0.13,
+        "vs_base": -0.117
       },
       "BTTS": {
-        "rate": 0.395,
-        "vs_base": -0.12
-      },
-      "Over Corners 6.5": {
-        "rate": 0.767,
-        "vs_base": -0.054
+        "rate": 0.42,
+        "vs_base": -0.11
       },
       "Over Corners 7.5": {
-        "rate": 0.628,
-        "vs_base": -0.078
+        "rate": 0.623,
+        "vs_base": -0.077
       },
       "Over Corners 8.5": {
-        "rate": 0.512,
-        "vs_base": -0.125
+        "rate": 0.551,
+        "vs_base": -0.073
       },
       "Over Corners 9.5": {
-        "rate": 0.419,
-        "vs_base": -0.13
+        "rate": 0.464,
+        "vs_base": -0.066
       },
       "YC 2.5": {
-        "rate": 0.512,
-        "vs_base": -0.232
+        "rate": 0.565,
+        "vs_base": -0.186
       },
       "YC 3.5": {
-        "rate": 0.465,
-        "vs_base": -0.112
+        "rate": 0.449,
+        "vs_base": -0.138
       },
-      "Home Win": {
-        "rate": 0.512,
-        "vs_base": 0.082
-      },
-      "Draw": {
-        "rate": 0.163,
-        "vs_base": -0.091
-      },
-      "X2": {
-        "rate": 0.488,
-        "vs_base": -0.082
+      "YC 4.5": {
+        "rate": 0.29,
+        "vs_base": -0.119
       }
     },
     "Bundesliga": {
-      "12": {
-        "rate": 0.703,
-        "vs_base": -0.043
-      },
       "Over 1.5": {
-        "rate": 0.838,
-        "vs_base": 0.09
+        "rate": 0.893,
+        "vs_base": 0.162
       },
       "Over 2.5": {
-        "rate": 0.649,
-        "vs_base": 0.14
+        "rate": 0.696,
+        "vs_base": 0.191
       },
       "Over 3.5": {
-        "rate": 0.486,
-        "vs_base": 0.237
-      },
-      "Over 4.5": {
-        "rate": 0.162,
-        "vs_base": 0.046
+        "rate": 0.446,
+        "vs_base": 0.199
       },
       "BTTS": {
-        "rate": 0.676,
-        "vs_base": 0.16
+        "rate": 0.768,
+        "vs_base": 0.238
       },
       "Over Corners 6.5": {
-        "rate": 0.892,
-        "vs_base": 0.07
+        "rate": 0.875,
+        "vs_base": 0.041
       },
       "Over Corners 7.5": {
-        "rate": 0.784,
-        "vs_base": 0.078
+        "rate": 0.768,
+        "vs_base": 0.067
       },
-      "YC 2.5": {
-        "rate": 0.892,
-        "vs_base": 0.148
+      "Over Corners 9.5": {
+        "rate": 0.589,
+        "vs_base": 0.059
+      },
+      "YC 3.5": {
+        "rate": 0.5,
+        "vs_base": -0.087
       },
       "Home Win": {
-        "rate": 0.27,
-        "vs_base": -0.16
-      },
-      "Draw": {
-        "rate": 0.297,
-        "vs_base": 0.043
+        "rate": 0.339,
+        "vs_base": -0.083
       },
       "Away Win": {
-        "rate": 0.432,
-        "vs_base": 0.117
+        "rate": 0.393,
+        "vs_base": 0.086
       },
       "1X": {
-        "rate": 0.568,
-        "vs_base": -0.117
+        "rate": 0.607,
+        "vs_base": -0.086
       },
       "X2": {
-        "rate": 0.73,
-        "vs_base": 0.16
+        "rate": 0.661,
+        "vs_base": 0.083
       }
     },
     "VriendenLoterij Eredivisie": {
-      "12": {
-        "rate": 0.676,
-        "vs_base": -0.07
-      },
       "Over 1.5": {
-        "rate": 0.838,
-        "vs_base": 0.09
+        "rate": 0.85,
+        "vs_base": 0.119
       },
       "Over 3.5": {
-        "rate": 0.297,
-        "vs_base": 0.048
+        "rate": 0.325,
+        "vs_base": 0.078
       },
       "Over 4.5": {
-        "rate": 0.243,
-        "vs_base": 0.127
+        "rate": 0.275,
+        "vs_base": 0.149
       },
       "BTTS": {
-        "rate": 0.432,
-        "vs_base": -0.083
+        "rate": 0.425,
+        "vs_base": -0.105
       },
       "Over Corners 6.5": {
-        "rate": 0.892,
-        "vs_base": 0.07
+        "rate": 0.875,
+        "vs_base": 0.041
+      },
+      "Over Corners 8.5": {
+        "rate": 0.675,
+        "vs_base": 0.051
       },
       "Over Corners 9.5": {
-        "rate": 0.622,
-        "vs_base": 0.073
+        "rate": 0.625,
+        "vs_base": 0.095
       },
       "YC 2.5": {
-        "rate": 0.541,
-        "vs_base": -0.203
+        "rate": 0.525,
+        "vs_base": -0.226
       },
       "YC 3.5": {
-        "rate": 0.216,
-        "vs_base": -0.361
+        "rate": 0.2,
+        "vs_base": -0.387
       },
       "YC 4.5": {
-        "rate": 0.162,
-        "vs_base": -0.246
-      },
-      "Draw": {
-        "rate": 0.324,
-        "vs_base": 0.07
-      },
-      "Away Win": {
-        "rate": 0.27,
-        "vs_base": -0.046
-      },
-      "1X": {
-        "rate": 0.73,
-        "vs_base": 0.046
+        "rate": 0.15,
+        "vs_base": -0.259
       }
     },
     "UEFA Champions League, Knockout stage": {
       "12": {
-        "rate": 0.875,
-        "vs_base": 0.129
+        "rate": 0.882,
+        "vs_base": 0.153
       },
       "Over 2.5": {
-        "rate": 0.375,
-        "vs_base": -0.133
+        "rate": 0.412,
+        "vs_base": -0.094
       },
       "Over 3.5": {
-        "rate": 0.125,
-        "vs_base": -0.124
+        "rate": 0.176,
+        "vs_base": -0.071
+      },
+      "Over 4.5": {
+        "rate": 0.176,
+        "vs_base": 0.051
       },
       "BTTS": {
-        "rate": 0.375,
-        "vs_base": -0.14
+        "rate": 0.412,
+        "vs_base": -0.118
       },
       "Over Corners 6.5": {
-        "rate": 0.75,
-        "vs_base": -0.072
+        "rate": 0.765,
+        "vs_base": -0.069
       },
       "Over Corners 7.5": {
-        "rate": 0.625,
-        "vs_base": -0.08
+        "rate": 0.588,
+        "vs_base": -0.112
       },
       "Over Corners 8.5": {
-        "rate": 0.5,
-        "vs_base": -0.137
+        "rate": 0.471,
+        "vs_base": -0.153
       },
       "Over Corners 9.5": {
-        "rate": 0.5,
-        "vs_base": -0.049
+        "rate": 0.471,
+        "vs_base": -0.059
       },
       "YC 2.5": {
-        "rate": 0.375,
-        "vs_base": -0.368
+        "rate": 0.412,
+        "vs_base": -0.339
       },
       "YC 3.5": {
-        "rate": 0.375,
-        "vs_base": -0.202
+        "rate": 0.353,
+        "vs_base": -0.234
+      },
+      "YC 4.5": {
+        "rate": 0.353,
+        "vs_base": -0.056
       },
       "Home Win": {
-        "rate": 0.25,
-        "vs_base": -0.18
+        "rate": 0.294,
+        "vs_base": -0.128
       },
       "Draw": {
-        "rate": 0.125,
-        "vs_base": -0.129
+        "rate": 0.118,
+        "vs_base": -0.153
       },
       "Away Win": {
-        "rate": 0.625,
-        "vs_base": 0.309
+        "rate": 0.588,
+        "vs_base": 0.281
       },
       "1X": {
-        "rate": 0.375,
-        "vs_base": -0.309
+        "rate": 0.412,
+        "vs_base": -0.281
       },
       "X2": {
-        "rate": 0.75,
-        "vs_base": 0.18
+        "rate": 0.706,
+        "vs_base": 0.128
       }
     },
     "UEFA Europa League, Knockout stage": {
       "Over 1.5": {
         "rate": 0.875,
-        "vs_base": 0.127
+        "vs_base": 0.144
       },
       "Over 2.5": {
         "rate": 0.625,
-        "vs_base": 0.117
+        "vs_base": 0.12
       },
       "Over 3.5": {
         "rate": 0.5,
-        "vs_base": 0.251
+        "vs_base": 0.253
       },
       "BTTS": {
         "rate": 0.625,
-        "vs_base": 0.11
+        "vs_base": 0.095
       },
       "Over Corners 6.5": {
         "rate": 0.5,
-        "vs_base": -0.322
+        "vs_base": -0.334
       },
       "Over Corners 7.5": {
         "rate": 0.25,
-        "vs_base": -0.455
+        "vs_base": -0.45
       },
       "Over Corners 8.5": {
         "rate": 0.25,
-        "vs_base": -0.387
+        "vs_base": -0.374
       },
       "Over Corners 9.5": {
         "rate": 0,
-        "vs_base": -0.549
+        "vs_base": -0.53
       },
       "YC 2.5": {
         "rate": 0.625,
-        "vs_base": -0.118
+        "vs_base": -0.126
       },
       "YC 3.5": {
         "rate": 0.5,
-        "vs_base": -0.077
+        "vs_base": -0.087
       },
       "Home Win": {
         "rate": 0.375,
-        "vs_base": -0.055
+        "vs_base": -0.047
       },
       "Away Win": {
         "rate": 0.375,
-        "vs_base": 0.059
+        "vs_base": 0.068
       },
       "1X": {
         "rate": 0.625,
-        "vs_base": -0.059
+        "vs_base": -0.068
       },
       "X2": {
         "rate": 0.625,
-        "vs_base": 0.055
+        "vs_base": 0.047
       }
     },
     "Premier League": {
-      "12": {
-        "rate": 0.81,
-        "vs_base": 0.064
-      },
       "Over 1.5": {
-        "rate": 0.905,
-        "vs_base": 0.157
+        "rate": 0.809,
+        "vs_base": 0.077
       },
       "Over 2.5": {
-        "rate": 0.619,
-        "vs_base": 0.111
-      },
-      "Over 3.5": {
-        "rate": 0.19,
-        "vs_base": -0.059
+        "rate": 0.681,
+        "vs_base": 0.175
       },
       "Over 4.5": {
-        "rate": 0,
-        "vs_base": -0.116
+        "rate": 0.085,
+        "vs_base": -0.041
+      },
+      "Over Corners 7.5": {
+        "rate": 0.787,
+        "vs_base": 0.087
       },
       "Over Corners 9.5": {
-        "rate": 0.619,
-        "vs_base": 0.07
-      },
-      "YC 2.5": {
-        "rate": 0.81,
-        "vs_base": 0.066
+        "rate": 0.617,
+        "vs_base": 0.087
       },
       "YC 3.5": {
-        "rate": 0.619,
-        "vs_base": 0.042
+        "rate": 0.532,
+        "vs_base": -0.055
       },
       "YC 4.5": {
-        "rate": 0.19,
-        "vs_base": -0.218
-      },
-      "Home Win": {
-        "rate": 0.381,
-        "vs_base": -0.049
-      },
-      "Draw": {
-        "rate": 0.19,
-        "vs_base": -0.064
-      },
-      "Away Win": {
-        "rate": 0.429,
-        "vs_base": 0.113
-      },
-      "1X": {
-        "rate": 0.571,
-        "vs_base": -0.113
-      },
-      "X2": {
-        "rate": 0.619,
-        "vs_base": 0.049
+        "rate": 0.17,
+        "vs_base": -0.238
       }
     }
   },
@@ -11056,10 +11332,10 @@
         "corners_low"
       ],
       "market": "Over Corners 7.5",
-      "base_rate": 0.705,
+      "base_rate": 0.7,
       "conditional_rate": 0,
-      "lift": -0.705,
-      "n": 124,
+      "lift": -0.7,
+      "n": 195,
       "direction": "negative"
     },
     {
@@ -11070,10 +11346,10 @@
         "corners_low"
       ],
       "market": "Over Corners 8.5",
-      "base_rate": 0.637,
+      "base_rate": 0.624,
       "conditional_rate": 0,
-      "lift": -0.637,
-      "n": 124,
+      "lift": -0.624,
+      "n": 195,
       "direction": "negative"
     },
     {
@@ -11084,10 +11360,10 @@
         "yc_low"
       ],
       "market": "YC 2.5",
-      "base_rate": 0.743,
+      "base_rate": 0.751,
       "conditional_rate": 0,
-      "lift": -0.743,
-      "n": 48,
+      "lift": -0.751,
+      "n": 74,
       "direction": "negative"
     },
     {
@@ -11098,10 +11374,10 @@
         "yc_moderate"
       ],
       "market": "YC 3.5",
-      "base_rate": 0.577,
+      "base_rate": 0.587,
       "conditional_rate": 0,
-      "lift": -0.577,
-      "n": 130,
+      "lift": -0.587,
+      "n": 195,
       "direction": "negative"
     },
     {
@@ -11115,36 +11391,36 @@
       "base_rate": 0.409,
       "conditional_rate": 1,
       "lift": 0.591,
-      "n": 103,
+      "n": 167,
       "direction": "positive"
     },
     {
-      "id": "rule_6_corners_low_over_corners_9.5",
-      "type": "single",
-      "signal": "corners_low",
-      "signals": [
-        "corners_low"
-      ],
-      "market": "Over Corners 9.5",
-      "base_rate": 0.549,
-      "conditional_rate": 0,
-      "lift": -0.549,
-      "n": 124,
-      "direction": "negative"
-    },
-    {
-      "id": "rule_7_ht_over_2_over_3.5",
+      "id": "rule_6_ht_over_2_over_3.5",
       "type": "single",
       "signal": "ht_over_2",
       "signals": [
         "ht_over_2"
       ],
       "market": "Over 3.5",
-      "base_rate": 0.249,
-      "conditional_rate": 0.86,
-      "lift": 0.611,
-      "n": 50,
+      "base_rate": 0.247,
+      "conditional_rate": 0.895,
+      "lift": 0.647,
+      "n": 76,
       "direction": "positive"
+    },
+    {
+      "id": "rule_7_corners_low_over_corners_9.5",
+      "type": "single",
+      "signal": "corners_low",
+      "signals": [
+        "corners_low"
+      ],
+      "market": "Over Corners 9.5",
+      "base_rate": 0.53,
+      "conditional_rate": 0,
+      "lift": -0.53,
+      "n": 195,
+      "direction": "negative"
     },
     {
       "id": "rule_8_high_conversion_rate_over_4.5",
@@ -11154,81 +11430,81 @@
         "high_conversion_rate"
       ],
       "market": "Over 4.5",
-      "base_rate": 0.116,
-      "conditional_rate": 1,
-      "lift": 0.884,
-      "n": 12,
+      "base_rate": 0.126,
+      "conditional_rate": 0.933,
+      "lift": 0.807,
+      "n": 30,
       "direction": "positive"
     },
     {
-      "id": "rule_9_yc_low_yc_3.5",
+      "id": "rule_9_high_conversion_rate_over_3.5",
+      "type": "single",
+      "signal": "high_conversion_rate",
+      "signals": [
+        "high_conversion_rate"
+      ],
+      "market": "Over 3.5",
+      "base_rate": 0.247,
+      "conditional_rate": 1,
+      "lift": 0.753,
+      "n": 30,
+      "direction": "positive"
+    },
+    {
+      "id": "rule_10_yc_low_yc_3.5",
       "type": "single",
       "signal": "yc_low",
       "signals": [
         "yc_low"
       ],
       "market": "YC 3.5",
-      "base_rate": 0.577,
+      "base_rate": 0.587,
       "conditional_rate": 0,
-      "lift": -0.577,
-      "n": 48,
+      "lift": -0.587,
+      "n": 74,
       "direction": "negative"
     },
     {
-      "id": "rule_10_corners_high_over_corners_9.5",
+      "id": "rule_11_corners_high_over_corners_9.5",
       "type": "single",
       "signal": "corners_high",
       "signals": [
         "corners_high"
       ],
       "market": "Over Corners 9.5",
-      "base_rate": 0.549,
+      "base_rate": 0.53,
       "conditional_rate": 1,
-      "lift": 0.451,
-      "n": 123,
+      "lift": 0.47,
+      "n": 194,
       "direction": "positive"
     },
     {
-      "id": "rule_11_ht_btts_btts",
+      "id": "rule_12_ht_over_2_over_4.5",
+      "type": "single",
+      "signal": "ht_over_2",
+      "signals": [
+        "ht_over_2"
+      ],
+      "market": "Over 4.5",
+      "base_rate": 0.126,
+      "conditional_rate": 0.671,
+      "lift": 0.545,
+      "n": 76,
+      "direction": "positive"
+    },
+    {
+      "id": "rule_13_ht_btts_btts",
       "type": "single",
       "signal": "ht_btts",
       "signals": [
         "ht_btts"
       ],
       "market": "BTTS",
-      "base_rate": 0.515,
+      "base_rate": 0.53,
       "conditional_rate": 1,
-      "lift": 0.485,
-      "n": 85,
+      "lift": 0.47,
+      "n": 151,
       "direction": "positive"
-    },
-    {
-      "id": "rule_12_ht_away_2plus_lead_away_win",
-      "type": "single",
-      "signal": "ht_away_2plus_lead",
-      "signals": [
-        "ht_away_2plus_lead"
-      ],
-      "market": "Away Win",
-      "base_rate": 0.316,
-      "conditional_rate": 0.96,
-      "lift": 0.644,
-      "n": 25,
-      "direction": "positive"
-    },
-    {
-      "id": "rule_13_ht_away_2plus_lead_1x",
-      "type": "single",
-      "signal": "ht_away_2plus_lead",
-      "signals": [
-        "ht_away_2plus_lead"
-      ],
-      "market": "1X",
-      "base_rate": 0.684,
-      "conditional_rate": 0.04,
-      "lift": -0.644,
-      "n": 25,
-      "direction": "negative"
     },
     {
       "id": "rule_14_yc_high_yc_3.5",
@@ -11238,98 +11514,70 @@
         "yc_high"
       ],
       "market": "YC 3.5",
-      "base_rate": 0.577,
+      "base_rate": 0.587,
       "conditional_rate": 1,
-      "lift": 0.423,
-      "n": 140,
+      "lift": 0.413,
+      "n": 215,
       "direction": "positive"
     },
     {
-      "id": "rule_15_corners_low_over_corners_6.5",
-      "type": "single",
-      "signal": "corners_low",
-      "signals": [
-        "corners_low"
-      ],
-      "market": "Over Corners 6.5",
-      "base_rate": 0.822,
-      "conditional_rate": 0.395,
-      "lift": -0.427,
-      "n": 124,
-      "direction": "negative"
-    },
-    {
-      "id": "rule_16_ht_over_2_over_4.5",
-      "type": "single",
-      "signal": "ht_over_2",
-      "signals": [
-        "ht_over_2"
-      ],
-      "market": "Over 4.5",
-      "base_rate": 0.116,
-      "conditional_rate": 0.64,
-      "lift": 0.524,
-      "n": 50,
-      "direction": "positive"
-    },
-    {
-      "id": "rule_17_ht_home_2plus_lead_home_win",
+      "id": "rule_15_ht_home_2plus_lead_home_win",
       "type": "single",
       "signal": "ht_home_2plus_lead",
       "signals": [
         "ht_home_2plus_lead"
       ],
       "market": "Home Win",
-      "base_rate": 0.43,
-      "conditional_rate": 0.958,
-      "lift": 0.528,
-      "n": 48,
+      "base_rate": 0.422,
+      "conditional_rate": 0.952,
+      "lift": 0.529,
+      "n": 62,
       "direction": "positive"
     },
     {
-      "id": "rule_18_ht_home_2plus_lead_x2",
+      "id": "rule_16_ht_home_2plus_lead_x2",
       "type": "single",
       "signal": "ht_home_2plus_lead",
       "signals": [
         "ht_home_2plus_lead"
       ],
       "market": "X2",
-      "base_rate": 0.57,
-      "conditional_rate": 0.042,
-      "lift": -0.528,
-      "n": 48,
+      "base_rate": 0.578,
+      "conditional_rate": 0.048,
+      "lift": -0.529,
+      "n": 62,
       "direction": "negative"
     },
     {
-      "id": "rule_19_ht_nil_nil_over_1.5",
+      "id": "rule_17_ht_home_winning_home_win",
       "type": "single",
-      "signal": "ht_nil_nil",
+      "signal": "ht_home_winning",
       "signals": [
-        "ht_nil_nil"
+        "ht_home_winning"
       ],
-      "market": "Over 1.5",
-      "base_rate": 0.748,
-      "conditional_rate": 0.338,
-      "lift": -0.41,
-      "n": 130,
-      "direction": "negative"
+      "market": "Home Win",
+      "base_rate": 0.422,
+      "conditional_rate": 0.83,
+      "lift": 0.408,
+      "n": 200,
+      "direction": "positive"
     },
     {
-      "id": "rule_20_ht_no_goals_over_1.5",
+      "id": "rule_18_ht_home_winning_x2",
       "type": "single",
-      "signal": "ht_no_goals",
+      "signal": "ht_home_winning",
       "signals": [
-        "ht_no_goals"
+        "ht_home_winning"
       ],
-      "market": "Over 1.5",
-      "base_rate": 0.748,
-      "conditional_rate": 0.338,
-      "lift": -0.41,
-      "n": 130,
+      "market": "X2",
+      "base_rate": 0.578,
+      "conditional_rate": 0.17,
+      "lift": -0.408,
+      "n": 200,
       "direction": "negative"
     },
     {
-      "id": "rule_21_yc_moderate_yc_4.5",
+      "id": "rule_19_yc_moderate_yc_4.5",
       "type": "single",
       "signal": "yc_moderate",
       "signals": [
@@ -11339,134 +11587,162 @@
       "base_rate": 0.409,
       "conditional_rate": 0,
       "lift": -0.409,
-      "n": 130,
+      "n": 195,
       "direction": "negative"
     },
     {
-      "id": "rule_22_yc_very_high_yc_3.5",
-      "type": "single",
-      "signal": "yc_very_high",
-      "signals": [
-        "yc_very_high"
-      ],
-      "market": "YC 3.5",
-      "base_rate": 0.577,
-      "conditional_rate": 1,
-      "lift": 0.423,
-      "n": 103,
-      "direction": "positive"
-    },
-    {
-      "id": "rule_23_physical_game_yc_3.5",
-      "type": "single",
-      "signal": "physical_game",
-      "signals": [
-        "physical_game"
-      ],
-      "market": "YC 3.5",
-      "base_rate": 0.577,
-      "conditional_rate": 1,
-      "lift": 0.423,
-      "n": 99,
-      "direction": "positive"
-    },
-    {
-      "id": "rule_24_ht_home_winning_home_win",
-      "type": "single",
-      "signal": "ht_home_winning",
-      "signals": [
-        "ht_home_winning"
-      ],
-      "market": "Home Win",
-      "base_rate": 0.43,
-      "conditional_rate": 0.825,
-      "lift": 0.395,
-      "n": 137,
-      "direction": "positive"
-    },
-    {
-      "id": "rule_25_ht_home_winning_x2",
-      "type": "single",
-      "signal": "ht_home_winning",
-      "signals": [
-        "ht_home_winning"
-      ],
-      "market": "X2",
-      "base_rate": 0.57,
-      "conditional_rate": 0.175,
-      "lift": -0.395,
-      "n": 137,
-      "direction": "negative"
-    },
-    {
-      "id": "rule_26_ht_over_2_over_2.5",
+      "id": "rule_20_ht_over_2_over_2.5",
       "type": "single",
       "signal": "ht_over_2",
       "signals": [
         "ht_over_2"
       ],
       "market": "Over 2.5",
-      "base_rate": 0.508,
+      "base_rate": 0.505,
       "conditional_rate": 1,
-      "lift": 0.492,
-      "n": 50,
+      "lift": 0.495,
+      "n": 76,
       "direction": "positive"
     },
     {
-      "id": "rule_27_high_conversion_rate_over_3.5",
+      "id": "rule_21_ht_away_2plus_lead_away_win",
       "type": "single",
-      "signal": "high_conversion_rate",
+      "signal": "ht_away_2plus_lead",
       "signals": [
-        "high_conversion_rate"
+        "ht_away_2plus_lead"
       ],
-      "market": "Over 3.5",
-      "base_rate": 0.249,
-      "conditional_rate": 1,
-      "lift": 0.751,
-      "n": 12,
+      "market": "Away Win",
+      "base_rate": 0.307,
+      "conditional_rate": 0.892,
+      "lift": 0.585,
+      "n": 37,
       "direction": "positive"
     },
     {
-      "id": "rule_28_ht_nil_nil_over_2.5",
+      "id": "rule_22_ht_away_2plus_lead_1x",
+      "type": "single",
+      "signal": "ht_away_2plus_lead",
+      "signals": [
+        "ht_away_2plus_lead"
+      ],
+      "market": "1X",
+      "base_rate": 0.693,
+      "conditional_rate": 0.108,
+      "lift": -0.585,
+      "n": 37,
+      "direction": "negative"
+    },
+    {
+      "id": "rule_23_ht_nil_nil_over_2.5",
       "type": "single",
       "signal": "ht_nil_nil",
       "signals": [
         "ht_nil_nil"
       ],
       "market": "Over 2.5",
-      "base_rate": 0.508,
-      "conditional_rate": 0.115,
-      "lift": -0.393,
-      "n": 130,
+      "base_rate": 0.505,
+      "conditional_rate": 0.106,
+      "lift": -0.4,
+      "n": 199,
       "direction": "negative"
     },
     {
-      "id": "rule_29_ht_no_goals_over_2.5",
+      "id": "rule_24_ht_no_goals_over_2.5",
       "type": "single",
       "signal": "ht_no_goals",
       "signals": [
         "ht_no_goals"
       ],
       "market": "Over 2.5",
-      "base_rate": 0.508,
-      "conditional_rate": 0.115,
-      "lift": -0.393,
-      "n": 130,
+      "base_rate": 0.505,
+      "conditional_rate": 0.106,
+      "lift": -0.4,
+      "n": 199,
       "direction": "negative"
     },
     {
-      "id": "rule_30_ht_over_1_over_2.5",
+      "id": "rule_25_yc_very_high_yc_3.5",
+      "type": "single",
+      "signal": "yc_very_high",
+      "signals": [
+        "yc_very_high"
+      ],
+      "market": "YC 3.5",
+      "base_rate": 0.587,
+      "conditional_rate": 1,
+      "lift": 0.413,
+      "n": 167,
+      "direction": "positive"
+    },
+    {
+      "id": "rule_26_physical_game_yc_3.5",
+      "type": "single",
+      "signal": "physical_game",
+      "signals": [
+        "physical_game"
+      ],
+      "market": "YC 3.5",
+      "base_rate": 0.587,
+      "conditional_rate": 1,
+      "lift": 0.413,
+      "n": 158,
+      "direction": "positive"
+    },
+    {
+      "id": "rule_27_ht_over_1_over_2.5",
       "type": "single",
       "signal": "ht_over_1",
       "signals": [
         "ht_over_1"
       ],
       "market": "Over 2.5",
-      "base_rate": 0.508,
-      "conditional_rate": 0.87,
-      "lift": 0.362,
-      "n": 154,
+      "base_rate": 0.505,
+      "conditional_rate": 0.884,
+      "lift": 0.378,
+      "n": 241,
       "direction": "positive"
+    },
+    {
+      "id": "rule_28_ht_nil_nil_over_1.5",
+      "type": "single",
+      "signal": "ht_nil_nil",
+      "signals": [
+        "ht_nil_nil"
+      ],
+      "market": "Over 1.5",
+      "base_rate": 0.731,
+      "conditional_rate": 0.342,
+      "lift": -0.389,
+      "n": 199,
+      "direction": "negative"
+    },
+    {
+      "id": "rule_29_ht_no_goals_over_1.5",
+      "type": "single",
+      "signal": "ht_no_goals",
+      "signals": [
+        "ht_no_goals"
+      ],
+      "market": "Over 1.5",
+      "base_rate": 0.731,
+      "conditional_rate": 0.342,
+      "lift": -0.389,
+      "n": 199,
+      "direction": "negative"
+    },
+    {
+      "id": "rule_30_corners_low_over_corners_6.5",
+      "type": "single",
+      "signal": "corners_low",
+      "signals": [
+        "corners_low"
+      ],
+      "market": "Over Corners 6.5",
+      "base_rate": 0.834,
+      "conditional_rate": 0.446,
+      "lift": -0.388,
+      "n": 195,
+      "direction": "negative"
     },
     {
       "id": "rule_31_corners_high_over_corners_8.5",
@@ -11476,10 +11752,10 @@
         "corners_high"
       ],
       "market": "Over Corners 8.5",
-      "base_rate": 0.637,
+      "base_rate": 0.624,
       "conditional_rate": 1,
-      "lift": 0.363,
-      "n": 123,
+      "lift": 0.376,
+      "n": 194,
       "direction": "positive"
     },
     {
@@ -11490,10 +11766,10 @@
         "ht_away_winning"
       ],
       "market": "Away Win",
-      "base_rate": 0.316,
-      "conditional_rate": 0.686,
-      "lift": 0.37,
-      "n": 105,
+      "base_rate": 0.307,
+      "conditional_rate": 0.697,
+      "lift": 0.39,
+      "n": 155,
       "direction": "positive"
     },
     {
@@ -11504,10 +11780,10 @@
         "ht_away_winning"
       ],
       "market": "1X",
-      "base_rate": 0.684,
-      "conditional_rate": 0.314,
-      "lift": -0.37,
-      "n": 105,
+      "base_rate": 0.693,
+      "conditional_rate": 0.303,
+      "lift": -0.39,
+      "n": 155,
       "direction": "negative"
     },
     {
@@ -11518,28 +11794,56 @@
         "corners_very_high"
       ],
       "market": "Over Corners 9.5",
-      "base_rate": 0.549,
+      "base_rate": 0.53,
       "conditional_rate": 1,
-      "lift": 0.451,
-      "n": 42,
+      "lift": 0.47,
+      "n": 62,
       "direction": "positive"
     },
     {
-      "id": "rule_35_ht_away_2plus_lead_over_2.5",
+      "id": "rule_35_ht_btts_over_2.5",
+      "type": "single",
+      "signal": "ht_btts",
+      "signals": [
+        "ht_btts"
+      ],
+      "market": "Over 2.5",
+      "base_rate": 0.505,
+      "conditional_rate": 0.881,
+      "lift": 0.375,
+      "n": 151,
+      "direction": "positive"
+    },
+    {
+      "id": "rule_36_ht_btts_over_3.5",
+      "type": "single",
+      "signal": "ht_btts",
+      "signals": [
+        "ht_btts"
+      ],
+      "market": "Over 3.5",
+      "base_rate": 0.247,
+      "conditional_rate": 0.609,
+      "lift": 0.362,
+      "n": 151,
+      "direction": "positive"
+    },
+    {
+      "id": "rule_37_ht_away_2plus_lead_over_2.5",
       "type": "single",
       "signal": "ht_away_2plus_lead",
       "signals": [
         "ht_away_2plus_lead"
       ],
       "market": "Over 2.5",
-      "base_rate": 0.508,
+      "base_rate": 0.505,
       "conditional_rate": 1,
-      "lift": 0.492,
-      "n": 25,
+      "lift": 0.495,
+      "n": 37,
       "direction": "positive"
     },
     {
-      "id": "rule_36_yc_low_yc_4.5",
+      "id": "rule_38_yc_low_yc_4.5",
       "type": "single",
       "signal": "yc_low",
       "signals": [
@@ -11549,36 +11853,8 @@
       "base_rate": 0.409,
       "conditional_rate": 0,
       "lift": -0.409,
-      "n": 48,
+      "n": 74,
       "direction": "negative"
-    },
-    {
-      "id": "rule_37_ht_btts_over_2.5",
-      "type": "single",
-      "signal": "ht_btts",
-      "signals": [
-        "ht_btts"
-      ],
-      "market": "Over 2.5",
-      "base_rate": 0.508,
-      "conditional_rate": 0.859,
-      "lift": 0.351,
-      "n": 85,
-      "direction": "positive"
-    },
-    {
-      "id": "rule_38_ht_btts_over_3.5",
-      "type": "single",
-      "signal": "ht_btts",
-      "signals": [
-        "ht_btts"
-      ],
-      "market": "Over 3.5",
-      "base_rate": 0.249,
-      "conditional_rate": 0.588,
-      "lift": 0.339,
-      "n": 85,
-      "direction": "positive"
     },
     {
       "id": "rule_39_ht_nil_nil_btts",
@@ -11588,10 +11864,10 @@
         "ht_nil_nil"
       ],
       "market": "BTTS",
-      "base_rate": 0.515,
-      "conditional_rate": 0.208,
-      "lift": -0.308,
-      "n": 130,
+      "base_rate": 0.53,
+      "conditional_rate": 0.206,
+      "lift": -0.324,
+      "n": 199,
       "direction": "negative"
     },
     {
@@ -11602,28 +11878,42 @@
         "ht_no_goals"
       ],
       "market": "BTTS",
-      "base_rate": 0.515,
-      "conditional_rate": 0.208,
-      "lift": -0.308,
-      "n": 130,
+      "base_rate": 0.53,
+      "conditional_rate": 0.206,
+      "lift": -0.324,
+      "n": 199,
       "direction": "negative"
     },
     {
-      "id": "rule_41_ht_over_2_btts",
+      "id": "rule_41_high_conversion_rate_over_2.5",
       "type": "single",
-      "signal": "ht_over_2",
+      "signal": "high_conversion_rate",
       "signals": [
-        "ht_over_2"
+        "high_conversion_rate"
       ],
-      "market": "BTTS",
-      "base_rate": 0.515,
-      "conditional_rate": 0.88,
-      "lift": 0.365,
-      "n": 50,
+      "market": "Over 2.5",
+      "base_rate": 0.505,
+      "conditional_rate": 1,
+      "lift": 0.495,
+      "n": 30,
       "direction": "positive"
     },
     {
-      "id": "rule_42_physical_game_yc_4.5",
+      "id": "rule_42_ht_over_1_btts",
+      "type": "single",
+      "signal": "ht_over_1",
+      "signals": [
+        "ht_over_1"
+      ],
+      "market": "BTTS",
+      "base_rate": 0.53,
+      "conditional_rate": 0.822,
+      "lift": 0.292,
+      "n": 241,
+      "direction": "positive"
+    },
+    {
+      "id": "rule_43_physical_game_yc_4.5",
       "type": "single",
       "signal": "physical_game",
       "signals": [
@@ -11631,289 +11921,275 @@
       ],
       "market": "YC 4.5",
       "base_rate": 0.409,
-      "conditional_rate": 0.717,
-      "lift": 0.309,
-      "n": 99,
+      "conditional_rate": 0.722,
+      "lift": 0.313,
+      "n": 158,
       "direction": "positive"
     },
     {
-      "id": "rule_43_corners_high_over_corners_7.5",
+      "id": "rule_44_ht_over_2_btts",
+      "type": "single",
+      "signal": "ht_over_2",
+      "signals": [
+        "ht_over_2"
+      ],
+      "market": "BTTS",
+      "base_rate": 0.53,
+      "conditional_rate": 0.895,
+      "lift": 0.365,
+      "n": 76,
+      "direction": "positive"
+    },
+    {
+      "id": "rule_45_corners_high_over_corners_7.5",
       "type": "single",
       "signal": "corners_high",
       "signals": [
         "corners_high"
       ],
       "market": "Over Corners 7.5",
-      "base_rate": 0.705,
+      "base_rate": 0.7,
       "conditional_rate": 1,
-      "lift": 0.295,
-      "n": 123,
+      "lift": 0.3,
+      "n": 194,
       "direction": "positive"
     },
     {
-      "id": "rule_44_corners_very_high_over_corners_8.5",
+      "id": "rule_46_corners_very_high_over_corners_8.5",
       "type": "single",
       "signal": "corners_very_high",
       "signals": [
         "corners_very_high"
       ],
       "market": "Over Corners 8.5",
-      "base_rate": 0.637,
+      "base_rate": 0.624,
       "conditional_rate": 1,
-      "lift": 0.363,
-      "n": 42,
+      "lift": 0.376,
+      "n": 62,
       "direction": "positive"
     },
     {
-      "id": "rule_45_ht_over_1_btts",
-      "type": "single",
-      "signal": "ht_over_1",
-      "signals": [
-        "ht_over_1"
-      ],
-      "market": "BTTS",
-      "base_rate": 0.515,
-      "conditional_rate": 0.773,
-      "lift": 0.257,
-      "n": 154,
-      "direction": "positive"
-    },
-    {
-      "id": "rule_46_corners_asymmetric_over_corners_8.5",
+      "id": "rule_47_corners_asymmetric_over_corners_8.5",
       "type": "single",
       "signal": "corners_asymmetric",
       "signals": [
         "corners_asymmetric"
       ],
       "market": "Over Corners 8.5",
-      "base_rate": 0.637,
-      "conditional_rate": 0.94,
-      "lift": 0.304,
-      "n": 67,
+      "base_rate": 0.624,
+      "conditional_rate": 0.951,
+      "lift": 0.328,
+      "n": 103,
       "direction": "positive"
     },
     {
-      "id": "rule_47_yc_high_yc_2.5",
-      "type": "single",
-      "signal": "yc_high",
-      "signals": [
-        "yc_high"
-      ],
-      "market": "YC 2.5",
-      "base_rate": 0.743,
-      "conditional_rate": 1,
-      "lift": 0.257,
-      "n": 140,
-      "direction": "positive"
-    },
-    {
-      "id": "rule_48_ht_over_1_over_1.5",
-      "type": "single",
-      "signal": "ht_over_1",
-      "signals": [
-        "ht_over_1"
-      ],
-      "market": "Over 1.5",
-      "base_rate": 0.748,
-      "conditional_rate": 1,
-      "lift": 0.252,
-      "n": 154,
-      "direction": "positive"
-    },
-    {
-      "id": "rule_49_ht_away_2plus_lead_home_win",
-      "type": "single",
-      "signal": "ht_away_2plus_lead",
-      "signals": [
-        "ht_away_2plus_lead"
-      ],
-      "market": "Home Win",
-      "base_rate": 0.43,
-      "conditional_rate": 0.04,
-      "lift": -0.39,
-      "n": 25,
-      "direction": "negative"
-    },
-    {
-      "id": "rule_50_ht_away_2plus_lead_x2",
-      "type": "single",
-      "signal": "ht_away_2plus_lead",
-      "signals": [
-        "ht_away_2plus_lead"
-      ],
-      "market": "X2",
-      "base_rate": 0.57,
-      "conditional_rate": 0.96,
-      "lift": 0.39,
-      "n": 25,
-      "direction": "positive"
-    },
-    {
-      "id": "rule_51_ht_over_1_over_3.5",
+      "id": "rule_48_ht_over_1_over_3.5",
       "type": "single",
       "signal": "ht_over_1",
       "signals": [
         "ht_over_1"
       ],
       "market": "Over 3.5",
-      "base_rate": 0.249,
-      "conditional_rate": 0.5,
-      "lift": 0.251,
-      "n": 154,
+      "base_rate": 0.247,
+      "conditional_rate": 0.523,
+      "lift": 0.276,
+      "n": 241,
       "direction": "positive"
     },
     {
-      "id": "rule_52_ht_home_2plus_lead_over_2.5",
+      "id": "rule_49_ht_over_1_over_1.5",
       "type": "single",
-      "signal": "ht_home_2plus_lead",
+      "signal": "ht_over_1",
       "signals": [
-        "ht_home_2plus_lead"
+        "ht_over_1"
       ],
-      "market": "Over 2.5",
-      "base_rate": 0.508,
-      "conditional_rate": 0.833,
-      "lift": 0.325,
-      "n": 48,
-      "direction": "positive"
-    },
-    {
-      "id": "rule_53_high_conversion_rate_over_2.5",
-      "type": "single",
-      "signal": "high_conversion_rate",
-      "signals": [
-        "high_conversion_rate"
-      ],
-      "market": "Over 2.5",
-      "base_rate": 0.508,
+      "market": "Over 1.5",
+      "base_rate": 0.731,
       "conditional_rate": 1,
-      "lift": 0.492,
-      "n": 12,
+      "lift": 0.269,
+      "n": 241,
       "direction": "positive"
     },
     {
-      "id": "rule_54_corners_asymmetric_over_corners_7.5",
+      "id": "rule_50_corners_asymmetric_over_corners_9.5",
+      "type": "single",
+      "signal": "corners_asymmetric",
+      "signals": [
+        "corners_asymmetric"
+      ],
+      "market": "Over Corners 9.5",
+      "base_rate": 0.53,
+      "conditional_rate": 0.835,
+      "lift": 0.305,
+      "n": 103,
+      "direction": "positive"
+    },
+    {
+      "id": "rule_51_corners_asymmetric_over_corners_7.5",
       "type": "single",
       "signal": "corners_asymmetric",
       "signals": [
         "corners_asymmetric"
       ],
       "market": "Over Corners 7.5",
-      "base_rate": 0.705,
+      "base_rate": 0.7,
       "conditional_rate": 1,
-      "lift": 0.295,
-      "n": 67,
-      "direction": "positive"
-    },
-    {
-      "id": "rule_55_yc_very_high_yc_2.5",
-      "type": "single",
-      "signal": "yc_very_high",
-      "signals": [
-        "yc_very_high"
-      ],
-      "market": "YC 2.5",
-      "base_rate": 0.743,
-      "conditional_rate": 1,
-      "lift": 0.257,
+      "lift": 0.3,
       "n": 103,
       "direction": "positive"
     },
     {
-      "id": "rule_56_ht_home_2plus_lead_yc_2.5",
+      "id": "rule_52_high_conversion_rate_btts",
+      "type": "single",
+      "signal": "high_conversion_rate",
+      "signals": [
+        "high_conversion_rate"
+      ],
+      "market": "BTTS",
+      "base_rate": 0.53,
+      "conditional_rate": 0.933,
+      "lift": 0.403,
+      "n": 30,
+      "direction": "positive"
+    },
+    {
+      "id": "rule_53_ht_home_2plus_lead_over_2.5",
       "type": "single",
       "signal": "ht_home_2plus_lead",
       "signals": [
         "ht_home_2plus_lead"
-      ],
-      "market": "YC 2.5",
-      "base_rate": 0.743,
-      "conditional_rate": 0.438,
-      "lift": -0.306,
-      "n": 48,
-      "direction": "negative"
-    },
-    {
-      "id": "rule_57_ht_home_2plus_lead_yc_3.5",
-      "type": "single",
-      "signal": "ht_home_2plus_lead",
-      "signals": [
-        "ht_home_2plus_lead"
-      ],
-      "market": "YC 3.5",
-      "base_rate": 0.577,
-      "conditional_rate": 0.271,
-      "lift": -0.306,
-      "n": 48,
-      "direction": "negative"
-    },
-    {
-      "id": "rule_58_physical_game_yc_2.5",
-      "type": "single",
-      "signal": "physical_game",
-      "signals": [
-        "physical_game"
-      ],
-      "market": "YC 2.5",
-      "base_rate": 0.743,
-      "conditional_rate": 1,
-      "lift": 0.257,
-      "n": 99,
-      "direction": "positive"
-    },
-    {
-      "id": "rule_59_ht_away_winning_home_win",
-      "type": "single",
-      "signal": "ht_away_winning",
-      "signals": [
-        "ht_away_winning"
-      ],
-      "market": "Home Win",
-      "base_rate": 0.43,
-      "conditional_rate": 0.181,
-      "lift": -0.249,
-      "n": 105,
-      "direction": "negative"
-    },
-    {
-      "id": "rule_60_ht_away_winning_x2",
-      "type": "single",
-      "signal": "ht_away_winning",
-      "signals": [
-        "ht_away_winning"
-      ],
-      "market": "X2",
-      "base_rate": 0.57,
-      "conditional_rate": 0.819,
-      "lift": 0.249,
-      "n": 105,
-      "direction": "positive"
-    },
-    {
-      "id": "rule_61_sog_very_high_over_2.5",
-      "type": "single",
-      "signal": "sog_very_high",
-      "signals": [
-        "sog_very_high"
       ],
       "market": "Over 2.5",
-      "base_rate": 0.508,
-      "conditional_rate": 0.73,
-      "lift": 0.222,
-      "n": 174,
+      "base_rate": 0.505,
+      "conditional_rate": 0.839,
+      "lift": 0.333,
+      "n": 62,
       "direction": "positive"
     },
     {
-      "id": "rule_62_ht_btts_over_1.5",
+      "id": "rule_54_ht_btts_over_1.5",
       "type": "single",
       "signal": "ht_btts",
       "signals": [
         "ht_btts"
       ],
       "market": "Over 1.5",
-      "base_rate": 0.748,
+      "base_rate": 0.731,
       "conditional_rate": 1,
-      "lift": 0.252,
-      "n": 85,
+      "lift": 0.269,
+      "n": 151,
+      "direction": "positive"
+    },
+    {
+      "id": "rule_55_ht_away_2plus_lead_home_win",
+      "type": "single",
+      "signal": "ht_away_2plus_lead",
+      "signals": [
+        "ht_away_2plus_lead"
+      ],
+      "market": "Home Win",
+      "base_rate": 0.422,
+      "conditional_rate": 0.054,
+      "lift": -0.368,
+      "n": 37,
+      "direction": "negative"
+    },
+    {
+      "id": "rule_56_ht_away_2plus_lead_x2",
+      "type": "single",
+      "signal": "ht_away_2plus_lead",
+      "signals": [
+        "ht_away_2plus_lead"
+      ],
+      "market": "X2",
+      "base_rate": 0.578,
+      "conditional_rate": 0.946,
+      "lift": 0.368,
+      "n": 37,
+      "direction": "positive"
+    },
+    {
+      "id": "rule_57_yc_high_yc_2.5",
+      "type": "single",
+      "signal": "yc_high",
+      "signals": [
+        "yc_high"
+      ],
+      "market": "YC 2.5",
+      "base_rate": 0.751,
+      "conditional_rate": 1,
+      "lift": 0.249,
+      "n": 215,
+      "direction": "positive"
+    },
+    {
+      "id": "rule_58_ht_away_winning_home_win",
+      "type": "single",
+      "signal": "ht_away_winning",
+      "signals": [
+        "ht_away_winning"
+      ],
+      "market": "Home Win",
+      "base_rate": 0.422,
+      "conditional_rate": 0.161,
+      "lift": -0.261,
+      "n": 155,
+      "direction": "negative"
+    },
+    {
+      "id": "rule_59_ht_away_winning_x2",
+      "type": "single",
+      "signal": "ht_away_winning",
+      "signals": [
+        "ht_away_winning"
+      ],
+      "market": "X2",
+      "base_rate": 0.578,
+      "conditional_rate": 0.839,
+      "lift": 0.261,
+      "n": 155,
+      "direction": "positive"
+    },
+    {
+      "id": "rule_60_yc_very_high_yc_2.5",
+      "type": "single",
+      "signal": "yc_very_high",
+      "signals": [
+        "yc_very_high"
+      ],
+      "market": "YC 2.5",
+      "base_rate": 0.751,
+      "conditional_rate": 1,
+      "lift": 0.249,
+      "n": 167,
+      "direction": "positive"
+    },
+    {
+      "id": "rule_61_physical_game_yc_2.5",
+      "type": "single",
+      "signal": "physical_game",
+      "signals": [
+        "physical_game"
+      ],
+      "market": "YC 2.5",
+      "base_rate": 0.751,
+      "conditional_rate": 1,
+      "lift": 0.249,
+      "n": 158,
+      "direction": "positive"
+    },
+    {
+      "id": "rule_62_sog_very_high_over_2.5",
+      "type": "single",
+      "signal": "sog_very_high",
+      "signals": [
+        "sog_very_high"
+      ],
+      "market": "Over 2.5",
+      "base_rate": 0.505,
+      "conditional_rate": 0.733,
+      "lift": 0.227,
+      "n": 258,
       "direction": "positive"
     },
     {
@@ -11924,252 +12200,364 @@
         "corners_very_high"
       ],
       "market": "Over Corners 7.5",
-      "base_rate": 0.705,
+      "base_rate": 0.7,
       "conditional_rate": 1,
-      "lift": 0.295,
-      "n": 42,
+      "lift": 0.3,
+      "n": 62,
       "direction": "positive"
     },
     {
-      "id": "rule_64_ht_home_2plus_lead_away_win",
-      "type": "single",
-      "signal": "ht_home_2plus_lead",
-      "signals": [
-        "ht_home_2plus_lead"
-      ],
-      "market": "Away Win",
-      "base_rate": 0.316,
-      "conditional_rate": 0.042,
-      "lift": -0.274,
-      "n": 48,
-      "direction": "negative"
-    },
-    {
-      "id": "rule_65_ht_home_2plus_lead_1x",
-      "type": "single",
-      "signal": "ht_home_2plus_lead",
-      "signals": [
-        "ht_home_2plus_lead"
-      ],
-      "market": "1X",
-      "base_rate": 0.684,
-      "conditional_rate": 0.958,
-      "lift": 0.274,
-      "n": 48,
-      "direction": "positive"
-    },
-    {
-      "id": "rule_66_ht_home_winning_away_win",
+      "id": "rule_64_ht_home_winning_away_win",
       "type": "single",
       "signal": "ht_home_winning",
       "signals": [
         "ht_home_winning"
       ],
       "market": "Away Win",
-      "base_rate": 0.316,
-      "conditional_rate": 0.102,
-      "lift": -0.214,
-      "n": 137,
+      "base_rate": 0.307,
+      "conditional_rate": 0.075,
+      "lift": -0.232,
+      "n": 200,
       "direction": "negative"
     },
     {
-      "id": "rule_67_ht_home_winning_1x",
+      "id": "rule_65_ht_home_winning_1x",
       "type": "single",
       "signal": "ht_home_winning",
       "signals": [
         "ht_home_winning"
       ],
       "market": "1X",
-      "base_rate": 0.684,
-      "conditional_rate": 0.898,
-      "lift": 0.214,
-      "n": 137,
+      "base_rate": 0.693,
+      "conditional_rate": 0.925,
+      "lift": 0.232,
+      "n": 200,
       "direction": "positive"
     },
     {
-      "id": "rule_68_sog_ratio_high_over_1.5",
+      "id": "rule_66_shots_low_over_corners_9.5",
       "type": "single",
-      "signal": "sog_ratio_high",
+      "signal": "shots_low",
       "signals": [
-        "sog_ratio_high"
+        "shots_low"
       ],
-      "market": "Over 1.5",
-      "base_rate": 0.748,
-      "conditional_rate": 0.957,
-      "lift": 0.209,
-      "n": 141,
-      "direction": "positive"
+      "market": "Over Corners 9.5",
+      "base_rate": 0.53,
+      "conditional_rate": 0,
+      "lift": -0.53,
+      "n": 9,
+      "direction": "negative"
     },
     {
-      "id": "rule_69_sog_ratio_high_over_2.5",
+      "id": "rule_67_sog_ratio_high_over_2.5",
       "type": "single",
       "signal": "sog_ratio_high",
       "signals": [
         "sog_ratio_high"
       ],
       "market": "Over 2.5",
-      "base_rate": 0.508,
-      "conditional_rate": 0.716,
-      "lift": 0.208,
-      "n": 141,
+      "base_rate": 0.505,
+      "conditional_rate": 0.734,
+      "lift": 0.229,
+      "n": 203,
       "direction": "positive"
     },
     {
-      "id": "rule_70_corners_asymmetric_over_corners_9.5",
-      "type": "single",
-      "signal": "corners_asymmetric",
-      "signals": [
-        "corners_asymmetric"
-      ],
-      "market": "Over Corners 9.5",
-      "base_rate": 0.549,
-      "conditional_rate": 0.791,
-      "lift": 0.242,
-      "n": 67,
-      "direction": "positive"
-    },
-    {
-      "id": "rule_71_ht_btts_over_4.5",
+      "id": "rule_68_ht_btts_over_4.5",
       "type": "single",
       "signal": "ht_btts",
       "signals": [
         "ht_btts"
       ],
       "market": "Over 4.5",
-      "base_rate": 0.116,
-      "conditional_rate": 0.341,
-      "lift": 0.225,
-      "n": 85,
+      "base_rate": 0.126,
+      "conditional_rate": 0.364,
+      "lift": 0.238,
+      "n": 151,
       "direction": "positive"
     },
     {
-      "id": "rule_72_yc_moderate_yc_2.5",
+      "id": "rule_69_ht_over_2_over_1.5",
+      "type": "single",
+      "signal": "ht_over_2",
+      "signals": [
+        "ht_over_2"
+      ],
+      "market": "Over 1.5",
+      "base_rate": 0.731,
+      "conditional_rate": 1,
+      "lift": 0.269,
+      "n": 76,
+      "direction": "positive"
+    },
+    {
+      "id": "rule_70_ht_home_2plus_lead_yc_3.5",
+      "type": "single",
+      "signal": "ht_home_2plus_lead",
+      "signals": [
+        "ht_home_2plus_lead"
+      ],
+      "market": "YC 3.5",
+      "base_rate": 0.587,
+      "conditional_rate": 0.306,
+      "lift": -0.28,
+      "n": 62,
+      "direction": "negative"
+    },
+    {
+      "id": "rule_71_sog_ratio_high_over_3.5",
+      "type": "single",
+      "signal": "sog_ratio_high",
+      "signals": [
+        "sog_ratio_high"
+      ],
+      "market": "Over 3.5",
+      "base_rate": 0.247,
+      "conditional_rate": 0.463,
+      "lift": 0.216,
+      "n": 203,
+      "direction": "positive"
+    },
+    {
+      "id": "rule_72_ht_home_2plus_lead_away_win",
+      "type": "single",
+      "signal": "ht_home_2plus_lead",
+      "signals": [
+        "ht_home_2plus_lead"
+      ],
+      "market": "Away Win",
+      "base_rate": 0.307,
+      "conditional_rate": 0.032,
+      "lift": -0.275,
+      "n": 62,
+      "direction": "negative"
+    },
+    {
+      "id": "rule_73_ht_home_2plus_lead_1x",
+      "type": "single",
+      "signal": "ht_home_2plus_lead",
+      "signals": [
+        "ht_home_2plus_lead"
+      ],
+      "market": "1X",
+      "base_rate": 0.693,
+      "conditional_rate": 0.968,
+      "lift": 0.275,
+      "n": 62,
+      "direction": "positive"
+    },
+    {
+      "id": "rule_74_ht_over_2_home_win",
+      "type": "single",
+      "signal": "ht_over_2",
+      "signals": [
+        "ht_over_2"
+      ],
+      "market": "Home Win",
+      "base_rate": 0.422,
+      "conditional_rate": 0.684,
+      "lift": 0.262,
+      "n": 76,
+      "direction": "positive"
+    },
+    {
+      "id": "rule_75_ht_over_2_x2",
+      "type": "single",
+      "signal": "ht_over_2",
+      "signals": [
+        "ht_over_2"
+      ],
+      "market": "X2",
+      "base_rate": 0.578,
+      "conditional_rate": 0.316,
+      "lift": -0.262,
+      "n": 76,
+      "direction": "negative"
+    },
+    {
+      "id": "rule_76_ht_nil_nil_over_3.5",
+      "type": "single",
+      "signal": "ht_nil_nil",
+      "signals": [
+        "ht_nil_nil"
+      ],
+      "market": "Over 3.5",
+      "base_rate": 0.247,
+      "conditional_rate": 0.035,
+      "lift": -0.212,
+      "n": 199,
+      "direction": "negative"
+    },
+    {
+      "id": "rule_77_ht_no_goals_over_3.5",
+      "type": "single",
+      "signal": "ht_no_goals",
+      "signals": [
+        "ht_no_goals"
+      ],
+      "market": "Over 3.5",
+      "base_rate": 0.247,
+      "conditional_rate": 0.035,
+      "lift": -0.212,
+      "n": 199,
+      "direction": "negative"
+    },
+    {
+      "id": "rule_78_sog_ratio_high_over_1.5",
+      "type": "single",
+      "signal": "sog_ratio_high",
+      "signals": [
+        "sog_ratio_high"
+      ],
+      "market": "Over 1.5",
+      "base_rate": 0.731,
+      "conditional_rate": 0.941,
+      "lift": 0.21,
+      "n": 203,
+      "direction": "positive"
+    },
+    {
+      "id": "rule_79_ht_home_2plus_lead_over_1.5",
+      "type": "single",
+      "signal": "ht_home_2plus_lead",
+      "signals": [
+        "ht_home_2plus_lead"
+      ],
+      "market": "Over 1.5",
+      "base_rate": 0.731,
+      "conditional_rate": 1,
+      "lift": 0.269,
+      "n": 62,
+      "direction": "positive"
+    },
+    {
+      "id": "rule_80_yc_moderate_yc_2.5",
       "type": "single",
       "signal": "yc_moderate",
       "signals": [
         "yc_moderate"
       ],
       "market": "YC 2.5",
-      "base_rate": 0.743,
-      "conditional_rate": 0.538,
-      "lift": -0.205,
-      "n": 130,
+      "base_rate": 0.751,
+      "conditional_rate": 0.549,
+      "lift": -0.202,
+      "n": 195,
       "direction": "negative"
     },
     {
-      "id": "rule_73_ht_over_2_over_1.5",
+      "id": "rule_81_sog_very_high_over_1.5",
       "type": "single",
-      "signal": "ht_over_2",
+      "signal": "sog_very_high",
       "signals": [
-        "ht_over_2"
+        "sog_very_high"
       ],
       "market": "Over 1.5",
-      "base_rate": 0.748,
-      "conditional_rate": 1,
-      "lift": 0.252,
-      "n": 50,
+      "base_rate": 0.731,
+      "conditional_rate": 0.922,
+      "lift": 0.191,
+      "n": 258,
       "direction": "positive"
     },
     {
-      "id": "rule_74_ht_nil_nil_over_3.5",
+      "id": "rule_82_sog_very_high_btts",
       "type": "single",
-      "signal": "ht_nil_nil",
+      "signal": "sog_very_high",
       "signals": [
-        "ht_nil_nil"
+        "sog_very_high"
       ],
-      "market": "Over 3.5",
-      "base_rate": 0.249,
-      "conditional_rate": 0.046,
-      "lift": -0.203,
-      "n": 130,
-      "direction": "negative"
+      "market": "BTTS",
+      "base_rate": 0.53,
+      "conditional_rate": 0.721,
+      "lift": 0.191,
+      "n": 258,
+      "direction": "positive"
     },
     {
-      "id": "rule_75_ht_no_goals_over_3.5",
-      "type": "single",
-      "signal": "ht_no_goals",
-      "signals": [
-        "ht_no_goals"
-      ],
-      "market": "Over 3.5",
-      "base_rate": 0.249,
-      "conditional_rate": 0.046,
-      "lift": -0.203,
-      "n": 130,
-      "direction": "negative"
-    },
-    {
-      "id": "rule_76_ht_home_2plus_lead_12",
+      "id": "rule_83_ht_home_2plus_lead_12",
       "type": "single",
       "signal": "ht_home_2plus_lead",
       "signals": [
         "ht_home_2plus_lead"
       ],
       "market": "12",
-      "base_rate": 0.746,
-      "conditional_rate": 1,
+      "base_rate": 0.73,
+      "conditional_rate": 0.984,
       "lift": 0.254,
-      "n": 48,
+      "n": 62,
       "direction": "positive"
     },
     {
-      "id": "rule_77_ht_home_2plus_lead_draw",
+      "id": "rule_84_ht_home_2plus_lead_draw",
       "type": "single",
       "signal": "ht_home_2plus_lead",
       "signals": [
         "ht_home_2plus_lead"
       ],
       "market": "Draw",
-      "base_rate": 0.254,
-      "conditional_rate": 0,
+      "base_rate": 0.27,
+      "conditional_rate": 0.016,
       "lift": -0.254,
-      "n": 48,
+      "n": 62,
       "direction": "negative"
     },
     {
-      "id": "rule_78_ht_over_2_home_win",
+      "id": "rule_85_ht_nil_nil_12",
       "type": "single",
-      "signal": "ht_over_2",
+      "signal": "ht_nil_nil",
       "signals": [
-        "ht_over_2"
+        "ht_nil_nil"
       ],
-      "market": "Home Win",
-      "base_rate": 0.43,
-      "conditional_rate": 0.68,
-      "lift": 0.25,
-      "n": 50,
-      "direction": "positive"
-    },
-    {
-      "id": "rule_79_ht_over_2_x2",
-      "type": "single",
-      "signal": "ht_over_2",
-      "signals": [
-        "ht_over_2"
-      ],
-      "market": "X2",
-      "base_rate": 0.57,
-      "conditional_rate": 0.32,
-      "lift": -0.25,
-      "n": 50,
+      "market": "12",
+      "base_rate": 0.73,
+      "conditional_rate": 0.533,
+      "lift": -0.197,
+      "n": 199,
       "direction": "negative"
     },
     {
-      "id": "rule_80_ht_home_2plus_lead_over_1.5",
+      "id": "rule_86_ht_nil_nil_draw",
       "type": "single",
-      "signal": "ht_home_2plus_lead",
+      "signal": "ht_nil_nil",
       "signals": [
-        "ht_home_2plus_lead"
+        "ht_nil_nil"
       ],
-      "market": "Over 1.5",
-      "base_rate": 0.748,
-      "conditional_rate": 1,
-      "lift": 0.252,
-      "n": 48,
+      "market": "Draw",
+      "base_rate": 0.27,
+      "conditional_rate": 0.467,
+      "lift": 0.197,
+      "n": 199,
       "direction": "positive"
     },
     {
-      "id": "rule_81_has_red_card_yc_4.5",
+      "id": "rule_87_ht_no_goals_12",
+      "type": "single",
+      "signal": "ht_no_goals",
+      "signals": [
+        "ht_no_goals"
+      ],
+      "market": "12",
+      "base_rate": 0.73,
+      "conditional_rate": 0.533,
+      "lift": -0.197,
+      "n": 199,
+      "direction": "negative"
+    },
+    {
+      "id": "rule_88_ht_no_goals_draw",
+      "type": "single",
+      "signal": "ht_no_goals",
+      "signals": [
+        "ht_no_goals"
+      ],
+      "market": "Draw",
+      "base_rate": 0.27,
+      "conditional_rate": 0.467,
+      "lift": 0.197,
+      "n": 199,
+      "direction": "positive"
+    },
+    {
+      "id": "rule_89_has_red_card_yc_4.5",
       "type": "single",
       "signal": "has_red_card",
       "signals": [
@@ -12177,447 +12565,405 @@
       ],
       "market": "YC 4.5",
       "base_rate": 0.409,
-      "conditional_rate": 0.619,
-      "lift": 0.21,
-      "n": 84,
+      "conditional_rate": 0.622,
+      "lift": 0.213,
+      "n": 119,
       "direction": "positive"
     },
     {
-      "id": "rule_82_ht_away_winning_over_2.5",
+      "id": "rule_90_ht_away_2plus_lead_over_1.5",
       "type": "single",
-      "signal": "ht_away_winning",
+      "signal": "ht_away_2plus_lead",
       "signals": [
-        "ht_away_winning"
-      ],
-      "market": "Over 2.5",
-      "base_rate": 0.508,
-      "conditional_rate": 0.705,
-      "lift": 0.196,
-      "n": 105,
-      "direction": "positive"
-    },
-    {
-      "id": "rule_83_ht_away_winning_over_1.5",
-      "type": "single",
-      "signal": "ht_away_winning",
-      "signals": [
-        "ht_away_winning"
+        "ht_away_2plus_lead"
       ],
       "market": "Over 1.5",
-      "base_rate": 0.748,
-      "conditional_rate": 0.943,
-      "lift": 0.195,
-      "n": 105,
+      "base_rate": 0.731,
+      "conditional_rate": 1,
+      "lift": 0.269,
+      "n": 37,
       "direction": "positive"
     },
     {
-      "id": "rule_84_ht_home_2plus_lead_over_3.5",
+      "id": "rule_91_ht_home_2plus_lead_yc_2.5",
       "type": "single",
       "signal": "ht_home_2plus_lead",
       "signals": [
         "ht_home_2plus_lead"
       ],
-      "market": "Over 3.5",
-      "base_rate": 0.249,
-      "conditional_rate": 0.479,
-      "lift": 0.23,
-      "n": 48,
-      "direction": "positive"
-    },
-    {
-      "id": "rule_85_ht_home_winning_12",
-      "type": "single",
-      "signal": "ht_home_winning",
-      "signals": [
-        "ht_home_winning"
-      ],
-      "market": "12",
-      "base_rate": 0.746,
-      "conditional_rate": 0.927,
-      "lift": 0.181,
-      "n": 137,
-      "direction": "positive"
-    },
-    {
-      "id": "rule_86_ht_home_winning_draw",
-      "type": "single",
-      "signal": "ht_home_winning",
-      "signals": [
-        "ht_home_winning"
-      ],
-      "market": "Draw",
-      "base_rate": 0.254,
-      "conditional_rate": 0.073,
-      "lift": -0.181,
-      "n": 137,
+      "market": "YC 2.5",
+      "base_rate": 0.751,
+      "conditional_rate": 0.516,
+      "lift": -0.235,
+      "n": 62,
       "direction": "negative"
     },
     {
-      "id": "rule_87_sog_very_high_over_1.5",
+      "id": "rule_92_sog_ratio_high_btts",
+      "type": "single",
+      "signal": "sog_ratio_high",
+      "signals": [
+        "sog_ratio_high"
+      ],
+      "market": "BTTS",
+      "base_rate": 0.53,
+      "conditional_rate": 0.709,
+      "lift": 0.179,
+      "n": 203,
+      "direction": "positive"
+    },
+    {
+      "id": "rule_93_sog_very_high_over_3.5",
       "type": "single",
       "signal": "sog_very_high",
       "signals": [
         "sog_very_high"
       ],
-      "market": "Over 1.5",
-      "base_rate": 0.748,
-      "conditional_rate": 0.92,
+      "market": "Over 3.5",
+      "base_rate": 0.247,
+      "conditional_rate": 0.419,
       "lift": 0.171,
-      "n": 174,
+      "n": 258,
       "direction": "positive"
     },
     {
-      "id": "rule_88_has_red_card_yc_3.5",
+      "id": "rule_94_has_red_card_yc_3.5",
       "type": "single",
       "signal": "has_red_card",
       "signals": [
         "has_red_card"
       ],
       "market": "YC 3.5",
-      "base_rate": 0.577,
-      "conditional_rate": 0.774,
-      "lift": 0.197,
-      "n": 84,
+      "base_rate": 0.587,
+      "conditional_rate": 0.782,
+      "lift": 0.195,
+      "n": 119,
       "direction": "positive"
     },
     {
-      "id": "rule_89_corners_high_over_corners_6.5",
-      "type": "single",
-      "signal": "corners_high",
-      "signals": [
-        "corners_high"
-      ],
-      "market": "Over Corners 6.5",
-      "base_rate": 0.822,
-      "conditional_rate": 1,
-      "lift": 0.178,
-      "n": 123,
-      "direction": "positive"
-    },
-    {
-      "id": "rule_90_sog_very_high_btts",
-      "type": "single",
-      "signal": "sog_very_high",
-      "signals": [
-        "sog_very_high"
-      ],
-      "market": "BTTS",
-      "base_rate": 0.515,
-      "conditional_rate": 0.678,
-      "lift": 0.163,
-      "n": 174,
-      "direction": "positive"
-    },
-    {
-      "id": "rule_91_sog_ratio_high_over_3.5",
-      "type": "single",
-      "signal": "sog_ratio_high",
-      "signals": [
-        "sog_ratio_high"
-      ],
-      "market": "Over 3.5",
-      "base_rate": 0.249,
-      "conditional_rate": 0.418,
-      "lift": 0.169,
-      "n": 141,
-      "direction": "positive"
-    },
-    {
-      "id": "rule_92_ht_away_2plus_lead_12",
-      "type": "single",
-      "signal": "ht_away_2plus_lead",
-      "signals": [
-        "ht_away_2plus_lead"
-      ],
-      "market": "12",
-      "base_rate": 0.746,
-      "conditional_rate": 1,
-      "lift": 0.254,
-      "n": 25,
-      "direction": "positive"
-    },
-    {
-      "id": "rule_93_ht_away_2plus_lead_draw",
-      "type": "single",
-      "signal": "ht_away_2plus_lead",
-      "signals": [
-        "ht_away_2plus_lead"
-      ],
-      "market": "Draw",
-      "base_rate": 0.254,
-      "conditional_rate": 0,
-      "lift": -0.254,
-      "n": 25,
-      "direction": "negative"
-    },
-    {
-      "id": "rule_94_ht_away_2plus_lead_over_1.5",
-      "type": "single",
-      "signal": "ht_away_2plus_lead",
-      "signals": [
-        "ht_away_2plus_lead"
-      ],
-      "market": "Over 1.5",
-      "base_rate": 0.748,
-      "conditional_rate": 1,
-      "lift": 0.252,
-      "n": 25,
-      "direction": "positive"
-    },
-    {
-      "id": "rule_95_high_conversion_rate_btts",
-      "type": "single",
-      "signal": "high_conversion_rate",
-      "signals": [
-        "high_conversion_rate"
-      ],
-      "market": "BTTS",
-      "base_rate": 0.515,
-      "conditional_rate": 0.833,
-      "lift": 0.318,
-      "n": 12,
-      "direction": "positive"
-    },
-    {
-      "id": "rule_96_sog_very_high_over_3.5",
-      "type": "single",
-      "signal": "sog_very_high",
-      "signals": [
-        "sog_very_high"
-      ],
-      "market": "Over 3.5",
-      "base_rate": 0.249,
-      "conditional_rate": 0.402,
-      "lift": 0.153,
-      "n": 174,
-      "direction": "positive"
-    },
-    {
-      "id": "rule_97_ht_nil_nil_12",
-      "type": "single",
-      "signal": "ht_nil_nil",
-      "signals": [
-        "ht_nil_nil"
-      ],
-      "market": "12",
-      "base_rate": 0.746,
-      "conditional_rate": 0.585,
-      "lift": -0.161,
-      "n": 130,
-      "direction": "negative"
-    },
-    {
-      "id": "rule_98_ht_nil_nil_draw",
-      "type": "single",
-      "signal": "ht_nil_nil",
-      "signals": [
-        "ht_nil_nil"
-      ],
-      "market": "Draw",
-      "base_rate": 0.254,
-      "conditional_rate": 0.415,
-      "lift": 0.161,
-      "n": 130,
-      "direction": "positive"
-    },
-    {
-      "id": "rule_99_ht_no_goals_12",
-      "type": "single",
-      "signal": "ht_no_goals",
-      "signals": [
-        "ht_no_goals"
-      ],
-      "market": "12",
-      "base_rate": 0.746,
-      "conditional_rate": 0.585,
-      "lift": -0.161,
-      "n": 130,
-      "direction": "negative"
-    },
-    {
-      "id": "rule_100_ht_no_goals_draw",
-      "type": "single",
-      "signal": "ht_no_goals",
-      "signals": [
-        "ht_no_goals"
-      ],
-      "market": "Draw",
-      "base_rate": 0.254,
-      "conditional_rate": 0.415,
-      "lift": 0.161,
-      "n": 130,
-      "direction": "positive"
-    },
-    {
-      "id": "rule_101_sog_ratio_high_btts",
-      "type": "single",
-      "signal": "sog_ratio_high",
-      "signals": [
-        "sog_ratio_high"
-      ],
-      "market": "BTTS",
-      "base_rate": 0.515,
-      "conditional_rate": 0.674,
-      "lift": 0.158,
-      "n": 141,
-      "direction": "positive"
-    },
-    {
-      "id": "rule_102_sog_ratio_high_over_corners_8.5",
-      "type": "single",
-      "signal": "sog_ratio_high",
-      "signals": [
-        "sog_ratio_high"
-      ],
-      "market": "Over Corners 8.5",
-      "base_rate": 0.637,
-      "conditional_rate": 0.482,
-      "lift": -0.154,
-      "n": 141,
-      "direction": "negative"
-    },
-    {
-      "id": "rule_103_ht_home_2plus_lead_over_4.5",
-      "type": "single",
-      "signal": "ht_home_2plus_lead",
-      "signals": [
-        "ht_home_2plus_lead"
-      ],
-      "market": "Over 4.5",
-      "base_rate": 0.116,
-      "conditional_rate": 0.313,
-      "lift": 0.196,
-      "n": 48,
-      "direction": "positive"
-    },
-    {
-      "id": "rule_104_ht_over_1_over_4.5",
-      "type": "single",
-      "signal": "ht_over_1",
-      "signals": [
-        "ht_over_1"
-      ],
-      "market": "Over 4.5",
-      "base_rate": 0.116,
-      "conditional_rate": 0.266,
-      "lift": 0.15,
-      "n": 154,
-      "direction": "positive"
-    },
-    {
-      "id": "rule_105_sog_ratio_high_over_corners_9.5",
-      "type": "single",
-      "signal": "sog_ratio_high",
-      "signals": [
-        "sog_ratio_high"
-      ],
-      "market": "Over Corners 9.5",
-      "base_rate": 0.549,
-      "conditional_rate": 0.397,
-      "lift": -0.152,
-      "n": 141,
-      "direction": "negative"
-    },
-    {
-      "id": "rule_106_corners_asymmetric_over_corners_6.5",
-      "type": "single",
-      "signal": "corners_asymmetric",
-      "signals": [
-        "corners_asymmetric"
-      ],
-      "market": "Over Corners 6.5",
-      "base_rate": 0.822,
-      "conditional_rate": 1,
-      "lift": 0.178,
-      "n": 67,
-      "direction": "positive"
-    },
-    {
-      "id": "rule_107_ht_away_winning_btts",
-      "type": "single",
-      "signal": "ht_away_winning",
-      "signals": [
-        "ht_away_winning"
-      ],
-      "market": "BTTS",
-      "base_rate": 0.515,
-      "conditional_rate": 0.676,
-      "lift": 0.161,
-      "n": 105,
-      "direction": "positive"
-    },
-    {
-      "id": "rule_108_ht_home_winning_over_1.5",
+      "id": "rule_95_ht_home_winning_12",
       "type": "single",
       "signal": "ht_home_winning",
       "signals": [
         "ht_home_winning"
       ],
-      "market": "Over 1.5",
-      "base_rate": 0.748,
-      "conditional_rate": 0.898,
-      "lift": 0.15,
-      "n": 137,
+      "market": "12",
+      "base_rate": 0.73,
+      "conditional_rate": 0.905,
+      "lift": 0.175,
+      "n": 200,
       "direction": "positive"
     },
     {
-      "id": "rule_109_away_shot_dominant_home_win",
+      "id": "rule_96_ht_home_winning_draw",
       "type": "single",
-      "signal": "away_shot_dominant",
+      "signal": "ht_home_winning",
       "signals": [
-        "away_shot_dominant"
+        "ht_home_winning"
       ],
-      "market": "Home Win",
-      "base_rate": 0.43,
-      "conditional_rate": 0.214,
-      "lift": -0.216,
-      "n": 28,
+      "market": "Draw",
+      "base_rate": 0.27,
+      "conditional_rate": 0.095,
+      "lift": -0.175,
+      "n": 200,
       "direction": "negative"
     },
     {
-      "id": "rule_110_away_shot_dominant_x2",
+      "id": "rule_97_ht_away_2plus_lead_btts",
       "type": "single",
-      "signal": "away_shot_dominant",
+      "signal": "ht_away_2plus_lead",
       "signals": [
-        "away_shot_dominant"
+        "ht_away_2plus_lead"
       ],
-      "market": "X2",
-      "base_rate": 0.57,
-      "conditional_rate": 0.786,
-      "lift": 0.216,
-      "n": 28,
+      "market": "BTTS",
+      "base_rate": 0.53,
+      "conditional_rate": 0.784,
+      "lift": 0.254,
+      "n": 37,
       "direction": "positive"
     },
     {
-      "id": "rule_111_sog_ratio_high_over_4.5",
+      "id": "rule_98_high_conversion_rate_over_1.5",
       "type": "single",
-      "signal": "sog_ratio_high",
+      "signal": "high_conversion_rate",
       "signals": [
-        "sog_ratio_high"
+        "high_conversion_rate"
       ],
-      "market": "Over 4.5",
-      "base_rate": 0.116,
-      "conditional_rate": 0.262,
-      "lift": 0.146,
-      "n": 141,
+      "market": "Over 1.5",
+      "base_rate": 0.731,
+      "conditional_rate": 1,
+      "lift": 0.269,
+      "n": 30,
       "direction": "positive"
     },
     {
-      "id": "rule_112_shots_very_high_over_corners_8.5",
+      "id": "rule_99_shots_low_12",
+      "type": "single",
+      "signal": "shots_low",
+      "signals": [
+        "shots_low"
+      ],
+      "market": "12",
+      "base_rate": 0.73,
+      "conditional_rate": 0.333,
+      "lift": -0.396,
+      "n": 9,
+      "direction": "negative"
+    },
+    {
+      "id": "rule_100_shots_low_draw",
+      "type": "single",
+      "signal": "shots_low",
+      "signals": [
+        "shots_low"
+      ],
+      "market": "Draw",
+      "base_rate": 0.27,
+      "conditional_rate": 0.667,
+      "lift": 0.396,
+      "n": 9,
+      "direction": "positive"
+    },
+    {
+      "id": "rule_101_ht_home_2plus_lead_over_3.5",
+      "type": "single",
+      "signal": "ht_home_2plus_lead",
+      "signals": [
+        "ht_home_2plus_lead"
+      ],
+      "market": "Over 3.5",
+      "base_rate": 0.247,
+      "conditional_rate": 0.468,
+      "lift": 0.22,
+      "n": 62,
+      "direction": "positive"
+    },
+    {
+      "id": "rule_102_shots_very_high_over_corners_8.5",
       "type": "single",
       "signal": "shots_very_high",
       "signals": [
         "shots_very_high"
       ],
       "market": "Over Corners 8.5",
-      "base_rate": 0.637,
-      "conditional_rate": 0.777,
-      "lift": 0.141,
-      "n": 166,
+      "base_rate": 0.624,
+      "conditional_rate": 0.789,
+      "lift": 0.165,
+      "n": 232,
       "direction": "positive"
     },
     {
-      "id": "rule_113_ht_home_2plus_lead_yc_4.5",
+      "id": "rule_103_ht_over_1_over_4.5",
+      "type": "single",
+      "signal": "ht_over_1",
+      "signals": [
+        "ht_over_1"
+      ],
+      "market": "Over 4.5",
+      "base_rate": 0.126,
+      "conditional_rate": 0.286,
+      "lift": 0.16,
+      "n": 241,
+      "direction": "positive"
+    },
+    {
+      "id": "rule_104_sog_ratio_high_over_4.5",
+      "type": "single",
+      "signal": "sog_ratio_high",
+      "signals": [
+        "sog_ratio_high"
+      ],
+      "market": "Over 4.5",
+      "base_rate": 0.126,
+      "conditional_rate": 0.291,
+      "lift": 0.165,
+      "n": 203,
+      "direction": "positive"
+    },
+    {
+      "id": "rule_105_corners_high_over_corners_6.5",
+      "type": "single",
+      "signal": "corners_high",
+      "signals": [
+        "corners_high"
+      ],
+      "market": "Over Corners 6.5",
+      "base_rate": 0.834,
+      "conditional_rate": 1,
+      "lift": 0.166,
+      "n": 194,
+      "direction": "positive"
+    },
+    {
+      "id": "rule_106_ht_away_winning_over_2.5",
+      "type": "single",
+      "signal": "ht_away_winning",
+      "signals": [
+        "ht_away_winning"
+      ],
+      "market": "Over 2.5",
+      "base_rate": 0.505,
+      "conditional_rate": 0.677,
+      "lift": 0.172,
+      "n": 155,
+      "direction": "positive"
+    },
+    {
+      "id": "rule_107_league_high_goals_over_2.5",
+      "type": "single",
+      "signal": "league_high_goals",
+      "signals": [
+        "league_high_goals"
+      ],
+      "market": "Over 2.5",
+      "base_rate": 0.505,
+      "conditional_rate": 0.689,
+      "lift": 0.184,
+      "n": 103,
+      "direction": "positive"
+    },
+    {
+      "id": "rule_108_shots_very_high_over_corners_7.5",
+      "type": "single",
+      "signal": "shots_very_high",
+      "signals": [
+        "shots_very_high"
+      ],
+      "market": "Over Corners 7.5",
+      "base_rate": 0.7,
+      "conditional_rate": 0.849,
+      "lift": 0.149,
+      "n": 232,
+      "direction": "positive"
+    },
+    {
+      "id": "rule_109_ht_away_2plus_lead_12",
+      "type": "single",
+      "signal": "ht_away_2plus_lead",
+      "signals": [
+        "ht_away_2plus_lead"
+      ],
+      "market": "12",
+      "base_rate": 0.73,
+      "conditional_rate": 0.946,
+      "lift": 0.216,
+      "n": 37,
+      "direction": "positive"
+    },
+    {
+      "id": "rule_110_ht_away_2plus_lead_draw",
+      "type": "single",
+      "signal": "ht_away_2plus_lead",
+      "signals": [
+        "ht_away_2plus_lead"
+      ],
+      "market": "Draw",
+      "base_rate": 0.27,
+      "conditional_rate": 0.054,
+      "lift": -0.216,
+      "n": 37,
+      "direction": "negative"
+    },
+    {
+      "id": "rule_111_shots_very_high_over_corners_9.5",
+      "type": "single",
+      "signal": "shots_very_high",
+      "signals": [
+        "shots_very_high"
+      ],
+      "market": "Over Corners 9.5",
+      "base_rate": 0.53,
+      "conditional_rate": 0.672,
+      "lift": 0.142,
+      "n": 232,
+      "direction": "positive"
+    },
+    {
+      "id": "rule_112_ht_nil_nil_home_win",
+      "type": "single",
+      "signal": "ht_nil_nil",
+      "signals": [
+        "ht_nil_nil"
+      ],
+      "market": "Home Win",
+      "base_rate": 0.422,
+      "conditional_rate": 0.276,
+      "lift": -0.146,
+      "n": 199,
+      "direction": "negative"
+    },
+    {
+      "id": "rule_113_ht_nil_nil_x2",
+      "type": "single",
+      "signal": "ht_nil_nil",
+      "signals": [
+        "ht_nil_nil"
+      ],
+      "market": "X2",
+      "base_rate": 0.578,
+      "conditional_rate": 0.724,
+      "lift": 0.146,
+      "n": 199,
+      "direction": "positive"
+    },
+    {
+      "id": "rule_114_ht_no_goals_home_win",
+      "type": "single",
+      "signal": "ht_no_goals",
+      "signals": [
+        "ht_no_goals"
+      ],
+      "market": "Home Win",
+      "base_rate": 0.422,
+      "conditional_rate": 0.276,
+      "lift": -0.146,
+      "n": 199,
+      "direction": "negative"
+    },
+    {
+      "id": "rule_115_ht_no_goals_x2",
+      "type": "single",
+      "signal": "ht_no_goals",
+      "signals": [
+        "ht_no_goals"
+      ],
+      "market": "X2",
+      "base_rate": 0.578,
+      "conditional_rate": 0.724,
+      "lift": 0.146,
+      "n": 199,
+      "direction": "positive"
+    },
+    {
+      "id": "rule_116_corners_asymmetric_over_corners_6.5",
+      "type": "single",
+      "signal": "corners_asymmetric",
+      "signals": [
+        "corners_asymmetric"
+      ],
+      "market": "Over Corners 6.5",
+      "base_rate": 0.834,
+      "conditional_rate": 1,
+      "lift": 0.166,
+      "n": 103,
+      "direction": "positive"
+    },
+    {
+      "id": "rule_117_ht_home_winning_over_1.5",
+      "type": "single",
+      "signal": "ht_home_winning",
+      "signals": [
+        "ht_home_winning"
+      ],
+      "market": "Over 1.5",
+      "base_rate": 0.731,
+      "conditional_rate": 0.875,
+      "lift": 0.144,
+      "n": 200,
+      "direction": "positive"
+    },
+    {
+      "id": "rule_118_ht_home_2plus_lead_yc_4.5",
       "type": "single",
       "signal": "ht_home_2plus_lead",
       "signals": [
@@ -12625,589 +12971,549 @@
       ],
       "market": "YC 4.5",
       "base_rate": 0.409,
-      "conditional_rate": 0.229,
-      "lift": -0.179,
-      "n": 48,
+      "conditional_rate": 0.226,
+      "lift": -0.183,
+      "n": 62,
       "direction": "negative"
     },
     {
-      "id": "rule_114_ht_over_2_12",
-      "type": "single",
-      "signal": "ht_over_2",
-      "signals": [
-        "ht_over_2"
-      ],
-      "market": "12",
-      "base_rate": 0.746,
-      "conditional_rate": 0.92,
-      "lift": 0.174,
-      "n": 50,
-      "direction": "positive"
-    },
-    {
-      "id": "rule_115_ht_over_2_draw",
-      "type": "single",
-      "signal": "ht_over_2",
-      "signals": [
-        "ht_over_2"
-      ],
-      "market": "Draw",
-      "base_rate": 0.254,
-      "conditional_rate": 0.08,
-      "lift": -0.174,
-      "n": 50,
-      "direction": "negative"
-    },
-    {
-      "id": "rule_116_shots_very_high_over_corners_7.5",
+      "id": "rule_119_shots_very_high_over_2.5",
       "type": "single",
       "signal": "shots_very_high",
       "signals": [
         "shots_very_high"
       ],
-      "market": "Over Corners 7.5",
-      "base_rate": 0.705,
-      "conditional_rate": 0.837,
-      "lift": 0.132,
-      "n": 166,
-      "direction": "positive"
-    },
-    {
-      "id": "rule_117_corners_very_high_over_corners_6.5",
-      "type": "single",
-      "signal": "corners_very_high",
-      "signals": [
-        "corners_very_high"
-      ],
-      "market": "Over Corners 6.5",
-      "base_rate": 0.822,
-      "conditional_rate": 1,
-      "lift": 0.178,
-      "n": 42,
-      "direction": "positive"
-    },
-    {
-      "id": "rule_118_ht_away_2plus_lead_btts",
-      "type": "single",
-      "signal": "ht_away_2plus_lead",
-      "signals": [
-        "ht_away_2plus_lead"
-      ],
-      "market": "BTTS",
-      "base_rate": 0.515,
-      "conditional_rate": 0.72,
-      "lift": 0.205,
-      "n": 25,
-      "direction": "positive"
-    },
-    {
-      "id": "rule_119_has_red_card_yc_2.5",
-      "type": "single",
-      "signal": "has_red_card",
-      "signals": [
-        "has_red_card"
-      ],
-      "market": "YC 2.5",
-      "base_rate": 0.743,
-      "conditional_rate": 0.893,
-      "lift": 0.149,
-      "n": 84,
-      "direction": "positive"
-    },
-    {
-      "id": "rule_120_ht_home_winning_over_2.5",
-      "type": "single",
-      "signal": "ht_home_winning",
-      "signals": [
-        "ht_home_winning"
-      ],
       "market": "Over 2.5",
-      "base_rate": 0.508,
+      "base_rate": 0.505,
       "conditional_rate": 0.642,
-      "lift": 0.134,
-      "n": 137,
+      "lift": 0.137,
+      "n": 232,
+      "direction": "positive"
+    },
+    {
+      "id": "rule_120_ht_home_2plus_lead_over_4.5",
+      "type": "single",
+      "signal": "ht_home_2plus_lead",
+      "signals": [
+        "ht_home_2plus_lead"
+      ],
+      "market": "Over 4.5",
+      "base_rate": 0.126,
+      "conditional_rate": 0.306,
+      "lift": 0.18,
+      "n": 62,
       "direction": "positive"
     }
   ],
   "poisson_corrections": {
     "Over 1.5": [
       {
+        "predicted_mid": 0.525,
+        "actual_rate": 0.75,
+        "correction": 0.225,
+        "n": 8
+      },
+      {
         "predicted_mid": 0.575,
-        "actual_rate": 0.429,
-        "correction": -0.146,
-        "n": 14
+        "actual_rate": 0.286,
+        "correction": -0.289,
+        "n": 21
       },
       {
         "predicted_mid": 0.625,
-        "actual_rate": 0.714,
-        "correction": 0.089,
-        "n": 14
+        "actual_rate": 0.733,
+        "correction": 0.108,
+        "n": 30
       },
       {
         "predicted_mid": 0.675,
-        "actual_rate": 0.514,
-        "correction": -0.161,
-        "n": 37
+        "actual_rate": 0.444,
+        "correction": -0.231,
+        "n": 54
       },
       {
         "predicted_mid": 0.725,
-        "actual_rate": 0.786,
-        "correction": 0.061,
-        "n": 28
+        "actual_rate": 0.744,
+        "correction": 0.019,
+        "n": 43
       },
       {
         "predicted_mid": 0.775,
-        "actual_rate": 0.681,
-        "correction": -0.094,
-        "n": 47
+        "actual_rate": 0.694,
+        "correction": -0.081,
+        "n": 85
       },
       {
         "predicted_mid": 0.825,
-        "actual_rate": 0.793,
-        "correction": -0.032,
-        "n": 82
+        "actual_rate": 0.76,
+        "correction": -0.065,
+        "n": 125
       },
       {
         "predicted_mid": 0.875,
-        "actual_rate": 0.778,
-        "correction": -0.097,
-        "n": 90
+        "actual_rate": 0.816,
+        "correction": -0.059,
+        "n": 136
       },
       {
         "predicted_mid": 0.925,
-        "actual_rate": 0.838,
-        "correction": -0.087,
-        "n": 99
+        "actual_rate": 0.815,
+        "correction": -0.11,
+        "n": 130
       },
       {
         "predicted_mid": 0.975,
-        "actual_rate": 0.75,
-        "correction": -0.225,
-        "n": 8
+        "actual_rate": 0.833,
+        "correction": -0.142,
+        "n": 18
       }
     ],
     "Over 2.5": [
       {
         "predicted_mid": 0.275,
-        "actual_rate": 0,
-        "correction": -0.275,
-        "n": 4
-      },
-      {
-        "predicted_mid": 0.325,
         "actual_rate": 0.167,
-        "correction": -0.158,
+        "correction": -0.108,
         "n": 12
-      },
-      {
-        "predicted_mid": 0.375,
-        "actual_rate": 0.4,
-        "correction": 0.025,
-        "n": 25
-      },
-      {
-        "predicted_mid": 0.425,
-        "actual_rate": 0.333,
-        "correction": -0.092,
-        "n": 30
-      },
-      {
-        "predicted_mid": 0.475,
-        "actual_rate": 0.455,
-        "correction": -0.02,
-        "n": 22
-      },
-      {
-        "predicted_mid": 0.525,
-        "actual_rate": 0.259,
-        "correction": -0.266,
-        "n": 27
-      },
-      {
-        "predicted_mid": 0.575,
-        "actual_rate": 0.439,
-        "correction": -0.136,
-        "n": 57
-      },
-      {
-        "predicted_mid": 0.625,
-        "actual_rate": 0.548,
-        "correction": -0.077,
-        "n": 42
-      },
-      {
-        "predicted_mid": 0.675,
-        "actual_rate": 0.596,
-        "correction": -0.079,
-        "n": 47
-      },
-      {
-        "predicted_mid": 0.725,
-        "actual_rate": 0.611,
-        "correction": -0.114,
-        "n": 54
-      },
-      {
-        "predicted_mid": 0.775,
-        "actual_rate": 0.656,
-        "correction": -0.119,
-        "n": 61
-      },
-      {
-        "predicted_mid": 0.825,
-        "actual_rate": 0.714,
-        "correction": -0.111,
-        "n": 28
-      },
-      {
-        "predicted_mid": 0.875,
-        "actual_rate": 0.455,
-        "correction": -0.42,
-        "n": 11
-      }
-    ],
-    "Over 3.5": [
-      {
-        "predicted_mid": 0.125,
-        "actual_rate": 0.125,
-        "correction": 0,
-        "n": 16
-      },
-      {
-        "predicted_mid": 0.175,
-        "actual_rate": 0.16,
-        "correction": -0.015,
-        "n": 25
-      },
-      {
-        "predicted_mid": 0.225,
-        "actual_rate": 0.167,
-        "correction": -0.058,
-        "n": 36
-      },
-      {
-        "predicted_mid": 0.275,
-        "actual_rate": 0.091,
-        "correction": -0.184,
-        "n": 22
-      },
-      {
-        "predicted_mid": 0.325,
-        "actual_rate": 0.119,
-        "correction": -0.206,
-        "n": 42
-      },
-      {
-        "predicted_mid": 0.375,
-        "actual_rate": 0.411,
-        "correction": 0.036,
-        "n": 56
-      },
-      {
-        "predicted_mid": 0.425,
-        "actual_rate": 0.222,
-        "correction": -0.203,
-        "n": 36
-      },
-      {
-        "predicted_mid": 0.475,
-        "actual_rate": 0.136,
-        "correction": -0.339,
-        "n": 44
-      },
-      {
-        "predicted_mid": 0.525,
-        "actual_rate": 0.233,
-        "correction": -0.292,
-        "n": 43
-      },
-      {
-        "predicted_mid": 0.575,
-        "actual_rate": 0.346,
-        "correction": -0.229,
-        "n": 52
-      },
-      {
-        "predicted_mid": 0.625,
-        "actual_rate": 0.579,
-        "correction": -0.046,
-        "n": 19
-      },
-      {
-        "predicted_mid": 0.675,
-        "actual_rate": 0.364,
-        "correction": -0.311,
-        "n": 22
-      },
-      {
-        "predicted_mid": 0.725,
-        "actual_rate": 0.2,
-        "correction": -0.525,
-        "n": 5
-      }
-    ],
-    "BTTS": [
-      {
-        "predicted_mid": 0.275,
-        "actual_rate": 0,
-        "correction": -0.275,
-        "n": 6
       },
       {
         "predicted_mid": 0.325,
         "actual_rate": 0.333,
         "correction": 0.008,
-        "n": 12
-      },
-      {
-        "predicted_mid": 0.375,
-        "actual_rate": 0.167,
-        "correction": -0.208,
-        "n": 12
-      },
-      {
-        "predicted_mid": 0.425,
-        "actual_rate": 0.419,
-        "correction": -0.006,
-        "n": 43
-      },
-      {
-        "predicted_mid": 0.475,
-        "actual_rate": 0.478,
-        "correction": 0.003,
-        "n": 46
-      },
-      {
-        "predicted_mid": 0.525,
-        "actual_rate": 0.488,
-        "correction": -0.037,
-        "n": 43
-      },
-      {
-        "predicted_mid": 0.575,
-        "actual_rate": 0.566,
-        "correction": -0.009,
-        "n": 53
-      },
-      {
-        "predicted_mid": 0.625,
-        "actual_rate": 0.515,
-        "correction": -0.11,
-        "n": 68
-      },
-      {
-        "predicted_mid": 0.675,
-        "actual_rate": 0.561,
-        "correction": -0.114,
-        "n": 41
-      },
-      {
-        "predicted_mid": 0.725,
-        "actual_rate": 0.603,
-        "correction": -0.122,
-        "n": 58
-      },
-      {
-        "predicted_mid": 0.775,
-        "actual_rate": 0.792,
-        "correction": 0.017,
         "n": 24
       },
       {
-        "predicted_mid": 0.825,
+        "predicted_mid": 0.375,
+        "actual_rate": 0.421,
+        "correction": 0.046,
+        "n": 38
+      },
+      {
+        "predicted_mid": 0.425,
+        "actual_rate": 0.271,
+        "correction": -0.154,
+        "n": 48
+      },
+      {
+        "predicted_mid": 0.475,
+        "actual_rate": 0.5,
+        "correction": 0.025,
+        "n": 32
+      },
+      {
+        "predicted_mid": 0.525,
+        "actual_rate": 0.37,
+        "correction": -0.155,
+        "n": 46
+      },
+      {
+        "predicted_mid": 0.575,
+        "actual_rate": 0.467,
+        "correction": -0.108,
+        "n": 90
+      },
+      {
+        "predicted_mid": 0.625,
         "actual_rate": 0.545,
-        "correction": -0.28,
+        "correction": -0.08,
+        "n": 66
+      },
+      {
+        "predicted_mid": 0.675,
+        "actual_rate": 0.506,
+        "correction": -0.169,
+        "n": 81
+      },
+      {
+        "predicted_mid": 0.725,
+        "actual_rate": 0.627,
+        "correction": -0.098,
+        "n": 75
+      },
+      {
+        "predicted_mid": 0.775,
+        "actual_rate": 0.61,
+        "correction": -0.165,
+        "n": 77
+      },
+      {
+        "predicted_mid": 0.825,
+        "actual_rate": 0.737,
+        "correction": -0.088,
+        "n": 38
+      },
+      {
+        "predicted_mid": 0.875,
+        "actual_rate": 0.588,
+        "correction": -0.287,
+        "n": 17
+      },
+      {
+        "predicted_mid": 0.925,
+        "actual_rate": 1,
+        "correction": 0.075,
+        "n": 6
+      }
+    ],
+    "Over 3.5": [
+      {
+        "predicted_mid": 0.125,
+        "actual_rate": 0.138,
+        "correction": 0.013,
+        "n": 29
+      },
+      {
+        "predicted_mid": 0.175,
+        "actual_rate": 0.222,
+        "correction": 0.047,
+        "n": 45
+      },
+      {
+        "predicted_mid": 0.225,
+        "actual_rate": 0.125,
+        "correction": -0.1,
+        "n": 56
+      },
+      {
+        "predicted_mid": 0.275,
+        "actual_rate": 0.263,
+        "correction": -0.012,
+        "n": 38
+      },
+      {
+        "predicted_mid": 0.325,
+        "actual_rate": 0.159,
+        "correction": -0.166,
+        "n": 69
+      },
+      {
+        "predicted_mid": 0.375,
+        "actual_rate": 0.313,
+        "correction": -0.062,
+        "n": 83
+      },
+      {
+        "predicted_mid": 0.425,
+        "actual_rate": 0.22,
+        "correction": -0.205,
+        "n": 59
+      },
+      {
+        "predicted_mid": 0.475,
+        "actual_rate": 0.243,
+        "correction": -0.232,
+        "n": 74
+      },
+      {
+        "predicted_mid": 0.525,
+        "actual_rate": 0.203,
+        "correction": -0.322,
+        "n": 59
+      },
+      {
+        "predicted_mid": 0.575,
+        "actual_rate": 0.328,
+        "correction": -0.247,
+        "n": 61
+      },
+      {
+        "predicted_mid": 0.625,
+        "actual_rate": 0.457,
+        "correction": -0.168,
+        "n": 35
+      },
+      {
+        "predicted_mid": 0.675,
+        "actual_rate": 0.32,
+        "correction": -0.355,
+        "n": 25
+      },
+      {
+        "predicted_mid": 0.725,
+        "actual_rate": 0.444,
+        "correction": -0.281,
+        "n": 9
+      },
+      {
+        "predicted_mid": 0.775,
+        "actual_rate": 0,
+        "correction": -0.775,
+        "n": 4
+      },
+      {
+        "predicted_mid": 0.875,
+        "actual_rate": 0.5,
+        "correction": -0.375,
+        "n": 4
+      }
+    ],
+    "BTTS": [
+      {
+        "predicted_mid": 0.225,
+        "actual_rate": 0,
+        "correction": -0.225,
+        "n": 4
+      },
+      {
+        "predicted_mid": 0.275,
+        "actual_rate": 0.273,
+        "correction": -0.002,
         "n": 11
+      },
+      {
+        "predicted_mid": 0.325,
+        "actual_rate": 0.367,
+        "correction": 0.042,
+        "n": 30
+      },
+      {
+        "predicted_mid": 0.375,
+        "actual_rate": 0.32,
+        "correction": -0.055,
+        "n": 25
+      },
+      {
+        "predicted_mid": 0.425,
+        "actual_rate": 0.493,
+        "correction": 0.068,
+        "n": 69
+      },
+      {
+        "predicted_mid": 0.475,
+        "actual_rate": 0.424,
+        "correction": -0.051,
+        "n": 66
+      },
+      {
+        "predicted_mid": 0.525,
+        "actual_rate": 0.55,
+        "correction": 0.025,
+        "n": 60
+      },
+      {
+        "predicted_mid": 0.575,
+        "actual_rate": 0.538,
+        "correction": -0.037,
+        "n": 91
+      },
+      {
+        "predicted_mid": 0.625,
+        "actual_rate": 0.585,
+        "correction": -0.04,
+        "n": 106
+      },
+      {
+        "predicted_mid": 0.675,
+        "actual_rate": 0.571,
+        "correction": -0.104,
+        "n": 63
+      },
+      {
+        "predicted_mid": 0.725,
+        "actual_rate": 0.588,
+        "correction": -0.138,
+        "n": 80
+      },
+      {
+        "predicted_mid": 0.775,
+        "actual_rate": 0.767,
+        "correction": -0.008,
+        "n": 30
+      },
+      {
+        "predicted_mid": 0.825,
+        "actual_rate": 0.583,
+        "correction": -0.242,
+        "n": 12
       }
     ]
   },
   "score_distribution": [
     {
-      "total": 49,
+      "total": 75,
       "label": "1-1",
-      "rate": 0.116
+      "rate": 0.115
+    },
+    {
+      "total": 67,
+      "label": "1-2",
+      "rate": 0.103
+    },
+    {
+      "total": 64,
+      "label": "1-0",
+      "rate": 0.098
+    },
+    {
+      "total": 62,
+      "label": "0-0",
+      "rate": 0.095
+    },
+    {
+      "total": 61,
+      "label": "2-1",
+      "rate": 0.094
+    },
+    {
+      "total": 49,
+      "label": "0-1",
+      "rate": 0.075
     },
     {
       "total": 45,
-      "label": "1-2",
-      "rate": 0.107
-    },
-    {
-      "total": 44,
-      "label": "1-0",
-      "rate": 0.105
-    },
-    {
-      "total": 35,
-      "label": "0-0",
-      "rate": 0.083
-    },
-    {
-      "total": 34,
-      "label": "2-1",
-      "rate": 0.081
-    },
-    {
-      "total": 31,
       "label": "2-0",
-      "rate": 0.074
+      "rate": 0.069
+    },
+    {
+      "total": 32,
+      "label": "2-2",
+      "rate": 0.049
     },
     {
       "total": 27,
-      "label": "0-1",
-      "rate": 0.064
-    },
-    {
-      "total": 21,
       "label": "0-2",
-      "rate": 0.05
+      "rate": 0.041
     },
     {
-      "total": 21,
-      "label": "2-2",
-      "rate": 0.05
+      "total": 24,
+      "label": "3-1",
+      "rate": 0.037
+    },
+    {
+      "total": 22,
+      "label": "3-0",
+      "rate": 0.034
     },
     {
       "total": 18,
-      "label": "3-1",
-      "rate": 0.043
-    },
-    {
-      "total": 16,
-      "label": "3-0",
-      "rate": 0.038
-    },
-    {
-      "total": 14,
       "label": "0-3",
-      "rate": 0.033
+      "rate": 0.028
     },
     {
-      "total": 10,
-      "label": "4-1",
-      "rate": 0.024
-    },
-    {
-      "total": 8,
-      "label": "1-3",
-      "rate": 0.019
-    },
-    {
-      "total": 7,
+      "total": 13,
       "label": "3-2",
-      "rate": 0.017
+      "rate": 0.02
+    },
+    {
+      "total": 13,
+      "label": "2-3",
+      "rate": 0.02
+    },
+    {
+      "total": 13,
+      "label": "4-1",
+      "rate": 0.02
     }
   ],
   "training_validation": {
     "12": {
-      "test_samples": 85,
-      "baseline_acc": 76.5,
-      "rule_acc": 76.5,
-      "improvement": 0
+      "test_samples": 131,
+      "baseline_acc": 65.6,
+      "rule_acc": 75.6,
+      "improvement": 9.9
     },
     "Over 1.5": {
-      "test_samples": 85,
-      "baseline_acc": 72.9,
-      "rule_acc": 81.2,
-      "improvement": 8.2
+      "test_samples": 131,
+      "baseline_acc": 70.2,
+      "rule_acc": 74.8,
+      "improvement": 4.6
     },
     "Over 2.5": {
-      "test_samples": 85,
-      "baseline_acc": 55.3,
-      "rule_acc": 77.6,
-      "improvement": 22.4
+      "test_samples": 131,
+      "baseline_acc": 49.6,
+      "rule_acc": 75.6,
+      "improvement": 26
     },
     "Over 3.5": {
-      "test_samples": 85,
-      "baseline_acc": 71.8,
-      "rule_acc": 77.6,
-      "improvement": 5.9
+      "test_samples": 131,
+      "baseline_acc": 73.3,
+      "rule_acc": 86.3,
+      "improvement": 13
     },
     "Over 4.5": {
-      "test_samples": 85,
-      "baseline_acc": 89.4,
-      "rule_acc": 91.8,
-      "improvement": 2.4
+      "test_samples": 131,
+      "baseline_acc": 81.7,
+      "rule_acc": 91.6,
+      "improvement": 9.9
     },
     "BTTS": {
-      "test_samples": 85,
-      "baseline_acc": 51.8,
-      "rule_acc": 51.8,
+      "test_samples": 131,
+      "baseline_acc": 58,
+      "rule_acc": 58,
       "improvement": 0
     },
     "Over Corners 6.5": {
-      "test_samples": 85,
-      "baseline_acc": 80,
-      "rule_acc": 94.1,
-      "improvement": 14.1
+      "test_samples": 131,
+      "baseline_acc": 83.2,
+      "rule_acc": 85.5,
+      "improvement": 2.3
     },
     "Over Corners 7.5": {
-      "test_samples": 85,
-      "baseline_acc": 72.9,
+      "test_samples": 131,
+      "baseline_acc": 64.9,
       "rule_acc": 100,
-      "improvement": 27.1
+      "improvement": 35.1
     },
     "Over Corners 8.5": {
-      "test_samples": 85,
-      "baseline_acc": 64.7,
-      "rule_acc": 91.8,
-      "improvement": 27.1
+      "test_samples": 131,
+      "baseline_acc": 55.7,
+      "rule_acc": 90.8,
+      "improvement": 35.1
     },
     "Over Corners 9.5": {
-      "test_samples": 85,
-      "baseline_acc": 52.9,
-      "rule_acc": 80,
-      "improvement": 27.1
+      "test_samples": 131,
+      "baseline_acc": 45,
+      "rule_acc": 80.2,
+      "improvement": 35.1
     },
     "YC 2.5": {
-      "test_samples": 85,
-      "baseline_acc": 72.9,
-      "rule_acc": 83.5,
-      "improvement": 10.6
+      "test_samples": 131,
+      "baseline_acc": 75.6,
+      "rule_acc": 87,
+      "improvement": 11.5
     },
     "YC 3.5": {
-      "test_samples": 85,
-      "baseline_acc": 62.4,
-      "rule_acc": 89.4,
-      "improvement": 27.1
+      "test_samples": 131,
+      "baseline_acc": 61.1,
+      "rule_acc": 100,
+      "improvement": 38.9
     },
     "YC 4.5": {
-      "test_samples": 85,
-      "baseline_acc": 54.1,
-      "rule_acc": 87.1,
-      "improvement": 32.9
+      "test_samples": 131,
+      "baseline_acc": 57.3,
+      "rule_acc": 85.5,
+      "improvement": 28.2
     },
     "Home Win": {
-      "test_samples": 85,
-      "baseline_acc": 58.8,
-      "rule_acc": 63.5,
-      "improvement": 4.7
+      "test_samples": 131,
+      "baseline_acc": 58,
+      "rule_acc": 71,
+      "improvement": 13
     },
     "Draw": {
-      "test_samples": 85,
-      "baseline_acc": 76.5,
-      "rule_acc": 76.5,
-      "improvement": 0
+      "test_samples": 131,
+      "baseline_acc": 65.6,
+      "rule_acc": 75.6,
+      "improvement": 9.9
     },
     "Away Win": {
-      "test_samples": 85,
-      "baseline_acc": 64.7,
-      "rule_acc": 71.8,
-      "improvement": 7.1
+      "test_samples": 131,
+      "baseline_acc": 76.3,
+      "rule_acc": 79.4,
+      "improvement": 3.1
     },
     "1X": {
-      "test_samples": 85,
-      "baseline_acc": 64.7,
-      "rule_acc": 71.8,
-      "improvement": 7.1
+      "test_samples": 131,
+      "baseline_acc": 76.3,
+      "rule_acc": 79.4,
+      "improvement": 3.1
     },
     "X2": {
-      "test_samples": 85,
-      "baseline_acc": 58.8,
-      "rule_acc": 63.5,
-      "improvement": 4.7
+      "test_samples": 131,
+      "baseline_acc": 58,
+      "rule_acc": 71,
+      "improvement": 13
     },
-    "trained_at": "2026-04-19T06:00:03.018Z",
+    "trained_at": "2026-04-30T07:00:01.582Z",
     "total_matches": 261,
     "rules_count": 120
   },
@@ -13360,7 +13666,7 @@
   ],
   "pattern_library": {},
   "sniper_thresholds": {
-    "updatedAt": "2026-04-19T07:30:01.374Z",
+    "updatedAt": "2026-05-01T03:37:33.847Z",
     "thresholds": {
       "Over 1.5": {
         "band": "ELITE",
@@ -13372,30 +13678,30 @@
       "BTTS": {
         "band": "HOT",
         "minSignals": 5,
-        "achievedAcc": 62,
+        "achievedAcc": 65,
         "target": 95,
-        "gap": 33
+        "gap": 30
       },
       "Over 2.5": {
         "band": "HOT",
         "minSignals": 5,
-        "achievedAcc": 83,
+        "achievedAcc": 84,
         "target": 92,
-        "gap": 9
+        "gap": 8
       },
       "Over Corners 6.5": {
-        "band": "HOT",
-        "minSignals": 5,
-        "achievedAcc": 83,
+        "band": "ELITE",
+        "minSignals": 7,
+        "achievedAcc": 100,
         "target": 90,
-        "gap": 7
+        "gap": -10
       },
       "Over Corners 7.5": {
         "band": "HOT",
         "minSignals": 5,
-        "achievedAcc": 77,
+        "achievedAcc": 78,
         "target": 85,
-        "gap": 8
+        "gap": 7
       },
       "YC 2.5": {
         "band": "WARM",
@@ -13407,28 +13713,34 @@
       "YC 3.5": {
         "band": "WARM",
         "minSignals": 3,
-        "achievedAcc": 93,
+        "achievedAcc": 95,
         "target": 75,
-        "gap": -18
+        "gap": -20
       },
       "Over 3.5": {
         "band": "HOT",
         "minSignals": 5,
-        "achievedAcc": 53,
+        "achievedAcc": 54,
         "target": 70,
-        "gap": 17
+        "gap": 16
       }
     }
   },
   "lambdaFatores": {
     "Champions League": 0.99,
-    "Ligue 1": 1.03,
-    "Ligue 2": 1.02,
+    "Ligue 1": 1.02,
+    "Ligue 2": 1.06,
     "Brasileirao Serie B": 1.05,
     "Brasileirao Serie A": 0.97,
-    "Premier League": 1.01,
+    "Premier League": 0.97,
     "Serie B Italiana": 1.02,
-    "FA Cup": 1.04
+    "FA Cup": 1.25,
+    "Championship": 1.08,
+    "Brasileirão Série B": 1.01,
+    "Brasileirão Série A": 0.98,
+    "Brasileirão Série C": 0.8,
+    "Serie A": 0.85,
+    "Serie B": 0.9
   },
   "confrontos": [
     {
@@ -15641,8 +15953,9 @@
         "cartoes_amarelos": 3,
         "cartoes_vermelhos": 0
       },
-      "processado": false,
-      "salvo_em": "2026-04-19T12:25:01.648Z"
+      "processado": true,
+      "salvo_em": "2026-04-19T12:25:01.648Z",
+      "processado_em": "2026-04-20T09:05:01.015Z"
     },
     {
       "id": "02791733-8d23-4023-9fe5-9edcbef64461",
@@ -15667,8 +15980,9 @@
         "cartoes_amarelos": 7,
         "cartoes_vermelhos": 1
       },
-      "processado": false,
-      "salvo_em": "2026-04-19T13:30:01.897Z"
+      "processado": true,
+      "salvo_em": "2026-04-19T13:30:01.897Z",
+      "processado_em": "2026-04-20T09:05:01.015Z"
     },
     {
       "id": "374aa922-51dc-43fb-b3b7-271792186ddf",
@@ -15693,8 +16007,9 @@
         "cartoes_amarelos": 4,
         "cartoes_vermelhos": 0
       },
-      "processado": false,
-      "salvo_em": "2026-04-19T17:15:01.422Z"
+      "processado": true,
+      "salvo_em": "2026-04-19T17:15:01.422Z",
+      "processado_em": "2026-04-20T09:05:01.015Z"
     },
     {
       "id": "5297448d-096d-4638-84e0-24d634edefb8",
@@ -15719,8 +16034,9 @@
         "cartoes_amarelos": 4,
         "cartoes_vermelhos": 0
       },
-      "processado": false,
-      "salvo_em": "2026-04-19T17:55:05.798Z"
+      "processado": true,
+      "salvo_em": "2026-04-19T17:55:05.798Z",
+      "processado_em": "2026-04-20T09:05:01.015Z"
     },
     {
       "id": "3d70b89a-fd87-4a45-aaa6-68166b5b479b",
@@ -15745,8 +16061,9 @@
         "cartoes_amarelos": 1,
         "cartoes_vermelhos": 0
       },
-      "processado": false,
-      "salvo_em": "2026-04-19T21:00:01.520Z"
+      "processado": true,
+      "salvo_em": "2026-04-19T21:00:01.520Z",
+      "processado_em": "2026-04-20T09:05:01.015Z"
     },
     {
       "id": "7c5c1c4a-6f37-4c15-9057-ea3240f01386",
@@ -15771,8 +16088,9 @@
         "cartoes_amarelos": 4,
         "cartoes_vermelhos": 0
       },
-      "processado": false,
-      "salvo_em": "2026-04-19T23:00:03.255Z"
+      "processado": true,
+      "salvo_em": "2026-04-19T23:00:03.255Z",
+      "processado_em": "2026-04-20T09:05:01.015Z"
     },
     {
       "id": "378eae64-2857-4438-9877-bb09a0b0900a",
@@ -15797,8 +16115,9 @@
         "cartoes_amarelos": 7,
         "cartoes_vermelhos": 1
       },
-      "processado": false,
-      "salvo_em": "2026-04-19T23:30:02.059Z"
+      "processado": true,
+      "salvo_em": "2026-04-19T23:30:02.059Z",
+      "processado_em": "2026-04-20T09:05:01.015Z"
     },
     {
       "id": "8b2fece9-637f-4759-b798-d86ad0d5b937",
@@ -15823,8 +16142,9 @@
         "cartoes_amarelos": 5,
         "cartoes_vermelhos": 0
       },
-      "processado": false,
-      "salvo_em": "2026-04-20T00:55:01.342Z"
+      "processado": true,
+      "salvo_em": "2026-04-20T00:55:01.342Z",
+      "processado_em": "2026-04-20T09:05:01.015Z"
     },
     {
       "id": "c732ec89-387b-4a52-96cf-ac89c623fe89",
@@ -15849,11 +16169,119 @@
         "cartoes_amarelos": 6,
         "cartoes_vermelhos": 0
       },
-      "processado": false,
-      "salvo_em": "2026-04-20T01:10:01.224Z"
+      "processado": true,
+      "salvo_em": "2026-04-20T01:10:01.224Z",
+      "processado_em": "2026-04-20T09:05:01.015Z"
+    },
+    {
+      "id": "3af3eb52-8a9f-4749-bad2-38bc86610360",
+      "prediction_id": null,
+      "match_name": "Lecce vs Fiorentina",
+      "competition": "Serie A",
+      "market": "Total de Gols",
+      "acertou": true,
+      "confronto": {
+        "categoria": "GREEN",
+        "causa_principal": "ALTA_CONFIANCA_CONFIRMADA",
+        "classificacao": "MODELO_CORRETO",
+        "licao_texto": "Alta confiança (80%) confirmada. Padrão estrutural sólido para Serie A.",
+        "acao_pie": "REFORCAR_PESOS_CORRETOS",
+        "gols_casa": 1,
+        "gols_fora": 1,
+        "gols_reais": 2,
+        "lambda_estimado": null,
+        "erro_lambda": null,
+        "prob_estimada": 80,
+        "escanteios_total": 7,
+        "cartoes_amarelos": 6,
+        "cartoes_vermelhos": 0
+      },
+      "processado": true,
+      "salvo_em": "2026-04-20T20:50:01.386Z",
+      "processado_em": "2026-04-21T09:05:00.800Z"
+    },
+    {
+      "id": "67073519-66c9-453e-822a-bee351a9676d",
+      "prediction_id": null,
+      "match_name": "Athletic Club vs Osasuna",
+      "competition": "La Liga",
+      "market": "Ambas Marcam",
+      "acertou": false,
+      "confronto": {
+        "categoria": "RED",
+        "causa_principal": "CARTAO_VERMELHO",
+        "classificacao": "FATOR_IMPREVISIVEL",
+        "licao_texto": "Cartão(ões) vermelho(s) alterou o jogo. Variância aceita — lambda não ajustado.",
+        "acao_pie": "REGISTRAR_VARIANCIA",
+        "gols_casa": 1,
+        "gols_fora": 0,
+        "gols_reais": 1,
+        "lambda_estimado": null,
+        "erro_lambda": null,
+        "prob_estimada": 82,
+        "escanteios_total": 9,
+        "cartoes_amarelos": 5,
+        "cartoes_vermelhos": 1
+      },
+      "processado": true,
+      "salvo_em": "2026-04-21T19:00:01.546Z",
+      "processado_em": "2026-04-22T09:05:00.829Z"
+    },
+    {
+      "id": "b7eb0447-fc8d-4a75-bb2b-f186cfd6d07c",
+      "prediction_id": null,
+      "match_name": "FC Barcelona vs Celta Vigo",
+      "competition": "La Liga",
+      "market": "Ambas Marcam",
+      "acertou": false,
+      "confronto": {
+        "categoria": "RED",
+        "causa_principal": "VARIANCIA_NORMAL",
+        "classificacao": "VARIANCIA",
+        "licao_texto": "Resultado adverso dentro da variância (prob 83%). Aceitar — modelo dentro do esperado.",
+        "acao_pie": "REGISTRAR_VARIANCIA",
+        "gols_casa": 1,
+        "gols_fora": 0,
+        "gols_reais": 1,
+        "lambda_estimado": null,
+        "erro_lambda": null,
+        "prob_estimada": 83,
+        "escanteios_total": 8,
+        "cartoes_amarelos": 2,
+        "cartoes_vermelhos": 0
+      },
+      "processado": true,
+      "salvo_em": "2026-04-22T21:50:01.939Z",
+      "processado_em": "2026-04-23T09:05:00.232Z"
+    },
+    {
+      "id": "333eeeec-ed76-494a-b9fa-55106555c984",
+      "prediction_id": null,
+      "match_name": "Toronto FC vs Philadelphia Union",
+      "competition": "Copa Sudamericana",
+      "market": "Total de Gols",
+      "acertou": false,
+      "confronto": {
+        "categoria": "RED",
+        "causa_principal": "VARIANCIA_NORMAL",
+        "classificacao": "VARIANCIA",
+        "licao_texto": "Resultado adverso dentro da variância (prob 80%). Aceitar — modelo dentro do esperado.",
+        "acao_pie": "REGISTRAR_VARIANCIA",
+        "gols_casa": 3,
+        "gols_fora": 3,
+        "gols_reais": 6,
+        "lambda_estimado": null,
+        "erro_lambda": null,
+        "prob_estimada": 80,
+        "escanteios_total": 4,
+        "cartoes_amarelos": 8,
+        "cartoes_vermelhos": 0
+      },
+      "processado": true,
+      "salvo_em": "2026-04-23T01:40:01.559Z",
+      "processado_em": "2026-04-23T09:05:00.232Z"
     }
   ],
-  "lessons": [],
   "lambdaFatoresGols": {
     "Brasileirao Serie A": 1.02,
     "Brasileirao Serie B": 0.97,
@@ -15889,5 +16317,6 @@
     "Eredivisie": 3.8,
     "LaLiga": 3.4,
     "Liga Portugal": 3.6
-  }
+  },
+  "lessons": []
 }

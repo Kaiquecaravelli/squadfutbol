@@ -461,8 +461,11 @@ process.on('SIGTERM', () => {
   process.exit(0);
 });
 
-main().catch(err => {
-  console.error(chalk.red('\n[Bettor] ERRO FATAL:', err.message));
-  console.error(err.stack);
-  process.exit(1);
-});
+// Só inicia o loop quando executado diretamente (não quando importado como módulo)
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  main().catch(err => {
+    console.error(chalk.red('\n[Bettor] ERRO FATAL:', err.message));
+    console.error(err.stack);
+    process.exit(1);
+  });
+}

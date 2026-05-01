@@ -298,6 +298,99 @@ export async function batchGetMatchDetails(matches, maxConcurrent = 2) {
   return results;
 }
 
+// ─────────────────────────────────────────────
+// 5. BUSCA REVERSA — partidas PREVIEW por nome de time
+// ─────────────────────────────────────────────
+export async function searchTeamPreviewMatches(teamName) {
+  console.log(chalk.cyan(`🔍 [FlashScore] Buscando jogos PREVIEW para: "${teamName}"...`));
+
+  const browser = await getBrowser();
+  const page = await browser.newPage();
+
+  try {
+    await page.setExtraHTTPHeaders({ 'Accept-Language': 'pt-BR,pt;q=0.9' });
+    await page.goto(`${BASE}/futebol/`, { waitUntil: 'domcontentloaded', timeout: TIMEOUT });
+    await page.locator('[id*="onetrust-accept"]').click({ timeout: 3000 }).catch(() => {});
+    await page.waitForSelector('.event__match', { timeout: TIMEOUT }).catch(() => {});
+
+    const teamLower = teamName.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+
+    const matches = await page.evaluate((teamLower) => {
+      const results = [];
+
+      document.querySelectorAll('.event__match--twoLine, .event__match').forEach((el) => {
+        try {
+          const timeEl = el.querySelector('.event__time');
+          const homeEl = el.querySelector('.event__participant--home');
+          const awayEl = el.querySelector('.event__participant--away');
+
+          if (!homeEl || !awayEl) return;
+
+          const timeText = timeEl?.textContent?.trim() || '';
+          const homeText = homeEl.textContent.trim();
+          const awayText = awayEl.textContent.trim();
+
+          // Normaliza para comparação sem acentos
+          const normalize = (s) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+          const homeN = normalize(homeText);
+          const awayN = normalize(awayText);
+
+          // Só inclui se o time está no jogo
+          if (!homeN.includes(teamLower) && !awayN.includes(teamLower)) return;
+
+          // Jogo deve estar em estado PREVIEW (tempo no formato HH:MM ou texto "PREVIEW")
+          const isPreview = /^\d{2}:\d{2}$/.test(timeText) ||
+                            timeText.toUpperCase().includes('PREVIEW') ||
+                            timeText === '';
+
+          if (!isPreview) return;
+
+          // Pular jogos já em andamento (score parcial visível)
+          const scoreEl = el.querySelector('.event__score--home');
+          if (scoreEl && scoreEl.textContent.trim() !== '' && scoreEl.textContent.trim() !== '-') return;
+
+          const link = el.querySelector('a');
+          const href = link?.href || '';
+          const idAttr = el.id || '';
+          const matchId = idAttr.replace('g_1_', '') || href.match(/\?mid=([^&]+)/)?.[1] || null;
+
+          let competition = 'Desconhecida';
+          let prev = el.previousElementSibling;
+          while (prev) {
+            if (prev.classList.contains('event__header')) {
+              competition = prev.querySelector('.event__title--type')?.textContent?.trim() || 'Desconhecida';
+              break;
+            }
+            prev = prev.previousElementSibling;
+          }
+
+          const [h, m] = (timeText.match(/^(\d{2}):(\d{2})$/) || ['', '0', '0']).slice(1).map(Number);
+          const matchDate = new Date();
+          matchDate.setHours(h, m, 0, 0);
+          if (timeText && matchDate.getTime() < Date.now()) matchDate.setDate(matchDate.getDate() + 1);
+
+          results.push({
+            match_id: matchId,
+            home_team: homeText,
+            away_team: awayText,
+            match_time: timeText,
+            match_date: matchDate.toISOString(),
+            competition,
+            url: href,
+          });
+        } catch { /* ignora */ }
+      });
+
+      return results;
+    }, teamLower);
+
+    console.log(chalk.green(`✅ ${matches.length} jogo(s) PREVIEW encontrado(s) para "${teamName}"`));
+    return matches;
+  } finally {
+    await page.close();
+  }
+}
+
 function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms));
 }

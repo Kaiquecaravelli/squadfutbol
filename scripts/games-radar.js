@@ -367,6 +367,8 @@ async function run() {
           total_important: unique.length,
           top_games: finalTop.map(g => ({
             sofascore_id: g.sofascore_id,
+            home:         g.home,
+            away:         g.away,
             match:        g.match,
             league:       g.league,
             tier:         g.tier,

@@ -612,6 +612,47 @@ export function saveModelImprovement({
 
 
 
+// ── Precisão filtrada por gate — mostra accuracy real dos sinais aprovados ────
+/**
+ * Calcula a precisão histórica considerando APENAS predições acima do gate mínimo.
+ * Isso reflete a precisão real dos sinais que são efetivamente enviados.
+ *
+ * @param {string} market      — nome do mercado
+ * @param {number} minProbPct  — gate mínimo em percentual (ex: 80 para 80%)
+ * @returns {{ market, minGate, total, hits, accuracy } | null}
+ */
+export function getCalibrationAboveGate(market, minProbPct) {
+  const calibration = _getCalibrationDB();
+  const calib = calibration[normalizeMarketKey(market)] || calibration[market];
+  if (!calib?.byRange || !calib.total) return null;
+
+  // Ponto médio de cada faixa (para comparar com minProbPct)
+  const RANGE_MIDPOINTS = {
+    '<60': 50, '60-70': 65, '70-80': 75,
+    '80-85': 82.5, '85-90': 87.5, '90-95': 92.5, '95+': 97,
+  };
+
+  let totalAbove = 0;
+  let hitsAbove  = 0;
+
+  for (const [range, data] of Object.entries(calib.byRange)) {
+    const mid = RANGE_MIDPOINTS[range];
+    if (mid == null || mid < minProbPct) continue; // faixa abaixo do gate → ignorar
+    totalAbove += data.total || 0;
+    hitsAbove  += data.hits  || 0;
+  }
+
+  if (totalAbove < 3) return null; // dados insuficientes na faixa aprovada
+
+  return {
+    market,
+    minGate:  minProbPct,
+    total:    totalAbove,
+    hits:     hitsAbove,
+    accuracy: parseFloat(((hitsAbove / totalAbove) * 100).toFixed(1)),
+  };
+}
+
 // ── Snapshot Diário — evolução histórica da calibração ───────────────────────
 /**
  * Grava um snapshot instantâneo da calibração do PIE em data/pie-snapshots.jsonl.

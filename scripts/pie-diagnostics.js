@@ -10,28 +10,29 @@
  */
 
 import chalk from 'chalk';
-import { loadDB } from '../src/pie/pie-storage.js';
+import { loadDB, getCalibrationAboveGate } from '../src/pie/pie-storage.js';
 
-// Metas por mercado
+// Metas por mercado — alvo mínimo unificado: 75% precisão com gate
+// gate: probabilidade mínima para que o sinal seja enviado (derivado do byRange do PIE)
 const TARGETS = {
-  // Tier 1 — Máxima liquidez, modelos calibrados
-  'Over 1.5':          { meta: 100, alvo: 92, tier: 1, oddsSweet: '1.20-1.35' },
-  'BTTS':              { meta: 100, alvo: 86, tier: 1, oddsSweet: '1.70-1.95' },
-  'Over 2.5':          { meta: 100, alvo: 78, tier: 1, oddsSweet: '1.60-1.85' },
-  'Over 3.5':          { meta: 100, alvo: 40, tier: 1, oddsSweet: '2.20-3.50' },
-  // Tier 2 — Escanteios (dados ricos via PIE)
-  'Over Corners 6.5':  { meta: 100, alvo: 78, tier: 2, oddsSweet: '1.40-1.70' },
-  'Over Corners 7.5':  { meta: 100, alvo: 69, tier: 2, oddsSweet: '1.65-2.00' },
-  'Over Corners 8.5':  { meta: 100, alvo: 62, tier: 2, oddsSweet: '1.80-2.30' },
-  // Tier 2 — Cartões amarelos
-  'YC 2.5':            { meta: 80,  alvo: 73, tier: 2, oddsSweet: '1.60-1.90' },
-  'YC 3.5':            { meta: 80,  alvo: 54, tier: 2, oddsSweet: '2.00-2.80' },
-  'YC 4.5':            { meta: 80,  alvo: 38, tier: 2, oddsSweet: '3.00-5.00' },
-  // Tier 3 — 1X2 e Dupla Chance
-  '1X':                { meta: 60,  alvo: 80, tier: 3, oddsSweet: '1.10-1.35' },
-  'X2':                { meta: 60,  alvo: 53, tier: 3, oddsSweet: '1.20-1.50' },
-  'Home Win':          { meta: 60,  alvo: 72, tier: 3, oddsSweet: '1.40-2.20' },
-  'Resultado Final':   { meta: 50,  alvo: 70, tier: 3, oddsSweet: '1.50-2.80' },
+  // Tier 1 — Gols
+  'Over 1.5':          { meta: 100, alvo: 75, gate: 70, tier: 1, oddsSweet: '1.20-1.35' },
+  'BTTS':              { meta: 100, alvo: 75, gate: 80, tier: 1, oddsSweet: '1.70-1.95' },
+  'Over 2.5':          { meta: 100, alvo: 75, gate: 80, tier: 1, oddsSweet: '1.60-1.85' },
+  'Over 3.5':          { meta: 50,  alvo: 75, gate: 82, tier: 1, oddsSweet: '2.20-3.50', shadow: true },
+  // Tier 2 — Escanteios
+  'Over Corners 6.5':  { meta: 100, alvo: 75, gate: 75, tier: 2, oddsSweet: '1.40-1.70' },
+  'Over Corners 7.5':  { meta: 100, alvo: 75, gate: 77, tier: 2, oddsSweet: '1.65-2.00' },
+  'Over Corners 8.5':  { meta: 100, alvo: 75, gate: 80, tier: 2, oddsSweet: '1.80-2.30' },
+  // Tier 2 — Cartões
+  'YC 2.5':            { meta: 80,  alvo: 75, gate: 73, tier: 2, oddsSweet: '1.60-1.90' },
+  'YC 3.5':            { meta: 80,  alvo: 75, gate: 80, tier: 2, oddsSweet: '2.00-2.80' },
+  'YC 4.5':            { meta: 80,  alvo: 75, gate: 92, tier: 2, oddsSweet: '3.00-5.00', blocked: true },
+  // Tier 3 — 1X2
+  '1X':                { meta: 60,  alvo: 75, gate: 80, tier: 3, oddsSweet: '1.10-1.35' },
+  'X2':                { meta: 60,  alvo: 75, gate: 92, tier: 3, oddsSweet: '1.20-1.50', blocked: true },
+  'Home Win':          { meta: 60,  alvo: 75, gate: 92, tier: 3, oddsSweet: '1.40-2.20', blocked: true },
+  'Resultado Final':   { meta: 50,  alvo: 75, gate: 85, tier: 3, oddsSweet: '1.50-2.80', shadow: true },
 };
 
 function bar(filled, total, width = 20) {
@@ -111,6 +112,67 @@ async function runDiagnostics() {
     console.log(`  ${market.padEnd(26)} ${String(c.total).padStart(3)}/??    -       [${bar(c.total, 60)}]  ${acc}%    ⚪`);
   }
 
+  // ── Precisão com Gate (sinais aprovados apenas) ───────────────────────────
+  console.log(chalk.bold('\n🎯 PRECISÃO COM GATE (sinais efetivamente enviados)\n'));
+  console.log('  Mercado                   Gate   Amostras  Precisão  Alvo   Status');
+  console.log('  ' + '─'.repeat(72));
+
+  let gateOk = 0, gateTotal = 0;
+  for (const [market, cfg] of Object.entries(TARGETS)) {
+    if (cfg.blocked) {
+      console.log(`  ${market.padEnd(26)} ${String(cfg.gate + '%').padStart(5)}   ${chalk.gray('BLOQUEADO — gate ≥92% (precisão histórica insuficiente)')}`);
+      continue;
+    }
+    if (cfg.shadow) {
+      const shadowResult = getCalibrationAboveGate(market, cfg.gate);
+      if (shadowResult) {
+        const sAcc = shadowResult.accuracy;
+        const sColor = sAcc >= cfg.alvo ? chalk.green : sAcc >= cfg.alvo * 0.9 ? chalk.yellow : chalk.gray;
+        const gap = (cfg.alvo - sAcc).toFixed(1);
+        const gapStr = sAcc >= cfg.alvo ? chalk.green('META ATINGIDA') : chalk.yellow(`falta ${gap}pp p/ graduar`);
+        console.log(
+          `  ${market.padEnd(26)} ${String(cfg.gate + '%').padStart(5)}   ` +
+          `${String(shadowResult.total).padStart(4)} am.   ` +
+          `${sColor.bold(String(sAcc + '%').padStart(6))}  🔵 SHADOW  ${gapStr}`
+        );
+      } else {
+        console.log(`  ${market.padEnd(26)} ${String(cfg.gate + '%').padStart(5)}   ${chalk.gray('SHADOW — sem dados acima do gate ainda')}`);
+      }
+      continue;
+    }
+
+    const result = getCalibrationAboveGate(market, cfg.gate);
+    gateTotal++;
+
+    if (!result) {
+      console.log(`  ${market.padEnd(26)} ${String(cfg.gate + '%').padStart(5)}   ${chalk.gray('sem dados acima do gate ainda')}`);
+      continue;
+    }
+
+    const acc       = result.accuracy;
+    const atingiu   = acc >= cfg.alvo;
+    const icon      = atingiu ? '✅' : acc >= cfg.alvo * 0.85 ? '🟡' : '🔴';
+    const accColor  = atingiu ? chalk.green.bold : acc >= cfg.alvo * 0.85 ? chalk.yellow.bold : chalk.red.bold;
+    const barGate   = bar(acc, 100, 12);
+    const barColor  = atingiu ? chalk.green : chalk.yellow;
+
+    if (atingiu) gateOk++;
+
+    console.log(
+      `  ${market.padEnd(26)} ${String(cfg.gate + '%').padStart(5)}   ` +
+      `${String(result.total).padStart(4)} am.   ` +
+      `${accColor(String(acc + '%').padStart(6))}    ` +
+      `${cfg.alvo}%   ${icon}  [${barColor(barGate)}]`
+    );
+  }
+
+  const gateRate = gateTotal > 0 ? Math.round(gateOk / gateTotal * 100) : 0;
+  const gateRateColor = gateRate >= 80 ? chalk.green.bold : gateRate >= 50 ? chalk.yellow.bold : chalk.red.bold;
+  console.log(`\n  Mercados ativos ≥75% com gate: ${gateRateColor(gateOk + '/' + gateTotal)} (${gateRateColor(gateRate + '%')})`);
+  if (gateRate < 100) {
+    console.log(chalk.yellow('  → Coletar mais dados nas faixas acima do gate para atingir 100%'));
+  }
+
   // ── Predições por Mercado ─────────────────────────────────────────────────
   const byMarket = {};
   for (const p of predictions) {
@@ -155,8 +217,10 @@ async function runDiagnostics() {
 
   const needsTraining = Object.entries(TARGETS)
     .filter(([m, cfg]) => {
-      const acc = cal[m]?.total > 5 ? cal[m].hits / cal[m].total * 100 : 0;
-      return acc < cfg.alvo && (cal[m]?.total || 0) >= 10;
+      if (cfg.blocked || cfg.shadow) return false;
+      const gateResult = getCalibrationAboveGate(m, cfg.gate);
+      if (!gateResult || gateResult.total < 5) return false;
+      return gateResult.accuracy < cfg.alvo;
     });
 
   if (needsTraining.length > 0) {
@@ -190,13 +254,28 @@ async function runDiagnostics() {
 
   // ── Resumo de Valor ───────────────────────────────────────────────────────
   console.log(chalk.bold('\n💎 MERCADOS COM MELHOR ODDS DE VALOR (Risco-Retorno)\n'));
-  console.log('  Mercado          Odds Sweet Spot  Precisão PIE  Tier');
-  console.log('  ' + '─'.repeat(55));
+  console.log('  Mercado          Odds Sweet Spot  Gate  Precisão c/ Gate  Tier');
+  console.log('  ' + '─'.repeat(65));
   for (const [market, cfg] of Object.entries(TARGETS).sort((a, b) => a[1].tier - b[1].tier)) {
-    const acc = cal[market]?.total >= 10
-      ? Math.round(cal[market].hits / cal[market].total * 100) + '%'
+    if (cfg.blocked) {
+      console.log(`  ${market.padEnd(17)} ${cfg.oddsSweet.padEnd(16)} ${String(cfg.gate + '%').padStart(5)}  ${chalk.gray('BLOQUEADO'.padEnd(18))} T${cfg.tier}`);
+      continue;
+    }
+    if (cfg.shadow) {
+      const sr = getCalibrationAboveGate(market, cfg.gate);
+      const shadowAccStr = sr
+        ? (sr.accuracy >= cfg.alvo ? chalk.green : chalk.yellow)(`${sr.accuracy}% (${sr.total} am.) 🔵`)
+        : chalk.gray('SHADOW (sem dados)');
+      console.log(`  ${market.padEnd(17)} ${cfg.oddsSweet.padEnd(16)} ${String(cfg.gate + '%').padStart(5)}  ${String(shadowAccStr).padEnd(18)} T${cfg.tier}`);
+      continue;
+    }
+    const gateResult = getCalibrationAboveGate(market, cfg.gate);
+    const accStr = gateResult
+      ? (gateResult.accuracy >= cfg.alvo ? chalk.green.bold : chalk.yellow)(
+          gateResult.accuracy + '% (' + gateResult.total + ' am.)'
+        )
       : chalk.gray('—');
-    console.log(`  ${market.padEnd(17)} ${cfg.oddsSweet.padEnd(16)} ${String(acc).padEnd(14)} T${cfg.tier}`);
+    console.log(`  ${market.padEnd(17)} ${cfg.oddsSweet.padEnd(16)} ${String(cfg.gate + '%').padStart(5)}  ${String(accStr).padEnd(18)} T${cfg.tier}`);
   }
 
   console.log('\n' + chalk.bold('═'.repeat(70)) + '\n');

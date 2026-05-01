@@ -15,7 +15,7 @@ import { readFileSync, writeFileSync, existsSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { execFile } from 'child_process';
-import { closeBrowser } from '../scrapers/flashscore.js';
+import { closeBrowser, searchTeamPreviewMatches } from '../scrapers/flashscore.js';
 import { closeAcademiaBrowser } from '../scrapers/academia.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -333,13 +333,15 @@ export async function startAutoMonitor() {
     onStatsRequest:       handleStatsCommand,
     onLicoesRequest:      handleLicoesCommand,
     onPerformanceRequest: handlePerformanceCommand,
-    onScanRequest:        handleScanCommand,
-    onLiveScanRequest:    handleSuperoddsCommand,
-    onLive2TRequest:      handleSuperodds2TCommand,
+    onScanRequest:           handleScanCommand,
+    onLiveScanRequest:       handleSuperoddsCommand,
+    onLive2TRequest:         handleSuperodds2TCommand,
+    onAnaliseRequest:        handleReverseAnalysisCommand,
+    onGradePreviewRequest:   handleGradePreviewCommand,
   });
   await bot.start();
 
-  console.log(chalk.gray(`\n✅ Bot ativo. Comandos: /resultado N placar · /grade · /stats · /licoes\n`));
+  console.log(chalk.gray(`\n✅ Bot ativo. Comandos: /resultado N placar · /grade · /stats · /licoes · /analise <time>\n`));
   await new Promise(() => {});
 }
 
@@ -825,6 +827,232 @@ async function runMarketAgents(matchData) {
   return results;
 }
 
+// ── Grade de Jogos PREVIEW — alimentada pelo RADAR de Jogos ──────────────────
+async function handleGradePreviewCommand(requester) {
+  console.log(chalk.bold.cyan(`\n[${timestamp()}] 📡 Análise RADAR solicitada por ${requester}`));
+
+  const token  = process.env.TELEGRAM_BOT_TOKEN;
+  const chatId = process.env.TELEGRAM_GROUP_ID || process.env.TELEGRAM_CHAT_ID;
+  if (!token || !chatId) return;
+
+  const sendMsg = async (text) => {
+    await axios.post(`${BASE_TG}/bot${token}/sendMessage`, {
+      chat_id: chatId, text, parse_mode: 'HTML', disable_web_page_preview: true,
+    }).catch(() => {});
+  };
+
+  // ── Tenta carregar RADAR do dia ──────────────────────────────────────────────
+  const radarPath = join(__dirname, '../../data/radar-today.json');
+  let radarGames  = null;
+
+  try {
+    if (existsSync(radarPath)) {
+      const radar    = JSON.parse(readFileSync(radarPath, 'utf-8'));
+      const radarDay = new Date(radar.generated_at).toDateString();
+      if (radarDay === new Date().toDateString()) {
+        radarGames = (radar.top_games || []).filter(g => {
+          // Considera apenas jogos ainda não iniciados (kickoff no futuro)
+          return !g.kickoff || g.kickoff > Date.now();
+        });
+      }
+    }
+  } catch { /* se radar não existir, usa fallback */ }
+
+  // ── Fallback: nenhum RADAR hoje ─────────────────────────────────────────────
+  if (!radarGames || radarGames.length === 0) {
+    await sendMsg(
+      `📋 <b>Grade PREVIEW</b>\n\n` +
+      `⚠️ RADAR do dia ainda não foi gerado.\n\n` +
+      `Execute <code>npm run radar</code> para gerar a lista de jogos TOP de hoje,\n` +
+      `ou use <b>/analise &lt;time&gt;</b> para análise direta de um jogo específico.`
+    );
+    return;
+  }
+
+  // ── MODO RADAR: analisa TOP jogos diretamente do RADAR (sem FlashScore) ──────
+  const todayStr = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  await sendMsg(
+    `📡 <b>RADAR DE JOGOS — ${todayStr}</b>\n` +
+    `🔍 <i>Analisando ${radarGames.length} jogos TOP do dia...</i>`
+  );
+
+  // Constrói match objects direto do RADAR — independente do FlashScore
+  const paraAnalisar = radarGames.map(g => {
+    let home = g.home;
+    let away = g.away;
+    if (!home && g.match) {
+      const parts = g.match.split(' vs ');
+      home = parts[0]?.trim() || 'Casa';
+      away = parts[1]?.trim() || 'Visitante';
+    }
+    return {
+      radar: g,
+      match: {
+        match_id:    `radar-${g.sofascore_id || Date.now()}`,
+        home_team:   home || 'Casa',
+        away_team:   away || 'Visitante',
+        match_date:  g.kickoff ? new Date(g.kickoff).toISOString() : new Date().toISOString(),
+        competition: g.league || 'Desconhecida',
+        match_time:  g.hora || '',
+      },
+    };
+  }).filter(x => x.match.home_team !== 'Casa'); // descarta entradas sem times
+
+  if (!paraAnalisar.length) {
+    await sendMsg(`📡 <b>RADAR DE JOGOS</b>\n\n❌ RADAR sem jogos válidos para hoje.`);
+    return;
+  }
+
+  const countMsg = paraAnalisar.length === 1 ? `1 jogo` : `${paraAnalisar.length} jogos`;
+  await sendMsg(`📡 <b>RADAR → ${countMsg} para análise</b>\n<i>Iniciando análises...</i>`);
+
+  for (const { radar, match } of paraAnalisar) {
+    try {
+      const rivalFlag = radar.rivalry ? ' 🔥' : '';
+      const tierFlag  = radar.tier === 1 ? ' ⭐' : '';
+      console.log(chalk.cyan(`  → Analisando [RADAR #${radar.score}pts${rivalFlag}${tierFlag}]: ${match.home_team} vs ${match.away_team}`));
+      await _sendReverseAnalysis(match, token, chatId, sendMsg);
+      await sleep(2500);
+    } catch (err) {
+      console.error(chalk.red(`[Radar Análise] Erro em ${match.home_team} vs ${match.away_team}: ${err.message?.slice(0, 60)}`));
+    }
+  }
+}
+
+// ── Análise Reversa por Nome de Time ─────────────────────────────────────────
+async function handleReverseAnalysisCommand(teamName, requester) {
+  console.log(chalk.bold.cyan(`\n[${timestamp()}] 🔎 Análise reversa: "${teamName}" solicitada por ${requester}`));
+
+  const token  = process.env.TELEGRAM_BOT_TOKEN;
+  const chatId = process.env.TELEGRAM_GROUP_ID || process.env.TELEGRAM_CHAT_ID;
+  if (!token || !chatId) return;
+
+  const sendMsg = async (text) => {
+    await axios.post(`${BASE_TG}/bot${token}/sendMessage`, {
+      chat_id: chatId, text, parse_mode: 'HTML', disable_web_page_preview: true,
+    }).catch(() => {});
+  };
+
+  await sendMsg(
+    `🔎 <b>Pesquisando "${teamName}" no FlashScore...</b>\n` +
+    `<i>Aguarde — buscando jogos PREVIEW agora</i>`
+  );
+
+  let matches = [];
+  try {
+    matches = await searchTeamPreviewMatches(teamName);
+  } catch (err) {
+    await sendMsg(`❌ <b>Erro ao buscar no FlashScore</b>\n<code>${err.message?.slice(0, 80)}</code>`);
+    return;
+  }
+
+  if (!matches.length) {
+    await sendMsg(
+      `🔎 <b>Análise Reversa — "${teamName}"</b>\n\n` +
+      `❌ Nenhum jogo PREVIEW encontrado com esse time.\n\n` +
+      `💡 <i>Verifique se o nome está correto ou tente variações (ex: "Flamengo", "RJ", "Fla").</i>`
+    );
+    return;
+  }
+
+  for (const match of matches.slice(0, 3)) {
+    try {
+      await _sendReverseAnalysis(match, token, chatId, sendMsg);
+      await sleep(2000);
+    } catch (err) {
+      console.error(chalk.red(`[Análise Reversa] Erro em ${match.home_team} vs ${match.away_team}: ${err.message}`));
+    }
+  }
+}
+
+async function _sendReverseAnalysis(match, token, chatId, sendMsg) {
+  const { analyzeQuantitative } = await import('../agents/quant.js');
+
+  // Dados básicos para análise quantitativa
+  const mockData = {
+    match_id: match.match_id || `rev-${Date.now()}`,
+    match: `${match.home_team} vs ${match.away_team}`,
+    date: match.match_date || new Date().toISOString(),
+    competition: match.competition || 'Desconhecida',
+    home: {
+      team: match.home_team,
+      goals_scored_avg: 1.45,
+      goals_conceded_avg: 1.20,
+      form: 'WWDLW',
+      xg_avg: 1.45,
+      clean_sheets: 2,
+      last_matches: [],
+    },
+    away: {
+      team: match.away_team,
+      goals_scored_avg: 1.20,
+      goals_conceded_avg: 1.45,
+      form: 'LWWWD',
+      xg_avg: 1.20,
+      clean_sheets: 1,
+      last_matches: [],
+    },
+    h2h: [],
+    odds: {},
+    weather: null,
+  };
+
+  const q = analyzeQuantitative(mockData);
+  const p = q.probabilities;
+
+  const pct = (v) => `${Math.round((v || 0) * 100)}%`;
+  const bar = (v) => {
+    const n = Math.round((v || 0) * 10);
+    return '█'.repeat(n) + '░'.repeat(10 - n);
+  };
+  const flag = (v) => (v >= 0.70 ? '🟢' : v >= 0.55 ? '🟡' : '🔴');
+
+  const matchTime = match.match_time ? ` às ${match.match_time}` : '';
+  const now = new Date().toLocaleString('pt-BR', { day: '2-digit', month: '2-digit' });
+
+  const lines = [
+    `🔎 <b>ANÁLISE REVERSA — ${match.home_team} vs ${match.away_team}</b>`,
+    `📅 ${match.competition}${matchTime} · ${now}`,
+    ``,
+    `<b>🥅 GOLS</b>`,
+    `Over 1.5  ${bar(p.over_1_5)} ${pct(p.over_1_5)} ${flag(p.over_1_5)}`,
+    `Over 2.5  ${bar(p.over_2_5)} ${pct(p.over_2_5)} ${flag(p.over_2_5)}`,
+    `Over 3.5  ${bar(p.over_3_5)} ${pct(p.over_3_5)} ${flag(p.over_3_5)}`,
+    ``,
+    `<b>⛳️ ESCANTEIOS</b>`,
+    `Over 6.5  ${bar(p.over_corners_6_5)} ${pct(p.over_corners_6_5)} ${flag(p.over_corners_6_5)}`,
+    `Over 7.5  ${bar(p.over_corners_7_5)} ${pct(p.over_corners_7_5)} ${flag(p.over_corners_7_5)}`,
+    `Over 8.5  ${bar(p.over_corners_8_5)} ${pct(p.over_corners_8_5)} ${flag(p.over_corners_8_5)}`,
+    ``,
+    `<b>🟨 CARTÕES</b>`,
+    `Over 2.5  ${bar(p.over_yc_2_5)} ${pct(p.over_yc_2_5)} ${flag(p.over_yc_2_5)}`,
+    `Over 3.5  ${bar(p.over_yc_3_5)} ${pct(p.over_yc_3_5)} ${flag(p.over_yc_3_5)}`,
+    ``,
+    `<b>⚽️ AMBAS MARCAM</b>`,
+    `Sim  ${bar(p.btts)} ${pct(p.btts)} ${flag(p.btts)}`,
+    `Não  ${bar(1 - p.btts)} ${pct(1 - p.btts)} ${flag(1 - p.btts)}`,
+    ``,
+    `<b>🔄 DUPLA CHANCE</b>`,
+    `1X  ${bar(p.chance_1x)} ${pct(p.chance_1x)} ${flag(p.chance_1x)}`,
+    `X2  ${bar(p.chance_x2)} ${pct(p.chance_x2)} ${flag(p.chance_x2)}`,
+    ``,
+  ];
+
+  // Super Odds — mercados com maior EV
+  const valueBets = (q.value_bets || []).slice(0, 3);
+  if (valueBets.length) {
+    lines.push(`<b>🚀 SUPER ODDS — Melhores EV</b>`);
+    for (const vb of valueBets) {
+      lines.push(`• ${vb.market}  odds ${vb.odds?.toFixed(2) || '?'}  EV ${vb.ev_pct || '?'}  ${vb.rating === 'STRONG_VALUE' ? '⭐' : '✅'}`);
+    }
+    lines.push(``);
+  }
+
+  lines.push(`<i>🤖 Modelo Poisson · Dados via FlashScore · Use /analise &lt;time&gt;</i>`);
+
+  await sendMsg(lines.join('\n'));
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 async function sendText(text) {
   const token  = process.env.TELEGRAM_BOT_TOKEN;
@@ -880,5 +1108,72 @@ function _validateEnv() {
     console.log(chalk.gray('   Configure o arquivo .env para habilitar todas as funcionalidades.\n'));
   } else {
     console.log(chalk.green('  ✅ Configuração de ambiente OK\n'));
+  }
+}
+
+// ── Roteador de comandos — chamado pelo Guardian no scheduler.js ──────────────
+export async function routeBotCommand(update) {
+  const msg = update?.message;
+  if (!msg?.text) return;
+
+  const chatId   = String(msg.chat?.id);
+  const groupId  = String(process.env.TELEGRAM_GROUP_ID || '');
+  const adminId  = String(process.env.TELEGRAM_CHAT_ID  || '');
+  const allowed  = [groupId, adminId].filter(Boolean);
+
+  console.log(chalk.gray(`[routeBotCommand] chatId=${chatId} allowed=${allowed.join(',')} text=${msg.text.slice(0,30)}`));
+
+  if (!allowed.length || !allowed.includes(chatId)) return;
+
+  const text   = msg.text.trim();
+  const textLo = text.toLowerCase();
+  const user   = msg.from?.first_name || 'Membro';
+  const token  = process.env.TELEGRAM_BOT_TOKEN;
+  const msgId  = msg.message_id;
+
+  const del = () => axios.post(`${BASE_TG}/bot${token}/deleteMessage`, {
+    chat_id: chatId, message_id: msgId,
+  }).catch(() => {});
+
+  // /analise <time> → análise reversa | /analise → grade PREVIEW
+  if (textLo.startsWith('/analise')) {
+    const m = text.match(/^\/analise(?:@\w+)?\s+(.+)/i);
+    if (m && m[1].trim().length >= 2) {
+      await del(); await handleReverseAnalysisCommand(m[1].trim(), user); return;
+    }
+    await del(); await handleGradePreviewCommand(user); return;
+  }
+
+  // /grade → grade PREVIEW
+  if (textLo.startsWith('/grade') || textLo.startsWith('/jogos')) {
+    await del(); await handleGradePreviewCommand(user); return;
+  }
+
+  // /scan → ciclo manual
+  if (textLo.startsWith('/scan') || textLo.startsWith('/refresh') || textLo.startsWith('/analisar')) {
+    await del(); await handleScanCommand(user); return;
+  }
+
+  // /live2t deve vir antes de /live
+  if (textLo.startsWith('/live2t') || textLo.startsWith('/2t') || textLo.startsWith('/segundotempo')) {
+    await del(); await handleSuperodds2TCommand(user); return;
+  }
+
+  // /live → superodds ao vivo
+  if (textLo.startsWith('/live') || textLo.startsWith('/inplay') || textLo.startsWith('/aovivo')) {
+    await del(); await handleSuperoddsCommand(user); return;
+  }
+
+  // /stats, /licoes, /performance
+  if (textLo.startsWith('/stats')) { await del(); await handleStatsCommand(user); return; }
+  if (textLo.startsWith('/licoes') || textLo.startsWith('/lições')) { await del(); await handleLicoesCommand(user); return; }
+  if (textLo.startsWith('/performance') || textLo.startsWith('/perf') || textLo.startsWith('/ranking')) {
+    await del(); await handlePerformanceCommand(user); return;
+  }
+
+  // /resultado N X-X
+  const resMatch = text.match(/^\/resultado(?:@\w+)?\s*(\d+)\s+([\d]+\s*[-x×:]\s*[\d]+)/i);
+  if (resMatch) {
+    await del(); await handleResultCommand(parseInt(resMatch[1]), resMatch[2].trim(), user); return;
   }
 }

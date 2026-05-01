@@ -519,22 +519,30 @@ async function runAuditoria(state, { trigger = 'calendar' } = {}) {
 }
 
 // ── Processamento de anomalias detectadas ──────────────────────────────────────
+// Todos os alertas (ALTA e MÉDIA) vão somente ao admin — grupo não recebe avisos internos.
 async function handleIssues(issues, state) {
+  const now = Date.now();
   for (const issue of issues) {
     const isAlta = issue.sev === 'ALTA';
+
+    // Cooldown — evita alertas duplicados ao admin por ciclo
+    const cooldown = issue.key.startsWith('unresolved_') ? CFG.UNRESOLVED_COOLDOWN_MS : CFG.ALERT_COOLDOWN_MS;
+    if (now - (alertCooldowns.get(issue.key) || 0) < cooldown) {
+      log('⏭', `Cooldown ativo (admin): ${issue.key}`, 'gray');
+      continue;
+    }
+    alertCooldowns.set(issue.key, now);
 
     if (isAlta) {
       log('🔴', `[ALTA] ${issue.msg}`, 'red');
       state.falhas_detectadas++;
 
-      await sendGroup(
-        issue.key,
+      await sendAdmin(
         `🔴 <b>WatchdogAgent — Alerta</b>\n<code>${tsShort()}</code>\n` +
         `Falha: ${issue.msg}\n` +
         (issue.agent ? `Agente afetado: <code>${issue.agent}</code>\n` : '') +
         `Sinal suspenso: verificar manualmente\n` +
-        `Ação imediata: investigar antes do próximo ciclo`,
-        state
+        `Ação imediata: investigar antes do próximo ciclo`
       );
 
       if (!state.anomalias_pendentes.includes(issue.key)) {
@@ -543,11 +551,9 @@ async function handleIssues(issues, state) {
 
     } else {
       log('⚠️', `[MÉDIA] ${issue.msg}`, 'yellow');
-      await sendGroup(
-        issue.key,
+      await sendAdmin(
         `⚠️ <b>WatchdogAgent — Atenção</b>\n<code>${tsShort()}</code>\n` +
-        `Item: ${issue.msg}\nAção: monitorar no próximo ciclo`,
-        state
+        `Item: ${issue.msg}\nAção: monitorar no próximo ciclo`
       );
     }
   }

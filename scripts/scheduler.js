@@ -602,6 +602,10 @@ const _guardianInterval = setInterval(async () => {
 
       // Verificar se é sinal de aposta do Fut Win Analytics
       await processBetSignal(upd).catch(() => {});
+
+      // Roteador de comandos do bot (analise, grade, scan, live, stats, etc.)
+      const { routeBotCommand } = await import('../src/workflows/auto-monitor.js');
+      await routeBotCommand(upd).catch(() => {});
     }
   } catch { /* silent */ }
 }, 10_000);

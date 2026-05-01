@@ -169,43 +169,99 @@ async function fetchEventResult(sofascoreId) {
   }
 }
 
+// ── Normaliza nome de time para comparação (remove acentos, caracteres especiais) ──
+function _normalizeTeamName(name) {
+  return (name || '')
+    .toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g, '') // remove acentos
+    .replace(/[^a-z0-9\s]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+// ── Score de similaridade entre dois nomes normalizados ──────────────────────
+function _nameSimilarity(a, b) {
+  if (!a || !b) return 0;
+  if (a === b) return 1.0;
+  // Match por prefixo de 8 caracteres (mais robusto que 6)
+  const prefixLen = Math.min(8, a.length, b.length);
+  if (prefixLen < 3) return 0;
+  if (a.slice(0, prefixLen) === b.slice(0, prefixLen)) return 0.9;
+  // Match por substring (um nome contém o outro)
+  const shorter = a.length < b.length ? a : b;
+  const longer  = a.length < b.length ? b : a;
+  if (shorter.length >= 4 && longer.includes(shorter)) return 0.8;
+  return 0;
+}
+
 // ── Tenta buscar por data/times quando não há sofascore_id ───────────────────
 async function trySearchByName(matchName, matchDate) {
   if (!matchName || !matchDate) return null;
   try {
-    const date = matchDate.split('T')[0]; // YYYY-MM-DD
-    const url  = `${SOFASCORE_BASE}/sport/football/scheduled-events/${date}`;
-    const { data } = await axios.get(url, { headers: HEADERS, timeout: 8000 });
-    const events = data?.events || [];
+    const baseDate = matchDate.split('T')[0]; // YYYY-MM-DD
+
+    // Tenta a data exata + dias adjacentes (fuso horário pode deslocar 1 dia)
+    const searchDates = [baseDate];
+    const d = new Date(baseDate + 'T12:00:00Z');
+    const dPlus  = new Date(d); dPlus.setDate(d.getDate() + 1);
+    const dMinus = new Date(d); dMinus.setDate(d.getDate() - 1);
+    searchDates.push(dPlus.toISOString().split('T')[0]);
+    searchDates.push(dMinus.toISOString().split('T')[0]);
 
     const [homeSearch, awaySearch] = matchName.split(/\s+vs\s+/i);
     if (!homeSearch || !awaySearch) return null;
 
-    // Busca pelo nome mais próximo (match parcial insensível a maiúsculas)
-    const found = events.find(e => {
-      const hn = e.homeTeam?.name?.toLowerCase() || '';
-      const an = e.awayTeam?.name?.toLowerCase() || '';
-      return (
-        hn.includes(homeSearch.toLowerCase().slice(0, 6)) &&
-        an.includes(awaySearch.toLowerCase().slice(0, 6))
-      );
-    });
+    const homeNorm = _normalizeTeamName(homeSearch);
+    const awayNorm = _normalizeTeamName(awaySearch);
 
-    if (!found) return null;
+    // Exige pelo menos 4 caracteres para matching confiável
+    if (homeNorm.length < 4 || awayNorm.length < 4) return null;
 
-    const status = found.status?.type;
-    if (status !== 'finished') return { status, score: null };
+    for (const searchDate of searchDates) {
+      const url = `${SOFASCORE_BASE}/sport/football/scheduled-events/${searchDate}`;
+      const { data } = await axios.get(url, { headers: HEADERS, timeout: 8000 });
+      const events = data?.events || [];
 
-    const home = found.homeScore?.current;
-    const away = found.awayScore?.current;
-    if (home == null || away == null) return null;
+      // Pontua cada evento pelo score de similaridade de nomes
+      // Exige score individual ≥ 0.85 em CADA time para evitar falso positivo
+      // (ex: "Manchester City" não deve casar com "Manchester United")
+      const candidates = events
+        .map(e => {
+          const hn    = _normalizeTeamName(e.homeTeam?.name);
+          const an    = _normalizeTeamName(e.awayTeam?.name);
+          const sHome = _nameSimilarity(hn, homeNorm);
+          const sAway = _nameSimilarity(an, awayNorm);
+          return { event: e, score: sHome + sAway, sHome, sAway };
+        })
+        .filter(x => x.score >= 1.75 && x.sHome >= 0.85 && x.sAway >= 0.85)
+        .sort((a, b) => b.score - a.score);
 
-    return {
-      status:    'finished',
-      score:     { home: Number(home), away: Number(away) },
-      matchName: `${found.homeTeam?.name} ${home}-${away} ${found.awayTeam?.name}`,
-      sofascoreId: found.id,
-    };
+      // Ambiguidade: se dois candidatos têm score similar, não arriscar
+      if (candidates.length > 1 && (candidates[0].score - candidates[1].score) < 0.2) {
+        console.warn(`[Backfill] ⚠️  Ambiguidade em "${matchName}" em ${searchDate} — ${candidates.length} candidatos similares, ignorando`);
+        continue;
+      }
+
+      const found = candidates[0]?.event;
+      if (!found) continue;
+
+      const status = found.status?.type;
+      if (status !== 'finished') return { status, score: null };
+
+      const home = found.homeScore?.current;
+      const away = found.awayScore?.current;
+      if (home == null || away == null) return null;
+
+      return {
+        status:      'finished',
+        score:       { home: Number(home), away: Number(away) },
+        matchName:   `${found.homeTeam?.name} ${home}-${away} ${found.awayTeam?.name}`,
+        sofascoreId: found.id,
+        foundOnDate: searchDate,
+      };
+    }
+
+    return null;
   } catch {
     return null;
   }

@@ -33,6 +33,13 @@ const PREMIUM_LEAGUES = new Set([
 const HIGH_GOALS_LEAGUES = new Set(['Premier League', 'Bundesliga']);
 const BTTS_LOW_LEAGUES   = new Set(['Brasileirão Betano', 'Brasileirão Série B']);
 
+// Competições com precisão BTTS historicamente < 20% — BTTS bloqueado nestas ligas
+const BTTS_BLOCKED_LEAGUES = new Set([
+  'Conference League',
+  'UEFA Conference League',
+  'UEFA Europa Conference League',
+]);
+
 // Peso máximo de ajuste por regra (evita superajuste)
 const MAX_SINGLE_ADJUSTMENT = 0.12;
 const MAX_TOTAL_ADJUSTMENT  = 0.20;
@@ -51,9 +58,10 @@ export function extractPreMatchSignals(matchData, quantAnalysis) {
   const la      = quantAnalysis?.lambda_away || 1.1;
 
   // Liga
-  if (PREMIUM_LEAGUES.has(comp))    signals.add('league_premium');
-  if (HIGH_GOALS_LEAGUES.has(comp)) signals.add('league_high_goals');
-  if (BTTS_LOW_LEAGUES.has(comp))   signals.add('league_btts_low');
+  if (PREMIUM_LEAGUES.has(comp))       signals.add('league_premium');
+  if (HIGH_GOALS_LEAGUES.has(comp))    signals.add('league_high_goals');
+  if (BTTS_LOW_LEAGUES.has(comp))      signals.add('league_btts_low');
+  if (BTTS_BLOCKED_LEAGUES.has(comp))  signals.add('btts_competition_blocked');
 
   // Forma do mandante
   const homeForm = (home.form || '').slice(-5);
@@ -103,12 +111,28 @@ export function extractPreMatchSignals(matchData, quantAnalysis) {
     signals.add('extreme_dominance');
 
   // Forma ofensiva recente (quantas vezes marcou nos últimos 5)
-  const homeGoalsForm  = (home.form || '').slice(-5); // usa form geral como proxy
+  const homeGoalsForm  = (home.form || '').slice(-5);
   const awayGoalsForm  = (away.form || '').slice(-5);
   const homeRecentWins = homeGoalsForm.split('').filter(c => c === 'W').length;
   const awayRecentLoss = awayGoalsForm.split('').filter(c => c === 'L').length;
   // Visitante perdendo muito → provavelmente não marca
   if (awayRecentLoss >= 4 && awayScored < 1.0) signals.add('away_poor_form_scorer');
+
+  // ── Sinais estruturais derivados de faixas do PIE (2026-04-30) ─────────────
+  // Over 3.5: faixa 70-80 = 37.7%, faixa 60-70 = 1.7% → penalidade quando sem contexto
+  // Contexto necessário: both_high_scoring (λ ≥ 3.2) E h2h alto
+  const over35ContextOk = signals.has('both_high_scoring') && signals.has('h2h_high_scoring');
+  if (!over35ContextOk) signals.add('over35_low_context');
+
+  // YC 4.5: máx histórico 50.9% em qualquer faixa/liga → penalidade sempre que não UCL+ambos atacam
+  const yc45ContextOk = signals.has('both_high_scoring') &&
+    (comp.includes('Champions League') || comp.includes('Europa League'));
+  if (!yc45ContextOk) signals.add('yc45_structural_block');
+
+  // X2 (Dupla Chance fora): sem dominância clara do visitante → impreciso
+  if (!signals.has('away_strong_favorite') && !signals.has('away_high_form')) {
+    signals.add('x2_away_not_dominant');
+  }
 
   return signals;
 }
@@ -206,9 +230,15 @@ export function applyPIERules(probabilities, preMatchSignals) {
 }
 
 /**
- * Aplica a correção de calibração Poisson.
- * Quando o Poisson prevê P(Over 2.5) = 0.55 e o histórico mostra que
- * a taxa real é 0.50 nessa faixa → corrige para 0.50.
+ * Aplica a correção de calibração Poisson com blending ponderado por amostras.
+ *
+ * O peso do histórico cresce gradualmente à medida que há mais amostras:
+ *   n ≤  5 amostras → w = 0.00 (100% Poisson — dados insuficientes)
+ *   n = 27 amostras → w = 0.50 (blend equilibrado)
+ *   n = 50+          → w = 0.80 (histórico dominante)
+ *
+ * Isso evita superajuste com poucos dados e garante que o Poisson nunca seja
+ * completamente ignorado (floor 0.20 para o modelo base).
  */
 export function applyPoissonCalibration(probabilities, quantAnalysis) {
   let db;
@@ -225,9 +255,9 @@ export function applyPoissonCalibration(probabilities, quantAnalysis) {
   };
 
   for (const [market, probKey] of Object.entries(MARKET_TO_PROB)) {
-    const buckets   = corrections[market];
+    const buckets = corrections[market];
     if (!buckets?.length) continue;
-    const prob      = probabilities[probKey];
+    const prob = probabilities[probKey];
     if (prob == null) continue;
 
     // Encontrar bucket mais próximo
@@ -237,8 +267,10 @@ export function applyPoissonCalibration(probabilities, quantAnalysis) {
 
     if (!closest || closest.n < 5) continue;
 
-    // Calibração suave: 50% peso histórico, 50% Poisson
-    const calibrated = prob * 0.50 + closest.actual_rate * 0.50;
+    // Peso dinâmico: cresce de 0 (n=5) até 0.80 (n≥50), nunca ultrapassando 0.80
+    // Floor de 0.20 garante que o Poisson sempre contribui para a estimativa final
+    const w = Math.min((closest.n - 5) / 45, 0.80);
+    const calibrated = prob * (1 - w) + closest.actual_rate * w;
     adjusted[probKey] = Math.min(0.97, Math.max(0.03, +calibrated.toFixed(3)));
   }
 
@@ -297,6 +329,17 @@ function applyHardcodedRules(probabilities, signals) {
   const log   = [];
   let count   = 0;
 
+  // ── BTTS: competição com precisão histórica < 20% — bloqueio total ───────────
+  // Conference League: apenas 13% de accuracy real → probabilidade rebaixada ao floor
+  if (signals.has('btts_competition_blocked')) {
+    const before = probs.btts;
+    probs.btts = 0.03; // rebaixa ao mínimo absoluto — gate de 55%+ nunca será atingido
+    log.push(`  BTTS: ${pctFmt(before)} → ${pctFmt(probs.btts)} (btts_competition_blocked — precisão histórica < 20%)`);
+    count++;
+    // Retorna imediatamente para esta série — sem empilhar outras penalidades em cima
+    return { probs, count, log };
+  }
+
   // ── BTTS: penalidade para atacantes fracos ────────────────────────────────
   if (signals.has('both_weak_attack')) {
     const before = probs.btts;
@@ -347,6 +390,60 @@ function applyHardcodedRules(probabilities, signals) {
     probs.over_1_5 = Math.max(0.03, probs.over_1_5 - 0.08);
     log.push(`  Over1.5: ${pctFmt(before)} → ${pctFmt(probs.over_1_5)} (h2h_low_scoring -8pp)`);
     count++;
+  }
+
+  // ── Over 3.5: penalidade estrutural quando sem contexto de alta pontuação ──
+  // Dados PIE: faixa 70-80 = 37.7%, faixa 60-70 = 1.7% → nunca operar sem contexto forte
+  if (signals.has('over35_low_context') && probs.over_3_5 != null) {
+    const before = probs.over_3_5;
+    probs.over_3_5 = Math.max(0.03, probs.over_3_5 - 0.22);
+    log.push(`  Over3.5: ${pctFmt(before)} → ${pctFmt(probs.over_3_5)} (over35_low_context -22pp)`);
+    count++;
+  }
+
+  // ── YC 4.5: penalidade estrutural — máx 50.9% em qualquer cenário ──────────
+  // Exceção: UCL/EL com both_high_scoring (já tratada pelo sinal)
+  if (signals.has('yc45_structural_block') && probs.over_yc_4_5 != null) {
+    const before = probs.over_yc_4_5;
+    probs.over_yc_4_5 = Math.max(0.03, probs.over_yc_4_5 - 0.22);
+    log.push(`  YC4.5: ${pctFmt(before)} → ${pctFmt(probs.over_yc_4_5)} (yc45_structural_block -22pp)`);
+    count++;
+  }
+
+  // ── X2: penalidade quando visitante não demonstra dominância ──────────────
+  // Dados PIE: X2 máx 53.1% em qualquer faixa — só é válido com visitante claramente superior
+  if (signals.has('x2_away_not_dominant') && probs.chance_x2 != null) {
+    const before = probs.chance_x2;
+    probs.chance_x2 = Math.max(0.03, probs.chance_x2 - 0.18);
+    log.push(`  X2: ${pctFmt(before)} → ${pctFmt(probs.chance_x2)} (x2_away_not_dominant -18pp)`);
+    count++;
+  }
+
+  // ── Home Win / Away Win / Draw: penalidades estruturais permanentes ────────
+  // Precisão histórica: HomeWin=45%, AwayWin=29%, Draw=26% — abaixo do limite operacional
+  if (probs.home_win != null) {
+    const before = probs.home_win;
+    probs.home_win = Math.max(0.03, probs.home_win - 0.20);
+    if (before !== probs.home_win) {
+      log.push(`  HomeWin: ${pctFmt(before)} → ${pctFmt(probs.home_win)} (home_win_structural -20pp)`);
+      count++;
+    }
+  }
+  if (probs.away_win != null) {
+    const before = probs.away_win;
+    probs.away_win = Math.max(0.03, probs.away_win - 0.30);
+    if (before !== probs.away_win) {
+      log.push(`  AwayWin: ${pctFmt(before)} → ${pctFmt(probs.away_win)} (away_win_structural -30pp)`);
+      count++;
+    }
+  }
+  if (probs.draw != null) {
+    const before = probs.draw;
+    probs.draw = Math.max(0.03, probs.draw - 0.30);
+    if (before !== probs.draw) {
+      log.push(`  Draw: ${pctFmt(before)} → ${pctFmt(probs.draw)} (draw_structural -30pp)`);
+      count++;
+    }
   }
 
   return { probs, count, log };

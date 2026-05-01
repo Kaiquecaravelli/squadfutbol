@@ -13,19 +13,21 @@ import axios from 'axios';
 const BASE = 'https://api.telegram.org';
 
 export class TelegramBot {
-  constructor({ token, groupId, onGradeRequest, onResultRequest, onStatsRequest, onLicoesRequest, onPerformanceRequest, onScanRequest, onLiveScanRequest, onLive2TRequest }) {
-    this.token                = token;
-    this.groupId              = String(groupId);
-    this.onGradeRequest       = onGradeRequest;
-    this.onResultRequest      = onResultRequest;
-    this.onStatsRequest       = onStatsRequest;
-    this.onLicoesRequest      = onLicoesRequest;
-    this.onPerformanceRequest = onPerformanceRequest;
-    this.onScanRequest        = onScanRequest;
-    this.onLiveScanRequest    = onLiveScanRequest;
-    this.onLive2TRequest      = onLive2TRequest;
-    this.offset               = 0;
-    this.running              = false;
+  constructor({ token, groupId, onGradeRequest, onResultRequest, onStatsRequest, onLicoesRequest, onPerformanceRequest, onScanRequest, onLiveScanRequest, onLive2TRequest, onAnaliseRequest, onGradePreviewRequest }) {
+    this.token                  = token;
+    this.groupId                = String(groupId);
+    this.onGradeRequest         = onGradeRequest;
+    this.onResultRequest        = onResultRequest;
+    this.onStatsRequest         = onStatsRequest;
+    this.onLicoesRequest        = onLicoesRequest;
+    this.onPerformanceRequest   = onPerformanceRequest;
+    this.onScanRequest          = onScanRequest;
+    this.onLiveScanRequest      = onLiveScanRequest;
+    this.onLive2TRequest        = onLive2TRequest;
+    this.onAnaliseRequest       = onAnaliseRequest;
+    this.onGradePreviewRequest  = onGradePreviewRequest;
+    this.offset                 = 0;
+    this.running                = false;
   }
 
   async start() {
@@ -151,6 +153,26 @@ export class TelegramBot {
       return;
     }
 
+    // /analise  — sem argumento → grade de jogos PREVIEW
+    // /analise <time>  — com argumento → análise reversa do time
+    if (text.startsWith('/analise')) {
+      const analiseMatch = text.match(/^\/analise(?:@\w+)?\s+(.+)/i);
+      if (analiseMatch) {
+        const teamName = analiseMatch[1].trim();
+        if (teamName.length >= 2) {
+          console.log(`🤖 [Bot] ${user} solicitou análise reversa: "${teamName}"`);
+          await this._deleteMessage(msgId);
+          await this.onAnaliseRequest?.(teamName, user);
+          return;
+        }
+      }
+      // Sem argumento → mostra grade de jogos disponíveis
+      console.log(`🤖 [Bot] ${user} solicitou grade de jogos PREVIEW`);
+      await this._deleteMessage(msgId);
+      await this.onGradePreviewRequest?.(user);
+      return;
+    }
+
     // /help ou /start ou /ajuda
     if (text.startsWith('/help') || text.startsWith('/start') || text.startsWith('/ajuda')) {
       await this._deleteMessage(msgId);
@@ -179,6 +201,8 @@ export class TelegramBot {
       `🔄  /scan               Forçar novo ciclo de análise agora`,
       `🔴  /live               Análise de jogos ao vivo agora`,
       `🟡  /live2t             Análise exclusiva 2° Tempo (min 46+)`,
+      `🔎  /analise            Grade de jogos disponíveis (PREVIEW)`,
+      `🔎  /analise &lt;time&gt;    Análise completa de todos os mercados`,
       ``,
       `<i>Análises e resultados são processados automaticamente.</i>`,
     ].join('\n');
