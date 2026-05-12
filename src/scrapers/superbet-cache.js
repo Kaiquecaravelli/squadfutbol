@@ -343,7 +343,28 @@ export function lookupMatchUrl(homeTeam, awayTeam, type = 'prelive') {
   );
   if (altMatch) return altMatch.url;
 
+  // Nível 5 — Fuzzy Match Avançado (2026-05-12)
+  // Para casos como "Deportivo Alavés" vs "Alavés", "FC Barcelona" vs "Barcelona"
+  const hClean = _cleanTeamPrefix(hSlug);
+  const aClean = _cleanTeamPrefix(aSlug);
+
+  const fuzzyMatch = entries.find(e => {
+    const eHClean = _cleanTeamPrefix(e.home);
+    const eAClean = _cleanTeamPrefix(e.away);
+    return (eHClean.includes(hClean) || hClean.includes(eHClean)) &&
+           (eAClean.includes(aClean) || aClean.includes(eAClean));
+  });
+  if (fuzzyMatch) return fuzzyMatch.url;
+
   return null;
+}
+
+// Remove prefixos comuns de times para fuzzy matching
+function _cleanTeamPrefix(slug) {
+  const prefixes = ['fc', 'cf', 'sc', 'ac', 'rc', 'club', 'deportivo', 'real', 'psg', 'rcd'];
+  const parts = slug.split('-');
+  const meaningful = parts.filter(p => p.length >= 4 && !prefixes.includes(p));
+  return meaningful.length > 0 ? meaningful.join('-') : slug.slice(0, 8);
 }
 
 /**
