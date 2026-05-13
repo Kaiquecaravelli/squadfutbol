@@ -2432,6 +2432,12 @@ export async function notifyDailyReport(resolved = []) {
   const greens = resolved.filter(e => e.acertou === true);
   const reds   = resolved.filter(e => e.acertou === false);
   const total  = greens.length + reds.length;
+
+  // Se não há resultados verificáveis, não enviar relatório
+  if (total === 0) {
+    console.log('[Telegram] Nenhum resultado hoje — relatório suprimido');
+    return false;
+  }
   const taxa   = total > 0 ? ((greens.length / total) * 100).toFixed(0) : '—';
 
   // Saldo estimado (1.5u por aposta, odds média da entrada ou 1.75 padrão)
@@ -2457,24 +2463,17 @@ export async function notifyDailyReport(resolved = []) {
     `📊  <b>RELATÓRIO DO DIA  —  ${today}</b>`,
     SEP_HEAVY,
     BR,
+    `✅  GREEN :  <b>${greens.length}</b>      ❌  RED :  <b>${reds.length}</b>`,
+    `🎯  Taxa de acerto :  <b>${taxa}%</b>  (${total} resultado${total !== 1 ? 's' : ''})`,
+    `${saldoIcon}  Saldo estimado :  <b>${saldoStr}</b>`,
+    BR,
+    `<b>Por mercado :</b>`,
   ];
 
-  if (total === 0) {
-    lines.push(`<i>Nenhum resultado fechado hoje.</i>`);
-  } else {
-    lines.push(
-      `✅  GREEN :  <b>${greens.length}</b>      ❌  RED :  <b>${reds.length}</b>`,
-      `🎯  Taxa de acerto :  <b>${taxa}%</b>  (${total} resultado${total !== 1 ? 's' : ''})`,
-      `${saldoIcon}  Saldo estimado :  <b>${saldoStr}</b>`,
-      BR,
-      `<b>Por mercado :</b>`,
-    );
-
-    for (const [mkt, v] of Object.entries(porMercado)) {
-      const t = v.g + v.r;
-      const p = ((v.g / t) * 100).toFixed(0);
-      lines.push(`  📌  ${mkt}  :  ${v.g} ✅  ${v.r} ❌  (${p}%)`);
-    }
+  for (const [mkt, v] of Object.entries(porMercado)) {
+    const t = v.g + v.r;
+    const p = ((v.g / t) * 100).toFixed(0);
+    lines.push(`  📌  ${mkt}  :  ${v.g} ✅  ${v.r} ❌  (${p}%)`);
   }
 
   lines.push(BR, SEP_HEAVY);
