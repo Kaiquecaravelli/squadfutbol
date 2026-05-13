@@ -412,6 +412,45 @@ export async function setLambdaFator(competition, fator) {
   invalidateCalibrationCache();
 }
 
+// ── Predictions queries ────────────────────────────────────────────────────────
+
+export async function getPendingPredictions() {
+  await _ensureConnection();
+  return Prediction.find({ result_id: null }).lean();
+}
+
+export async function getPredictionByIdx(idx) {
+  await _ensureConnection();
+  return Prediction.findOne({ idx, result_id: null }).sort({ created_at: -1 }).lean();
+}
+
+export async function getPredictionById(id) {
+  await _ensureConnection();
+  return Prediction.findById(id).lean();
+}
+
+export async function getAgentCalibration(market) {
+  await _ensureConnection();
+  const calib = await Calibration.findOne({ market }).lean();
+  if (!calib) return null;
+  return {
+    market,
+    overall: calib.total > 0 ? ((calib.hits / calib.total) * 100).toFixed(1) : null,
+    samples: calib.total,
+    byRange: calib.byRange,
+    byCompetition: calib.byCompetition,
+  };
+}
+
+export async function getCalibrationFactor(market, prob) {
+  await _ensureConnection();
+  const calib = await Calibration.findOne({ market }).lean();
+  if (!calib || calib.total < 5) return null;
+  return { accuracy: ((calib.hits / calib.total) * 100).toFixed(1), samples: calib.total };
+}
+
+// ── Batch operations ──────────────────────────────────────────────────────────
+
 // ── Batch operations ──────────────────────────────────────────────────────────
 
 export async function batchSaveAnalysis(analyses, predId) {

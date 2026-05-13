@@ -55,6 +55,40 @@ import {
 }                             from '../src/resilience/state-manager.js';
 import { watchdog, withRetry } from '../src/resilience/network-watchdog.js';
 import { logRecoveryStatus, isRecoverable } from '../src/resilience/recovery.js';
+import 'dotenv/config';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// VALIDAÇÃO DE VARIÁVEIS DE AMBIENTE — Fail Fast
+// ─────────────────────────────────────────────────────────────────────────────
+function _validateEnv() {
+  const required = [
+    { key: 'MONGODB_URI', name: 'MongoDB Atlas' },
+    { key: 'TELEGRAM_BOT_TOKEN', name: 'Telegram Bot' },
+    { key: 'TELEGRAM_ADMIN_USER_ID', name: 'Telegram Admin' },
+  ];
+
+  const missing = [];
+
+  for (const env of required) {
+    const value = process.env[env.key];
+    console.log(`[ENV] ${env.key}: ${value ? 'OK' : 'MISSING'}`);
+
+    if (!value) {
+      missing.push(env.name);
+    }
+  }
+
+  if (missing.length > 0) {
+    console.error(`\n❌ VARIÁVEIS FALTANDO: ${missing.join(', ')}`);
+    console.error('Configure-as no GitHub Actions Secrets ou .env local\n');
+    process.exit(1);
+  }
+
+  console.log('[ENV] ✅ Todas as variáveis obrigatórias presentes\n');
+}
+
+// Executa validação imediatamente
+_validateEnv();
 
 const __dir   = dirname(fileURLToPath(import.meta.url));
 const ROOT    = join(__dir, '..');
@@ -179,7 +213,7 @@ async function etapa1_coletar(dates, dryRun) {
       dryRun
         ? Promise.resolve({ date, ok: true })
         : execFileAsync('node', ['scripts/sofascore-collector.js', date], {
-            cwd: ROOT, timeout: 90_000,
+            cwd: ROOT, timeout: 180_000,
           }).then(() => ({ date, ok: true })).catch(e => ({ date, ok: false, err: e }))
     )
   );
@@ -275,7 +309,7 @@ async function etapa2_backfill(dryRun) {
     }
 
     // Pausa apenas entre lotes (não entre cada predição individual)
-    if (i + BATCH_SIZE < ready.length) await sleep(1200);
+    if (i + BATCH_SIZE < ready.length) await sleep(600);
   }
 
   log('🔄', `Backfill: ${fechadas} fechadas, ${erros} sem resultado ainda`, 'green');
@@ -411,28 +445,23 @@ async function etapa4b_urlGate(qualified) {
   log('  🌐', 'Atualizando cache de URLs Superbet (PRÉ-LIVE)...', 'cyan');
   await ensureFresh('prelive');
 
-  const gated = [];
-
-  for (const item of qualified) {
+  // Helper para processar uma oportunidade (paralelizado)
+  async function _checkUrl(item) {
     const matchName = item.pred.match_name || '';
-    // Extrai home e away do "Home vs Away"
     const parts = matchName.split(/\s+vs\s+/i);
     const home  = parts[0]?.trim() || '';
     const away  = parts[1]?.trim() || '';
 
     if (!home || !away) {
-      log('  ⚠️', `${matchName} — nome inválido, bloqueado`, 'yellow');
-      continue;
+      return { item, ok: false, reason: 'nome inválido' };
     }
 
     const url = lookupMatchUrl(home, away, 'prelive');
-
     if (!url) {
-      log('  🚫', `${matchName.substring(0, 40)} — sem URL Superbet, análise bloqueada`, 'red');
-      continue;
+      return { item, ok: false, reason: 'sem URL Superbet' };
     }
 
-    // Valida se a URL ainda está acessível (evita link morto no Telegram)
+    // Valida se a URL está acessível (evita link morto no Telegram)
     let urlOk = false;
     try {
       const probe = await axios.head(url, {
@@ -447,13 +476,28 @@ async function etapa4b_urlGate(qualified) {
     }
 
     if (!urlOk) {
-      log('  🔴', `${matchName.substring(0, 40)} — link Superbet inativo (${url.slice(0, 50)}...), bloqueado`, 'red');
-      continue;
+      return { item, ok: false, reason: 'link inativo' };
     }
 
-    item.superbetUrl = url;
-    gated.push(item);
-    log('  ✅', `${matchName.substring(0, 40)} — URL validada e ativa`, 'green');
+    return { item, ok: true, url };
+  }
+
+  // Paraleliza verificação HTTP (maior gargalo removido)
+  log('  🔄', `Verificando ${qualified.length} URLs em paralelo...`, 'cyan');
+  const results = await Promise.allSettled(qualified.map(_checkUrl));
+
+  const gated = [];
+  for (const r of results) {
+    const { item, ok, reason, url } = r.status === 'fulfilled' ? r.value : { item: null, ok: false, reason: 'erro' };
+    if (!item) continue;
+
+    if (ok) {
+      item.superbetUrl = url;
+      gated.push(item);
+      log('  ✅', `${item.pred.match_name?.substring(0, 40)} — URL validada`, 'green');
+    } else {
+      log('  🚫', `${item.pred.match_name?.substring(0, 40)} — ${reason}`, 'red');
+    }
   }
 
   log(
@@ -542,7 +586,7 @@ async function etapa5_telegram(qualified, dryRun) {
       enviadas++;
     }
 
-    await sleep(1000);
+    await sleep(500);
   }
 
   log('📲', `${enviadas} oportunidades enviadas ao Telegram`, 'green');
@@ -793,8 +837,6 @@ export async function runDailyPipeline(opts = {}) {
 
 // ── CLI ────────────────────────────────────────────────────────────────────────
 if (process.argv[1]?.endsWith('daily-pipeline.js')) {
-  import('dotenv/config').catch(() => {});
-
   const args    = process.argv.slice(2);
   const dryRun  = args.includes('--dry-run');
   const report  = args.includes('--report');
@@ -802,8 +844,6 @@ if (process.argv[1]?.endsWith('daily-pipeline.js')) {
   const datesBack = datesArg ? parseInt(datesArg.split('=')[1]) : 2;
 
   if (report) {
-    // Só envia relatório PIE
-    import('dotenv/config').catch(() => {});
     await etapa6_relatorio(false);
   } else {
     await runDailyPipeline({ dryRun, datesBack });
