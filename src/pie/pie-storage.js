@@ -464,13 +464,15 @@ export async function savePieSnapshot() {
   await _ensureConnection();
   const db = await loadDB();
 
-  const verificaveis = db.stats.acertos + db.stats.erros;
+  const stats = db.stats || { acertos: 0, erros: 0, total: 0, nao_verificaveis: 0 };
+  const verificaveis = (stats.acertos || 0) + (stats.erros || 0);
   const globalRate = verificaveis > 0
-    ? parseFloat(((db.stats.acertos / verificaveis) * 100).toFixed(2))
+    ? parseFloat(((stats.acertos || 0) / verificaveis * 100).toFixed(2))
     : null;
 
   const markets = {};
-  for (const [market, cal] of Object.entries(db.calibration)) {
+  const calibration = db.calibration || {};
+  for (const [market, cal] of Object.entries(calibration)) {
     if (cal.total >= 5) {
       markets[market] = {
         acc: parseFloat(((cal.hits / cal.total) * 100).toFixed(2)),
