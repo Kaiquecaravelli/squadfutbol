@@ -58,14 +58,38 @@ export async function loadDB() {
     predictions,
     results,
     lessons,
-    positivePatterns: [], // TODO: implementar positivePatterns collection
+    positivePatterns: [],
     agentLogs: [],
     calibration: calibrationDocs.reduce((acc, c) => {
+      // Lida com diferentes formatos de byRange/byCompetition
+      let byRangeObj = {};
+      let byCompObj = {};
+
+      try {
+        if (c.byRange) {
+          if (c.byRange instanceof Map) {
+            byRangeObj = Object.fromEntries(c.byRange);
+          } else if (typeof c.byRange === 'object') {
+            byRangeObj = c.byRange;
+          }
+        }
+      } catch (e) { byRangeObj = {}; }
+
+      try {
+        if (c.byCompetition) {
+          if (c.byCompetition instanceof Map) {
+            byCompObj = Object.fromEntries(c.byCompetition);
+          } else if (typeof c.byCompetition === 'object') {
+            byCompObj = c.byCompetition;
+          }
+        }
+      } catch (e) { byCompObj = {}; }
+
       acc[c.market] = {
-        total: c.total,
-        hits: c.hits,
-        byRange: Object.fromEntries(c.byRange || new Map()),
-        byCompetition: Object.fromEntries(c.byCompetition || new Map()),
+        total: c.total || 0,
+        hits: c.hits || 0,
+        byRange: byRangeObj,
+        byCompetition: byCompObj,
       };
       return acc;
     }, {}),
@@ -74,7 +98,7 @@ export async function loadDB() {
       acc[f.competition] = f.fator;
       return acc;
     }, {}),
-    confrontos: [], // TODO: implementar confrontos collection
+    confrontos: [],
     stats: _calculateStats(predictions, results),
   };
 
