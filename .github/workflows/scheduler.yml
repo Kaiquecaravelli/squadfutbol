@@ -1,0 +1,123 @@
+name: SquadFutbol Scheduler
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Daily Pipeline - 04:00 UTC = 06:00 BR (horário de verão)
+    - cron: '0 4 * * *'
+    # Daily Pipeline Extra - 11:00 UTC = 13:00 BR
+    - cron: '0 11 * * *'
+
+jobs:
+  # ─────────────────────────────────────────────────────────────────────────────
+  # DAILY PIPELINE — Coleta +24h, backfill, PIE, Telegram
+  # ─────────────────────────────────────────────────────────────────────────────
+  daily-pipeline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Daily Pipeline
+        env:
+          MONGODB_URI: ${{ secrets.MONGODB_URI }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_ADMIN_USER_ID: ${{ secrets.TELEGRAM_ADMIN_USER_ID }}
+          TELEGRAM_GROUP_ID: ${{ secrets.TELEGRAM_GROUP_ID }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: npm run daily
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # PRELIVE SCAN — Varredura pré-live a cada 30min
+  # Executa das 09:00-12:00 UTC (06-09h BR) e 16:00-23:00 UTC (14-21h BR)
+  # ─────────────────────────────────────────────────────────────────────────────
+  prelive-scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Prelive Scan
+        env:
+          MONGODB_URI: ${{ secrets.MONGODB_URI }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_GROUP_ID: ${{ secrets.TELEGRAM_GROUP_ID }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: node scripts/prelive-superodds-now.js
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # RESULT BACKFILL — Fechar loop de feedback (23:00 UTC = 01:00 BR)
+  # ─────────────────────────────────────────────────────────────────────────────
+  backfill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Backfill
+        env:
+          MONGODB_URI: ${{ secrets.MONGODB_URI }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_ADMIN_USER_ID: ${{ secrets.TELEGRAM_ADMIN_USER_ID }}
+        run: npm run backfill
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # WEEKLY REPORT — Domingos 23:00 UTC = 01:00 BR (segundo fuso)
+  # ─────────────────────────────────────────────────────────────────────────────
+  weekly-report:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # Sundays at 23:00 UTC
+    cron: '0 23 * * 0'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Weekly Report
+        env:
+          MONGODB_URI: ${{ secrets.MONGODB_URI }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_ADMIN_USER_ID: ${{ secrets.TELEGRAM_ADMIN_USER_ID }}
+          TELEGRAM_GROUP_ID: ${{ secrets.TELEGRAM_GROUP_ID }}
+        run: npm run daily-report

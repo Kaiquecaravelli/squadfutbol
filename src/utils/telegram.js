@@ -11,6 +11,41 @@ const BASE = 'https://api.telegram.org';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 // ─────────────────────────────────────────────────────────────
+// CIRCUIT BREAKER — evita loop de falhas se Telegram indisponível
+// ─────────────────────────────────────────────────────────────
+let _telegramFailures = 0;
+let _telegramCircuitOpen = false;
+let _telegramCircuitResetTs = 0;
+const TELEGRAM_CIRCUIT_THRESHOLD = 5;
+const TELEGRAM_CIRCUIT_RESET_MS = 60000; // 1 minuto
+
+function _checkCircuitBreaker() {
+  if (!_telegramCircuitOpen) return false;
+
+  if (Date.now() > _telegramCircuitResetTs) {
+    _telegramCircuitOpen = false;
+    _telegramFailures = 0;
+    console.log('[Telegram] Circuit breaker RESETADO — retries重新激活');
+    return false;
+  }
+  return true;
+}
+
+function _recordTelegramFailure() {
+  _telegramFailures++;
+  if (_telegramFailures >= TELEGRAM_CIRCUIT_THRESHOLD) {
+    _telegramCircuitOpen = true;
+    _telegramCircuitResetTs = Date.now() + TELEGRAM_CIRCUIT_RESET_MS;
+    console.error(`[Telegram] ⚠️ CIRCUIT BREAKER ABERTO — ${TELEGRAM_CIRCUIT_THRESHOLD} falhas consecutivas`);
+  }
+}
+
+function _recordTelegramSuccess() {
+  _telegramFailures = 0;
+  _telegramCircuitOpen = false;
+}
+
+// ─────────────────────────────────────────────────────────────
 // CONSTANTES VISUAIS — padrão unificado para todas as mensagens
 // ─────────────────────────────────────────────────────────────
 
@@ -624,6 +659,12 @@ async function send(text, options = {}) {
     await _deleteOldMessage(oldMsgId);
   }
 
+  // Circuit Breaker: verifica se Telegram está em modo de falha
+  if (_checkCircuitBreaker()) {
+    console.warn('[Telegram] ⏸️ Circuit breaker ABERTO — envio ignorado');
+    return null;
+  }
+
   try {
     const res = await axios.post(`${BASE}/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
       chat_id: getChatId(),
@@ -638,11 +679,13 @@ async function send(text, options = {}) {
       // Persiste `window` individual — _pruneDb usa esse valor p/ não apagar entradas 24h após 10 min
       db[key] = { msgId, ts: Date.now(), protected: isProtected ?? false, window };
       _saveSentDb(db);
+      _recordTelegramSuccess();
     }
 
     return msgId;
   } catch (err) {
-    console.warn(`[Telegram] Falha ao enviar: ${err.message}`);
+    _recordTelegramFailure();
+    console.warn(`[Telegram] Falha ao enviar (${_telegramFailures}/${TELEGRAM_CIRCUIT_THRESHOLD}): ${err.message}`);
     return null;
   }
 }

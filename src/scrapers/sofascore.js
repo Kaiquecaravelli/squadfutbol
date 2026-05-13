@@ -30,6 +30,30 @@ const http = axios.create({
   },
 });
 
+// Retry interceptor com exponential backoff (3 tentativas)
+const MAX_RETRIES = 3;
+http.interceptors.response.use(
+  (res) => res,
+  async (err) => {
+    const config = err.config;
+    const status = err.response?.status;
+    const isRetryable = !status || status >= 500 || status === 429 || err.code === 'ECONNABORTED';
+
+    if (!config || !isRetryable || config.__retryCount >= MAX_RETRIES) {
+      throw err;
+    }
+
+    config.__retryCount = config.__retryCount || 0;
+    config.__retryCount++;
+
+    const delay = Math.min(1000 * Math.pow(2, config.__retryCount - 1), 10000);
+    console.log(chalk.gray(`  [SofaScore] Retry ${config.__retryCount}/${MAX_RETRIES} após ${delay}ms...`));
+
+    await new Promise(r => setTimeout(r, delay));
+    return http(config);
+  }
+);
+
 // ── Buscar partidas do dia ────────────────────────────────────────────────────
 export async function getSofascoreMatches(date) {
   const dateStr = date || new Date().toISOString().split('T')[0];

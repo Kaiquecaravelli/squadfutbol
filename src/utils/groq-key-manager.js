@@ -179,7 +179,7 @@ export async function callGroqWithRotation(callFn, agentName = 'Agent', maxAttem
 
     // Todas as chaves em cooldown → aguarda a mais próxima
     if (!key) {
-      const waitMs = groqKeyManager.timeUntilNextKey() + 500;
+      const waitMs = groqKeyManager.timeUntilNextKey() + 2000;
       if (waitMs > 0 && waitMs < 120_000) {
         console.warn(`  [${agentName}] ⏳ Todas as chaves em cooldown — aguardando ${Math.ceil(waitMs / 1000)}s`);
         await sleep(waitMs);
@@ -216,7 +216,7 @@ export async function callGroqWithRotation(callFn, agentName = 'Agent', maxAttem
 
       // 500/503 Erro temporário → retry com backoff
       if ((status === 503 || status === 500) && attempt < maxAttempts) {
-        await sleep(Math.min(attempt * 2_000, 10_000));
+        await sleep(Math.min(attempt * 4_000, 20_000));
         continue;
       }
 

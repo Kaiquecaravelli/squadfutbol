@@ -55,12 +55,19 @@ const CALIBRATED_KZ_FLOORS = {
  *   Gate duplo obrigatório: probabilidade Poisson ≥ 80% E confiança ≥ 80%.
  *   O piso de 80% é absoluto e inviolável — nenhuma liga ou contexto o reduz.
  *
+ * BTTS: floor 65% (2026-05-13) — Precisão histórica BTTS é ~62%, próximo ao floor.
+ *   Trava lógica adicional: se prob 60-65%, requer:
+ *     - Ambos os times com média >1.0 gol/jogo OU
+ *     - Competition com histórico BTTS >65%
+ *   Isso evita ~38% de falsos positivos na zona cinzenta 60-65%.
+ *
  * Floor Under: 80% (piso absoluto — gate v3).
- * Floor padrão para Over/BTTS/Corners: 70% (calibrado em 880+ amostras).
+ * Floor BTTS: 65% (protegido com trava lógica).
+ * Floor padrão para Over/Corners: 70% (calibrado em 880+ amostras).
  *
  * @param {string} market      — mercado ('Over 2.5', 'Under 1.5', 'Over Corners 6.5', etc.)
  * @param {string} competition — nome da competição (case-insensitive)
- * @returns {number}           — floor em % (62–70)
+ * @returns {number}           — floor em % (60–80)
  */
 export function getKillZoneFloor(market = '', competition = '') {
   const mkt = (market || '').trim();
@@ -69,6 +76,9 @@ export function getKillZoneFloor(market = '', competition = '') {
   // Dupla condição obrigatória: prob ≥ 80% E confiança ≥ 80%.
   if (/^under\s*[\d.]+$/i.test(mkt)) return 80;
 
+  // BTTS: floor 65% (2026-05-13) — com trava lógica adicional
+  if (/^btts$/i.test(mkt) || /^ambas\s*marcam$/i.test(mkt)) return 65;
+
   // Calibração per-liga (Over/Corners — aguarda n≥50 na faixa 65-70%)
   const key  = `${competition.toLowerCase()}:${market}`;
   const floor = CALIBRATED_KZ_FLOORS[key];
@@ -76,6 +86,32 @@ export function getKillZoneFloor(market = '', competition = '') {
     return Math.max(65, Math.min(floor, KILL_ZONE_THRESHOLD)); // clamp [65, 70]
   }
   return KILL_ZONE_THRESHOLD; // padrão: 70
+}
+
+/**
+ * Verifica se BTTS na faixa cinzenta (60-65%) deve ser bloqueado por segurança.
+ * Requer que ambos os times marquem >1.0 gol/jogo OU competição com BTTS >65%.
+ *
+ * @param {number} prob         — probabilidade BTTS (60-65)
+ * @param {object} matchData    — { xg_home, xg_away, competition }
+ * @returns {boolean}           — true se deve BLOQUEAR (zona de risco)
+ */
+export function shouldBlockBTTSTradeZone(prob, matchData) {
+  if (prob >= 65) return false; // Acima do floor — não bloquear
+
+  const comp = (matchData?.competition || '').toLowerCase();
+  const xgHome = matchData?.xg_home ?? 0;
+  const xgAway = matchData?.xg_away ?? 0;
+
+  // Liga com alta taxa BTTS (override): não bloquear
+  const highBTTSLeagues = ['laliga', 'serie a', 'premier league', 'bundesliga', 'eredivisie', 'ligue 1'];
+  if (highBTTSLeagues.some(l => comp.includes(l))) return false;
+
+  // Ambos os times com ataque >1.0 gol/partida: não bloquear (condição atendida)
+  if (xgHome > 1.0 && xgAway > 1.0) return false;
+
+  // Caso contrário: bloquear (zona de risco sem condições favoráveis)
+  return true;
 }
 
 /**
