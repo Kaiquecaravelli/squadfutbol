@@ -330,7 +330,8 @@ export async function getActiveLessons(market, competition) {
  */
 export async function getStats() {
   const db = await loadDB();
-  const { total, acertos, erros, nao_verificaveis } = db.stats;
+  const stats = db.stats || { total: 0, acertos: 0, erros: 0, nao_verificaveis: 0 };
+  const { total, acertos, erros, nao_verificaveis } = stats;
   const verificaveis = acertos + erros;
   const taxaAcerto = verificaveis > 0 ? ((acertos / verificaveis) * 100).toFixed(1) : null;
 
