@@ -412,11 +412,56 @@ export async function setLambdaFator(competition, fator) {
   invalidateCalibrationCache();
 }
 
+// ── Lambda Fatores Sync (cache em memória) ─────────────────────────────────────
+let _lambdaCache = null;
+let _lambdaCacheTs = 0;
+const LAMBDA_CACHE_TTL = 10 * 60_000;
+
+export async function getLambdaFatorSync(competition) {
+  if (!competition) return 1.0;
+  const now = Date.now();
+
+  if (!_lambdaCache || now - _lambdaCacheTs > LAMBDA_CACHE_TTL) {
+    await _ensureConnection();
+    const docs = await LambdaFator.find().lean();
+    _lambdaCache = docs.reduce((acc, f) => { acc[f.competition] = f.fator; return acc; }, {});
+    _lambdaCacheTs = now;
+  }
+
+  return _lambdaCache[competition] || 1.0;
+}
+
 // ── Predictions queries ────────────────────────────────────────────────────────
+
+// ── Snapshot Diário ─────────────────────────────────────────────────────────
+
+export async function savePieSnapshot() {
+  await _ensureConnection();
+  const db = await loadDB();
+
+  const verificaveis = db.stats.acertos + db.stats.erros;
+  const globalRate = verificaveis > 0
+    ? parseFloat(((db.stats.acertos / verificaveis) * 100).toFixed(2))
+    : null;
+
+  const markets = {};
+  for (const [market, cal] of Object.entries(db.calibration)) {
+    if (cal.total >= 5) {
+      markets[market] = {
+        acc: parseFloat(((cal.hits / cal.total) * 100).toFixed(2)),
+        total: cal.total,
+      };
+    }
+  }
+
+  console.log('[PIE] Snapshot salvo:', { globalRate, totalOutcomes: verificaveis, markets: Object.keys(markets).length });
+  return { globalRate, totalOutcomes: verificaveis, markets };
+}
 
 export async function getPendingPredictions() {
   await _ensureConnection();
-  return Prediction.find({ result_id: null }).lean();
+  const predictions = await Prediction.find({ result_id: null }).lean();
+  return predictions;
 }
 
 export async function getPredictionByIdx(idx) {
