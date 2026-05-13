@@ -3,18 +3,24 @@ name: SquadFutbol Scheduler
 on:
   workflow_dispatch:
   schedule:
-    # Daily Pipeline - 04:00 UTC = 06:00 BR (horário de verão)
+    # Todos os schedules agregados no mesmo workflow
+    # Daily Pipeline - 04:00 UTC = 06:00 BR
     - cron: '0 4 * * *'
     # Daily Pipeline Extra - 11:00 UTC = 13:00 BR
     - cron: '0 11 * * *'
+    # Backfill - 23:00 UTC = 01:00 BR
+    - cron: '0 23 * * *'
+    # Weekly Report - Domingos 23:00 UTC = 01:00 BR
+    - cron: '0 23 * * 0'
 
 jobs:
   # ─────────────────────────────────────────────────────────────────────────────
-  # DAILY PIPELINE — Coleta +24h, backfill, PIE, Telegram
+  # DAILY PIPELINE — 04:00 UTC e 11:00 UTC
   # ─────────────────────────────────────────────────────────────────────────────
   daily-pipeline:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    if: github.event_name == 'workflow_dispatch' || (github.event.schedule == '0 4 * * *') || (github.event.schedule == '0 11 * * *')
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -39,12 +45,14 @@ jobs:
         run: npm run daily
 
   # ─────────────────────────────────────────────────────────────────────────────
-  # PRELIVE SCAN — Varredura pré-live a cada 30min
-  # Executa das 09:00-12:00 UTC (06-09h BR) e 16:00-23:00 UTC (14-21h BR)
+  # PRELIVE SCAN — A cada 30min (via schedule separado)
+  # Não é possível ter múltiplas frequências no mesmo workflow
+  # Para prelive scan frequentes, criar workflow dedicado
   # ─────────────────────────────────────────────────────────────────────────────
   prelive-scan:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    if: github.event_name == 'workflow_dispatch'
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -68,11 +76,12 @@ jobs:
         run: node scripts/prelive-superodds-now.js
 
   # ─────────────────────────────────────────────────────────────────────────────
-  # RESULT BACKFILL — Fechar loop de feedback (23:00 UTC = 01:00 BR)
+  # RESULT BACKFILL — 23:00 UTC
   # ─────────────────────────────────────────────────────────────────────────────
   backfill:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    if: github.event_name == 'workflow_dispatch' || (github.event.schedule == '0 23 * * *')
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -94,13 +103,12 @@ jobs:
         run: npm run backfill
 
   # ─────────────────────────────────────────────────────────────────────────────
-  # WEEKLY REPORT — Domingos 23:00 UTC = 01:00 BR (segundo fuso)
+  # WEEKLY REPORT — Domingos 23:00 UTC
   # ─────────────────────────────────────────────────────────────────────────────
   weekly-report:
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    # Sundays at 23:00 UTC
-    cron: '0 23 * * 0'
+    if: github.event_name == 'workflow_dispatch' || (github.event.schedule == '0 23 * * 0')
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
