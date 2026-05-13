@@ -442,7 +442,8 @@ async function recoverMissingPieData() {
   if (!sem.length) return;
   console.log(chalk.cyan(`  🔄 Recuperando ${sem.length} resultado(s) não gravados no PIE...`));
 
-  const piePending = getPendingPredictions();
+  const piePendingRaw = await getPendingPredictions();
+  const piePending = Array.isArray(piePendingRaw) ? piePendingRaw : [];
 
   for (const entry of sem) {
     try {
@@ -636,7 +637,8 @@ export async function runResultChecker() {
       let pieSaved = false;
       try {
         // Tenta vincular ao ID de predição PIE pelo nome da partida
-        const piePending = getPendingPredictions();
+        const piePendingRaw = await getPendingPredictions();
+        const piePending = Array.isArray(piePendingRaw) ? piePendingRaw : [];
         const matchKey   = (entry.match || '').toLowerCase().slice(0, 12);
         const piePred    = piePending.find(p =>
           (p.match_name || '').toLowerCase().includes(matchKey)

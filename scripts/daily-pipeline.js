@@ -232,11 +232,14 @@ async function etapa1_coletar(dates, dryRun) {
 async function etapa2_backfill(dryRun) {
   log('🔄', 'ETAPA 2 — Backfill de Resultados', 'bold');
 
-  const pending = getPendingPredictions();
+  const pending = await getPendingPredictions();
+
+  // Garante que é array
+  const pendingArr = Array.isArray(pending) ? pending : [];
 
   // Só processa predições com >= 24h (resultados garantidos)
   const cutoff24h = Date.now() - 24 * 60 * 60 * 1000;
-  const ready     = pending.filter(p => {
+  const ready     = pendingArr.filter(p => {
     const created = new Date(p.created_at || 0).getTime();
     return created <= cutoff24h;
   });

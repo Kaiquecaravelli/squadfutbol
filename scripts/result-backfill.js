@@ -274,7 +274,8 @@ async function runBackfill({ dryRun = false, daysBack = 30, limit = 100 } = {}) 
   console.log(`  Modo: ${dryRun ? 'DRY-RUN (sem salvar)' : 'REAL'} | Janela: ${daysBack} dias | Limite: ${limit}`);
   console.log('═'.repeat(64) + '\n');
 
-  const pending = getPendingPredictions();
+  const pendingRaw = await getPendingPredictions();
+  const pending = Array.isArray(pendingRaw) ? pendingRaw : [];
 
   // Filtra por janela de tempo
   const cutoff = Date.now() - daysBack * 86_400_000;
