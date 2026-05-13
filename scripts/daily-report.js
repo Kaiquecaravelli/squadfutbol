@@ -44,7 +44,8 @@ async function run() {
   await notifyDailyReport(resolved);
 
   console.log('  Enviando estatísticas do PIE...');
-  await notifyPIEStats(getStats());
+  const stats = await getStats();
+  await notifyPIEStats(stats);
 
   console.log('  ✅ Relatório enviado.\n');
 }
