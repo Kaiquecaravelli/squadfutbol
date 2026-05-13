@@ -460,8 +460,15 @@ export async function savePieSnapshot() {
 
 export async function getPendingPredictions() {
   await _ensureConnection();
-  const predictions = await Prediction.find({ result_id: null }).lean();
-  return predictions;
+  const predictions = await Prediction.find({
+    $or: [
+      { result_id: null },
+      { result_id: { $exists: false } }
+    ]
+  }).lean();
+
+  // Garante que sempre retorna array
+  return Array.isArray(predictions) ? predictions : [];
 }
 
 export async function getPredictionByIdx(idx) {
